@@ -59,12 +59,12 @@ exps:
 exp:
 	INT 				{ $$ = new num($1); }
 | 	ID 				{ $$ = new id($1); }
-| 	LPAREN binop lvalue exp RPAREN	{ $$ = new bin($2, $3, $4); }
+| 	LPAREN ASSIGN lvalue exp RPAREN	{ $$ = new bin(binop::ASSIGN, $3, $4); }
+| 	LPAREN binop exp exp RPAREN 	{ $$ = new bin($2, $3, $4); }
 | 	LPAREN exp RPAREN 		{ $$ = $2; };
 
 binop:
-	ASSIGN 			{ $$ = binop::ASSIGN; }
-| 	EQ 			{ $$ = binop::EQ; }
+ 	EQ 			{ $$ = binop::EQ; }
 | 	MINUS 			{ $$ = binop::MINUS; }
 | 	PLUS 			{ $$ = binop::PLUS; }
 | 	MULT 			{ $$ = binop::MULT; }

@@ -1,10 +1,11 @@
 #pragma once
 #include <vector>
 #include "symbol.hh"
+#include "visitor.hh"
 
 enum class binop { ASSIGN, EQ, MINUS, PLUS, MULT, DIV };
 
-class exp
+struct exp
 {
       protected:
 	exp() = default;
@@ -13,19 +14,19 @@ class exp
 
       public:
 	virtual ~exp() = default;
+	virtual void accept(visitor &visitor) = 0;
 };
 
-class program
+struct program
 {
       public:
 	program(exp *e) : e_(e) {}
 
-      private:
 	exp *e_;
 };
 
 
-class bin : public exp
+struct bin : public exp
 {
       public:
 	bin(binop op, exp *lhs, exp *rhs) : exp(), op_(op), lhs_(lhs), rhs_(rhs)
@@ -38,23 +39,24 @@ class bin : public exp
 		delete rhs_;
 	}
 
+	void accept(visitor &visitor) override { visitor.visit_bin(*this); }
 
-      private:
 	binop op_;
 	exp *lhs_;
 	exp *rhs_;
 };
 
-class num : public exp
+struct num : public exp
 {
       public:
 	num(int value) : value_(value) {}
 
-      private:
+	void accept(visitor &visitor) override { visitor.visit_num(*this); }
+
 	int value_;
 };
 
-class seq : public exp
+struct seq : public exp
 {
       public:
 	std::vector<exp *> children_;
@@ -64,13 +66,16 @@ class seq : public exp
 		for (auto *exp : children_)
 			delete exp;
 	}
+
+	void accept(visitor &visitor) override { visitor.visit_seq(*this); }
 };
 
-class id : public exp
+struct id : public exp
 {
       public:
 	id(const symbol &id) : id_(id) {}
 
-      private:
+	void accept(visitor &visitor) override { visitor.visit_id(*this); }
+
 	symbol id_;
 };

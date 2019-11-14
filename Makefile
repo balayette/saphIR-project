@@ -1,4 +1,4 @@
-CXXFLAGS = -Wall -Wextra -Wno-error -std=c++17 -pedantic -g -MMD
+CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -pedantic -g -MMD
 LINK.o = $(LINK.cc)
 
 GENERATED_SRC = \
