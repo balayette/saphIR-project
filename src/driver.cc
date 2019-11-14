@@ -12,6 +12,7 @@ int driver::parse(const std::string &file)
 	scan_begin();
 
 	yy::parser parse(*this);
+	parse.set_debug_level(1);
 	int ret = parse();
 
 	scan_end();

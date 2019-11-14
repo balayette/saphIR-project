@@ -1,3 +1,4 @@
+%expect 0
 %skeleton "lalr1.cc"
 %require "3.4"
 %defines
