@@ -40,7 +40,7 @@
 
 %printer { yyo << $$; } <*>;
 
-%type <program*> program;
+%type <exp*> program;
 %type <seq*> exps;
 %type <exp*> exp;
 %type <binop> binop;
@@ -50,7 +50,7 @@
 
 %start program;
 
-program: exps EOF 		{ d.prog_ = new program($1); };
+program: exps EOF 		{ d.prog_ = $1; };
 
 exps:
 	%empty 			{ $$ = new seq(); }

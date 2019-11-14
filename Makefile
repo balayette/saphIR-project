@@ -29,7 +29,9 @@ $(BIN_OUT): src/main
 
 src/main: $(OBJ)
 
-src/parser.hh src/parser.cc: src/parser.yy
+src/main.o: $(GENERATED)
+
+src/location.hh src/parser.hh src/parser.cc: src/parser.yy
 	bison src/parser.yy -o src/parser.cc --defines=src/parser.hh
 
 src/scanner.cc: src/parser.hh src/scanner.ll

@@ -1,6 +1,6 @@
 #include <iostream>
 #include "driver.hh"
-#include "default-visitor.hh"
+#include "pretty-printer.hh"
 
 int usage(char *pname)
 {
@@ -18,6 +18,9 @@ int main(int argc, char *argv[])
 		std::cerr << "Parsing failed.\n";
 		return 2;
 	}
+
+	pretty_printer p(std::cout);
+	drv.prog_->accept(p);
 
 	return 0;
 }

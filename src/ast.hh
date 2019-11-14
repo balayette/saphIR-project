@@ -5,8 +5,7 @@
 
 enum class binop { ASSIGN, EQ, MINUS, PLUS, MULT, DIV };
 
-struct exp
-{
+struct exp {
       protected:
 	exp() = default;
 	exp(const exp &rhs) = default;
@@ -17,17 +16,7 @@ struct exp
 	virtual void accept(visitor &visitor) = 0;
 };
 
-struct program
-{
-      public:
-	program(exp *e) : e_(e) {}
-
-	exp *e_;
-};
-
-
-struct bin : public exp
-{
+struct bin : public exp {
       public:
 	bin(binop op, exp *lhs, exp *rhs) : exp(), op_(op), lhs_(lhs), rhs_(rhs)
 	{
@@ -46,8 +35,7 @@ struct bin : public exp
 	exp *rhs_;
 };
 
-struct num : public exp
-{
+struct num : public exp {
       public:
 	num(int value) : value_(value) {}
 
@@ -56,8 +44,7 @@ struct num : public exp
 	int value_;
 };
 
-struct seq : public exp
-{
+struct seq : public exp {
       public:
 	std::vector<exp *> children_;
 
@@ -70,8 +57,7 @@ struct seq : public exp
 	void accept(visitor &visitor) override { visitor.visit_seq(*this); }
 };
 
-struct id : public exp
-{
+struct id : public exp {
       public:
 	id(const symbol &id) : id_(id) {}
 
@@ -79,3 +65,10 @@ struct id : public exp
 
 	symbol id_;
 };
+
+inline std::string binop_str[] = {"=", "==", "-", "+", "*", "/"};
+
+inline std::ostream& operator<<(std::ostream& os, binop op)
+{
+	return os << binop_str[static_cast<int>(op)];
+}
