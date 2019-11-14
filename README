@@ -7,4 +7,10 @@
   (= i 0)
   (< i 10)
   (= i (+ i 1))
-  (PRINT "JIT")))
+  (
+   (PRINT "JIT")
+   (CALL hellofunc ()))))
+
+((= a 2)
+ (= b 3)
+ (= b (+ a 2)))
