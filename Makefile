@@ -16,7 +16,6 @@ OBJ = \
       $(GENERATED_OBJ) \
       src/scanner.o \
       src/parser.o \
-      src/token.o \
       src/main.o \
       src/symbol.o \
 
