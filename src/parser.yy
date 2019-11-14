@@ -9,6 +9,7 @@
 %code requires {
 	#include <string>
 	#include "symbol.hh"
+	#include "ast.hh"
 	class driver;
 }
 
@@ -39,32 +40,37 @@
 
 %printer { yyo << $$; } <*>;
 
+%type <program*> program;
+%type <seq*> exps;
+%type <exp*> exp;
+%type <binop> binop;
+%type <exp*> lvalue;
+
 %%
 
 %start program;
 
-program: exps EOF;
+program: exps EOF 		{ d.prog_ = new program($1); };
 
 exps:
-	%empty
-| 	exps exp;
+	%empty 			{ $$ = new seq(); }
+| 	exps exp 		{ $$ = $1; $1->children_.push_back($2); };
 
-exp: 	"(" exp_body ")";
-
-exp_body:
-	INT
-| 	ID
-| 	binop lvalue exp;
+exp:
+	INT 				{ $$ = new num($1); }
+| 	ID 				{ $$ = new id($1); }
+| 	LPAREN binop lvalue exp RPAREN	{ $$ = new bin($2, $3, $4); }
+| 	LPAREN exp RPAREN 		{ $$ = $2; };
 
 binop:
-	ASSIGN
-| 	EQ
-| 	MINUS
-| 	PLUS
-| 	MULT
-| 	DIV;
+	ASSIGN 			{ $$ = binop::ASSIGN; }
+| 	EQ 			{ $$ = binop::EQ; }
+| 	MINUS 			{ $$ = binop::MINUS; }
+| 	PLUS 			{ $$ = binop::PLUS; }
+| 	MULT 			{ $$ = binop::MULT; }
+| 	DIV 			{ $$ = binop::DIV; };
 
-lvalue: ID;
+lvalue: ID 			{ $$ = new id($1); };
 %%
 
 void yy::parser::error (const location_type& l, const std::string& m)

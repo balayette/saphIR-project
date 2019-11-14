@@ -3,6 +3,7 @@
 #include <string>
 
 #include "parser.hh"
+#include "ast.hh"
 
 #define YY_DECL yy::parser::symbol_type yylex(driver &d)
 
@@ -19,6 +20,7 @@ class driver
 	void scan_end();
 
 	yy::location location_;
+	program *prog_;
 
       private:
 	bool debug_parsing_;

@@ -1,4 +1,4 @@
-CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -pedantic -g -MMD
+CXXFLAGS = -Wall -Wextra -Wno-error -std=c++17 -pedantic -g -MMD
 LINK.o = $(LINK.cc)
 
 GENERATED_SRC = \
@@ -18,6 +18,7 @@ OBJ = \
       src/parser.o \
       src/main.o \
       src/symbol.o \
+      src/driver.o \
 
 DEP = $(OBJ:.o=.d)
 
