@@ -1,7 +1,9 @@
 #include <iostream>
+#include "stmt.hh"
 #include "driver.hh"
+#include "exp.hh"
 #include "pretty-printer.hh"
-#include "compile.hh"
+#include "default-visitor.hh"
 
 int usage(char *pname)
 {
@@ -20,11 +22,7 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	pretty_printer p(std::cout);
-	drv.prog_->accept(p);
-
-	drv.prog_ = compiler::remove_seqs(drv.prog_);
-	std::cout << '\n';
+	default_visitor p;
 	drv.prog_->accept(p);
 
 	delete drv.prog_;

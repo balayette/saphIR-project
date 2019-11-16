@@ -8,8 +8,12 @@ fun main(int argc, int argv) int {
 
 	if (a == 2)
 		return 3;
+	fi
+
+	if (a == 2)
+		return 3;
 	else 
 		return 2;
-	endif
+	fi
 	return a;
 }

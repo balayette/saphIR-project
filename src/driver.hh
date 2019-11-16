@@ -1,9 +1,10 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "parser.hh"
-#include "ast.hh"
+#include "stmt.hh"
 
 #define YY_DECL yy::parser::symbol_type yylex(driver &d)
 
@@ -20,7 +21,7 @@ class driver
 	void scan_end();
 
 	yy::location location_;
-	exp *prog_;
+	decs* prog_;
 
       private:
 	bool debug_parsing_;

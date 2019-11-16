@@ -10,7 +10,8 @@
 %code requires {
 	#include <string>
 	#include "symbol.hh"
-	#include "ast.hh"
+	#include "stmt.hh"
+	#include "exp.hh"
 	class driver;
 }
 
@@ -28,74 +29,156 @@
 
 %token  ASSIGN "="
 	EQ "=="
+	NEQ "!="
 	MINUS "-"
 	PLUS "+"
 	MULT "*"
 	DIV "/"
 	LPAREN "("
 	RPAREN ")"
-	FUN "FUN"
+	LBRACE "{"
+	RBRACE "}"
+	SEMI ";"
+	COLON ","
+	FUN "fun"
+	FOR "for"
+	ROF "rof"
+	IF "if"
+	ELSE "else"
+	FI "fi"
+	RETURN "return"
+	INT "int"
+	VOID "void"
+	STRING "string"
 	EOF 0 "eof"
 
 %token <symbol> ID "id"
-%token <int> INT "int"
+%token <int> INT_LIT "int_lit"
+%token <std::string> STR_LIT "str_lit"
 
-%type <exp*> program;
-%type <exp*> exp;
-%type <seq*> exps;
-%type <seq*> exps_body;
-%type <binop> binop;
-%type <exp*> lvalue;
-%type <fun*> fun;
-%type <seq*> decs;
-%type <seq*> decs_body;
-%type <std::vector<id*>> id_list;
-%type <std::vector<id*>> id_list_body;
-%type <id*> id;
+%type <decs*> decs
+
+%type <fundec*> fundec
+
+%type <std::vector<argdec*>> argdecs
+%type <argdec*> argdec
+
+%type <std::vector<stmt*>> stmts
+%type <stmt*> stmt
+%type <stmt*> stmt_body
+
+%type <vardec*> vardec
+%type <sexp*> sexp
+%type <ret*> ret
+%type <ifstmt*> ifstmt
+%type <forstmt*> forstmt
+
+%type <exp*> exp
+%type <std::vector<exp*>> exps_comma
+
+%type <ass*> ass
+%type <num*> num
+%type <ref*> ref
+%type <call*> call
+
+%type <ty> type
+
+%nonassoc EQ NEQ ASSIGN
+%left PLUS MINUS
+%left MULT DIV
 
 %%
 
-%start program;
+start: program
 
-program: decs EOF 		{ d.prog_ = $1; };
+program: decs 	{ d.prog_ = $1; };
 
-decs: LPAREN decs_body RPAREN 	{ $$ = $2; };
+decs:
+	%empty 		{ $$ = new decs(); }
+|   	decs fundec 	{ $$ = $1; $1->fundecs_.push_back($2); }
+| 	decs vardec ";" { $$ = $1; $1->vardecs_.push_back($2); }
+;
 
-decs_body:
-	 %empty 		{ $$ = new seq(); }
-| 	 decs_body fun 		{ $$ = $1; $1->children_.push_back($2); };
+fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" { 
+      $$ = new fundec($6, $2, $4, $8); 
+};
 
-fun: FUN ID id_list exps  	{ $$ = new fun(new id($2), $3, $4); };
+argdecs:
+       	%empty 			{ $$ = std::vector<argdec*>(); }
+| 	argdecs "," argdec 	{ $$ = $1; $1.push_back($3); }
+;
 
-exps: LPAREN exps_body RPAREN 	{ $$ = $2; };
+argdec: type ID 	{ $$ = new argdec($1, $2); };
 
-exps_body:
-	%empty 			{ $$ = new seq(); }
-| 	exps_body exp 		{ $$ = $1; $1->children_.push_back($2); };
+stmts:
+     	%empty 		{ $$ = std::vector<stmt*>(); }
+| 	stmts stmt 	{ $$ = $1; $1.push_back($2); }
+;
+
+stmt: stmt_body ";" 	{ $$ = $1; };
+
+stmt_body: 
+	vardec 	{ $$ = $1; }
+| 	sexp 	{ $$ = $1; }
+| 	ret 	{ $$ = $1; }
+| 	ifstmt  { $$ = $1; }
+| 	forstmt { $$ = $1; }
+;
+
+vardec: type ID "=" exp { $$ = new vardec($1, $2, $4); };
+
+sexp: exp { $$ = new sexp($1); };
+
+ret:
+	"return" 	{ $$ = new ret(nullptr); }   
+| 	"return" exp 	{ $$ = new ret($2); }
+;
+
+ifstmt:
+      	IF "(" exp ")" stmts FI { 
+		$$ = new ifstmt($3, $5, std::vector<stmt*>()); 
+	}
+| 	IF "(" exp ")" stmts ELSE stmts FI {
+		$$ = new ifstmt($3, $5, $7);
+	}
+;
+
+forstmt: FOR "(" stmt ";" exp ";" stmt ")" stmts ROF {
+		$$ = new forstmt($3, $5, $7, $9);
+       };
 
 exp:
-	INT 				{ $$ = new num($1); }
-| 	ID 				{ $$ = new id($1); }
-| 	ASSIGN lvalue exp 		{ $$ = new bin(binop::ASSIGN, $2, $3); }
-| 	binop exp exp 			{ $$ = new bin($1, $2, $3); }
-| 	exps 				{ $$ = $1; };
+ 	ass 		{ $$ = $1; }
+| 	num 		{ $$ = $1; }
+| 	ref 		{ $$ = $1; }
+| 	call 		{ $$ = $1; }
+| 	exp EQ exp 	{ $$ = new cmp(cmpop::EQ, $1, $3); }
+| 	exp NEQ exp 	{ $$ = new cmp(cmpop::NEQ, $1, $3); }
+| 	exp MULT exp 	{ $$ = new bin(binop::MULT, $1, $3); }
+| 	exp DIV exp 	{ $$ = new bin(binop::DIV, $1, $3); }
+| 	exp PLUS exp 	{ $$ = new bin(binop::PLUS, $1, $3); }
+| 	exp MINUS exp 	{ $$ = new bin(binop::MINUS, $1, $3); }
+;
 
-binop:
- 	EQ 			{ $$ = binop::EQ; }
-| 	MINUS 			{ $$ = binop::MINUS; }
-| 	PLUS 			{ $$ = binop::PLUS; }
-| 	MULT 			{ $$ = binop::MULT; }
-| 	DIV 			{ $$ = binop::DIV; };
+exps_comma:
+	%empty 			{ $$ = std::vector<exp*>(); }
+| 	exps_comma "," exp 	{ $$ = $1; $1.push_back($3); }
+;
 
-id: ID 				{ $$ = new id($1); };
-id_list:
-	LPAREN id_list_body RPAREN	{ $$ = $2; };
+ass: ID "=" exp 	{ $$ = new ass($1, $3); };
 
-id_list_body:
-	%empty 				{ $$ = std::vector<id*>(); }
-| 	id_list_body id 		{ $$ = $1; $1.push_back($2); };
+num: INT_LIT 	{ $$ = new num($1); };
 
-lvalue: id 		{ $$ = $1; };
+ref: ID 	{ $$ = new ref($1); };
+
+call: ID "(" exps_comma ")" 	{ $$ = new call($1, $3); };
+
+type:
+    	INT 	{ $$ = ty::INT; }
+| 	STRING 	{ $$ = ty::STRING; }
+| 	VOID 	{ $$ = ty::VOID; }
+;
+
 %%
 
 void yy::parser::error (const location_type& l, const std::string& m)

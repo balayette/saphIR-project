@@ -22,6 +22,7 @@
 id 	[a-zA-Z][a-zA-Z_0-9]*
 int 	-?[0-9]+
 blank 	[ \t\r]
+strlit \"(\\.|[^\"\\])*\"
 
 %%
 
@@ -30,16 +31,31 @@ blank 	[ \t\r]
 
 "=" 		return TOKEN(ASSIGN);
 "==" 		return TOKEN(EQ);
+"!=" 		return TOKEN(NEQ);
 "-"	    	return TOKEN(MINUS);
 "+"	    	return TOKEN(PLUS);
 "*"	    	return TOKEN(MULT);
 "/"	    	return TOKEN(DIV);
 "("	    	return TOKEN(LPAREN);
 ")"	    	return TOKEN(RPAREN);
-"FUN" 		return TOKEN(FUN);
+"{"	    	return TOKEN(LBRACE);
+"}"	    	return TOKEN(RBRACE);
+";"	    	return TOKEN(SEMI);
+","	    	return TOKEN(COLON);
+"fun" 		return TOKEN(FUN);
+"for"	    	return TOKEN(FOR);
+"rof"	    	return TOKEN(ROF);
+"if"	    	return TOKEN(IF);
+"else"	    	return TOKEN(ELSE);
+"fi"	    	return TOKEN(FI);
+"return"	return TOKEN(RETURN);
+"int"	    	return TOKEN(INT);
+"void"	    	return TOKEN(VOID);
+"string"	return TOKEN(STRING);
 
-{int} 		return TOKEN_VAL(INT, std::atoi(yytext));
+{int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
 {id} 		return TOKEN_VAL(ID, symbol(yytext));
+{strlit} 	return TOKEN_VAL(STR_LIT, std::string(yytext));
 
 . 		{
 	std::cerr << "invalid character: " << yytext << '\n';
