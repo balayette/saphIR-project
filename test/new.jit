@@ -1,0 +1,15 @@
+fun main(int argc, int argv) int {
+	int a = 2;
+	int b = a * 2 + 3;
+
+	for (int i = 0; i != 10; i = i + 1)
+		print("HELLO");
+	rof
+
+	if (a == 2)
+		return 3;
+	else 
+		return 2;
+	endif
+	return a;
+}

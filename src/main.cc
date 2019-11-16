@@ -1,6 +1,7 @@
 #include <iostream>
 #include "driver.hh"
 #include "pretty-printer.hh"
+#include "compile.hh"
 
 int usage(char *pname)
 {
@@ -21,6 +22,12 @@ int main(int argc, char *argv[])
 
 	pretty_printer p(std::cout);
 	drv.prog_->accept(p);
+
+	drv.prog_ = compiler::remove_seqs(drv.prog_);
+	std::cout << '\n';
+	drv.prog_->accept(p);
+
+	delete drv.prog_;
 
 	return 0;
 }

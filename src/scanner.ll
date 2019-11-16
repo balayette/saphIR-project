@@ -36,6 +36,7 @@ blank 	[ \t\r]
 "/"	    	return TOKEN(DIV);
 "("	    	return TOKEN(LPAREN);
 ")"	    	return TOKEN(RPAREN);
+"FUN" 		return TOKEN(FUN);
 
 {int} 		return TOKEN_VAL(INT, std::atoi(yytext));
 {id} 		return TOKEN_VAL(ID, symbol(yytext));

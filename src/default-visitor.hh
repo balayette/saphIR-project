@@ -1,3 +1,4 @@
+#pragma once
 #include "visitor.hh"
 
 class default_visitor : public visitor
@@ -18,4 +19,12 @@ class default_visitor : public visitor
 	}
 
 	virtual void visit_id(id &) override {}
+
+	virtual void visit_fun(fun &f) override
+	{
+		f.name_->accept(*this);
+		for (auto *p : f.params_)
+			p->accept(*this);
+		f.body_->accept(*this);
+	}
 };

@@ -34,35 +34,51 @@
 	DIV "/"
 	LPAREN "("
 	RPAREN ")"
+	FUN "FUN"
 	EOF 0 "eof"
 
 %token <symbol> ID "id"
 %token <int> INT "int"
 
-%printer { yyo << $$; } <*>;
-
 %type <exp*> program;
-%type <seq*> exps;
 %type <exp*> exp;
+%type <seq*> exps;
+%type <seq*> exps_body;
 %type <binop> binop;
 %type <exp*> lvalue;
+%type <fun*> fun;
+%type <seq*> decs;
+%type <seq*> decs_body;
+%type <std::vector<id*>> id_list;
+%type <std::vector<id*>> id_list_body;
+%type <id*> id;
 
 %%
 
 %start program;
 
-program: exps EOF 		{ d.prog_ = $1; };
+program: decs EOF 		{ d.prog_ = $1; };
 
-exps:
+decs: LPAREN decs_body RPAREN 	{ $$ = $2; };
+
+decs_body:
+	 %empty 		{ $$ = new seq(); }
+| 	 decs_body fun 		{ $$ = $1; $1->children_.push_back($2); };
+
+fun: FUN ID id_list exps  	{ $$ = new fun(new id($2), $3, $4); };
+
+exps: LPAREN exps_body RPAREN 	{ $$ = $2; };
+
+exps_body:
 	%empty 			{ $$ = new seq(); }
-| 	exps exp 		{ $$ = $1; $1->children_.push_back($2); };
+| 	exps_body exp 		{ $$ = $1; $1->children_.push_back($2); };
 
 exp:
 	INT 				{ $$ = new num($1); }
 | 	ID 				{ $$ = new id($1); }
-| 	LPAREN ASSIGN lvalue exp RPAREN	{ $$ = new bin(binop::ASSIGN, $3, $4); }
-| 	LPAREN binop exp exp RPAREN 	{ $$ = new bin($2, $3, $4); }
-| 	LPAREN exp RPAREN 		{ $$ = $2; };
+| 	ASSIGN lvalue exp 		{ $$ = new bin(binop::ASSIGN, $2, $3); }
+| 	binop exp exp 			{ $$ = new bin($1, $2, $3); }
+| 	exps 				{ $$ = $1; };
 
 binop:
  	EQ 			{ $$ = binop::EQ; }
@@ -71,7 +87,15 @@ binop:
 | 	MULT 			{ $$ = binop::MULT; }
 | 	DIV 			{ $$ = binop::DIV; };
 
-lvalue: ID 			{ $$ = new id($1); };
+id: ID 				{ $$ = new id($1); };
+id_list:
+	LPAREN id_list_body RPAREN	{ $$ = $2; };
+
+id_list_body:
+	%empty 				{ $$ = std::vector<id*>(); }
+| 	id_list_body id 		{ $$ = $1; $1.push_back($2); };
+
+lvalue: id 		{ $$ = $1; };
 %%
 
 void yy::parser::error (const location_type& l, const std::string& m)

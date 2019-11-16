@@ -1,0 +1,2 @@
+(FUN main (argc argv) (= a 12))
+

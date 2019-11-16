@@ -66,9 +66,30 @@ struct id : public exp {
 	symbol id_;
 };
 
+struct fun : public exp {
+	fun(id *name, std::vector<id *> params, seq *body)
+	    : name_(name), params_(params), body_(body)
+	{
+	}
+
+	~fun() override
+	{
+		delete name_;
+		delete body_;
+		for (auto *p : params_)
+			delete p;
+	}
+
+	void accept(visitor &visitor) override { visitor.visit_fun(*this); }
+
+	id *name_;
+	std::vector<id *> params_;
+	seq *body_;
+};
+
 inline std::string binop_str[] = {"=", "==", "-", "+", "*", "/"};
 
-inline std::ostream& operator<<(std::ostream& os, binop op)
+inline std::ostream &operator<<(std::ostream &os, binop op)
 {
 	return os << binop_str[static_cast<int>(op)];
 }

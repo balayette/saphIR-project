@@ -4,6 +4,7 @@ struct bin;
 struct num;
 struct seq;
 struct id;
+struct fun;
 
 class visitor
 {
@@ -12,4 +13,5 @@ class visitor
 	virtual void visit_num(num &e) = 0;
 	virtual void visit_seq(seq &e) = 0;
 	virtual void visit_id(id &e) = 0;
+	virtual void visit_fun(fun& e) = 0;
 };

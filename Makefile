@@ -19,6 +19,7 @@ OBJ = \
       src/main.o \
       src/symbol.o \
       src/driver.o \
+      src/compile.o \
 
 DEP = $(OBJ:.o=.d)
 
@@ -31,8 +32,10 @@ src/main: $(OBJ)
 
 src/main.o: $(GENERATED)
 
-src/location.hh src/parser.hh src/parser.cc: src/parser.yy
-	bison -t src/parser.yy -o src/parser.cc --defines=src/parser.hh
+src/location.hh: src/parser.hh
+src/parser.hh: src/parser.cc
+src/parser.cc: src/parser.yy
+	bison -v -t src/parser.yy -o src/parser.cc --defines=src/parser.hh
 
 src/scanner.cc: src/parser.hh src/scanner.ll
 	flex -f -o src/scanner.cc src/scanner.ll
