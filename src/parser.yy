@@ -61,9 +61,11 @@
 %type <fundec*> fundec
 
 %type <std::vector<argdec*>> argdecs
+%type <std::vector<argdec*>> argdecsp
 %type <argdec*> argdec
 
 %type <std::vector<stmt*>> stmts
+%type <std::vector<stmt*>> stmtsp
 %type <stmt*> stmt
 %type <stmt*> stmt_body
 
@@ -105,24 +107,36 @@ fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" {
 
 argdecs:
        	%empty 			{ $$ = std::vector<argdec*>(); }
-| 	argdecs "," argdec 	{ $$ = $1; $1.push_back($3); }
+| 	argdecsp
+;
+
+argdecsp:
+	argdec 			{ $$ = std::vector<argdec*>(); $$.push_back($1); }
+| 	argdecsp "," argdec	{ $1.push_back($3); $$ = $1; }
 ;
 
 argdec: type ID 	{ $$ = new argdec($1, $2); };
 
 stmts:
      	%empty 		{ $$ = std::vector<stmt*>(); }
-| 	stmts stmt 	{ $$ = $1; $1.push_back($2); }
+| 	stmtsp
 ;
 
-stmt: stmt_body ";" 	{ $$ = $1; };
+stmtsp:
+      	stmt 		{ $$ = std::vector<stmt*>(); $$.push_back($1); }
+| 	stmtsp stmt 	{ $1.push_back($2); $$ = $1; }
+;
+
+stmt: 
+    	stmt_body SEMI 	{ $$ = $1; }
+| 	ifstmt  { $$ = $1; }
+| 	forstmt { $$ = $1; }
+;
 
 stmt_body: 
 	vardec 	{ $$ = $1; }
 | 	sexp 	{ $$ = $1; }
 | 	ret 	{ $$ = $1; }
-| 	ifstmt  { $$ = $1; }
-| 	forstmt { $$ = $1; }
 ;
 
 vardec: type ID "=" exp { $$ = new vardec($1, $2, $4); };
