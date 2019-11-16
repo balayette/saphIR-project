@@ -1,0 +1,27 @@
+Statements:
+
+stmt:
+	- dec
+		- vardec => ty, id, exp: Local variable declaration
+		- argdec => ty, id: Function argument declaration
+	- fundec  => ret_ty, id, argdec list, stmt list: Function decl
+	- sexp    => exp: An expression where we ignore the return type
+	- ret 	  => exp: Return from function, exp = null => void
+	- ifstmt  => exp, stmt list, stmt list: if else
+	- forstmt => stmt, exp, stmt, stmt list: for loop
+
+Expressions:
+
+exp:
+	- bin   => binop, exp, exp: Binary operation (+, -, *, /)
+	- ass   => id, exp: Assignment
+	- cmp   => cmpop, exp, exp: Comparison (==, !=)
+	- num   => int: Integer
+	- ref   => id: Variable reference 
+	- call  => id, exp list: Function call
+
+Misc:
+
+enum ty { INT, STRING, VOID }
+enum binop { PLUS, MINUS, MULT, DIV }
+enum cmpop { EQ, NEQ }
