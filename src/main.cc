@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	default_visitor p;
+	pretty_printer p(std::cout);
 	drv.prog_->accept(p);
 
 	delete drv.prog_;

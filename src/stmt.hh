@@ -44,6 +44,11 @@ struct argdec : public dec {
 	ACCEPT(argdec)
 };
 
+inline std::ostream &operator<<(std::ostream &os, const dec &dec)
+{
+	return os << ty_to_string(dec.type_) << ' ' << dec.name_;
+}
+
 struct fundec : public stmt {
 	fundec(ty ret_ty, symbol name, std::vector<argdec *> args,
 	       std::vector<stmt *> body)

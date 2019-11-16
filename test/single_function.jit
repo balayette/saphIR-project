@@ -1,4 +1,13 @@
-fun main() int {
-	int a = 2;
+fun main(int a) int {
+	if (a) 
+		return 2;
+	else
+		return 3;
+	fi
+
+	for (int a = 0; a != 10; a = a + 1)
+		return call(lol);
+	rof
+
 	return a;
 }

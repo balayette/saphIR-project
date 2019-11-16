@@ -1,0 +1,4 @@
+fun main(int argc, int argv) int {
+	int a = 2;
+	return a;
+}
