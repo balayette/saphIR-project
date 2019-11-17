@@ -141,7 +141,7 @@ struct ifstmt : public stmt {
 };
 
 struct forstmt : public stmt {
-	forstmt(stmt *init, exp *cond, stmt *action, std::vector<stmt *> body)
+	forstmt(stmt *init, exp *cond, exp *action, std::vector<stmt *> body)
 	    : init_(init), cond_(cond), action_(action), body_(body)
 	{
 	}
@@ -160,6 +160,6 @@ struct forstmt : public stmt {
 
 	stmt *init_;
 	exp *cond_;
-	stmt *action_;
+	exp *action_;
 	std::vector<stmt *> body_;
 };

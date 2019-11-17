@@ -77,6 +77,7 @@
 
 %type <exp*> exp
 %type <std::vector<exp*>> exps_comma
+%type <std::vector<exp*>> exps_commap
 
 %type <ass*> ass
 %type <num*> num
@@ -157,7 +158,7 @@ ifstmt:
 	}
 ;
 
-forstmt: FOR "(" stmt ";" exp ";" stmt ")" stmts ROF {
+forstmt: FOR "(" stmt_body SEMI exp SEMI exp ")" stmts ROF {
 		$$ = new forstmt($3, $5, $7, $9);
        };
 
@@ -178,7 +179,12 @@ exp:
 
 exps_comma:
 	%empty 			{ $$ = std::vector<exp*>(); }
-| 	exps_comma "," exp 	{ $$ = $1; $1.push_back($3); }
+| 	exps_commap		{ $$ = $1; }
+;
+
+exps_commap:
+	exp 			{ $$ = std::vector<exp*>(); $$.push_back($1); }
+| 	exps_commap "," exp 	{ $1.push_back($3); $$ = $1; }
 ;
 
 ass: ID "=" exp 	{ $$ = new ass($1, $3); };
