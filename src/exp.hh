@@ -2,9 +2,13 @@
 
 #include "visitor.hh"
 #include "symbol.hh"
+#include <vector>
 
 enum class binop { MINUS, PLUS, MULT, DIV };
 enum class cmpop { EQ, NEQ };
+
+const std::string &binop_to_string(binop op);
+const std::string &cmpop_to_string(cmpop op);
 
 struct exp {
       protected:
