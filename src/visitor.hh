@@ -18,6 +18,7 @@ struct cmp;
 struct num;
 struct ref;
 struct call;
+struct str_lit;
 
 
 #define ACCEPT(X)                                                              \
@@ -46,4 +47,5 @@ class visitor
 	virtual void visit_num(num &e) = 0;
 	virtual void visit_ref(ref &e) = 0;
 	virtual void visit_call(call &e) = 0;
+	virtual void visit_str_lit(str_lit& e) = 0;
 };

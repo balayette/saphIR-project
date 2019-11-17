@@ -83,6 +83,20 @@ struct call : public exp {
 
 	ACCEPT(call)
 
+	virtual ~call() override
+	{
+		for (auto *a : args_)
+			delete a;
+	}
+
 	symbol name_;
 	std::vector<exp *> args_;
+};
+
+struct str_lit : public exp {
+	str_lit(const std::string &str) : str_(str) {}
+
+	ACCEPT(str_lit)
+
+	std::string str_;
 };

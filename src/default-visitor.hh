@@ -75,4 +75,6 @@ class default_visitor : public visitor
 		for (auto *a : e.args_)
 			a->accept(*this);
 	}
+
+	virtual void visit_str_lit(str_lit &) override {}
 };

@@ -22,7 +22,7 @@
 id 	[a-zA-Z][a-zA-Z_0-9]*
 int 	-?[0-9]+
 blank 	[ \t\r]
-strlit \"(\\.|[^\"\\])*\"
+strlit \"(.*)\"
 
 %%
 
@@ -55,7 +55,8 @@ strlit \"(\\.|[^\"\\])*\"
 
 {int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
 {id} 		return TOKEN_VAL(ID, symbol(yytext));
-{strlit} 	return TOKEN_VAL(STR_LIT, std::string(yytext));
+{strlit} 	{return TOKEN_VAL(STR_LIT, /* Remove quotes */
+			std::string(yytext + 1, strlen(yytext + 1) - 1)); }
 
 . 		{
 	std::cerr << "invalid character: " << yytext << '\n';

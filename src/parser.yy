@@ -162,16 +162,18 @@ forstmt: FOR "(" stmt ";" exp ";" stmt ")" stmts ROF {
        };
 
 exp:
- 	ass 		{ $$ = $1; }
-| 	num 		{ $$ = $1; }
-| 	ref 		{ $$ = $1; }
-| 	call 		{ $$ = $1; }
-| 	exp EQ exp 	{ $$ = new cmp(cmpop::EQ, $1, $3); }
-| 	exp NEQ exp 	{ $$ = new cmp(cmpop::NEQ, $1, $3); }
-| 	exp MULT exp 	{ $$ = new bin(binop::MULT, $1, $3); }
-| 	exp DIV exp 	{ $$ = new bin(binop::DIV, $1, $3); }
-| 	exp PLUS exp 	{ $$ = new bin(binop::PLUS, $1, $3); }
-| 	exp MINUS exp 	{ $$ = new bin(binop::MINUS, $1, $3); }
+	ass 			{ $$ = $1; }
+| 	num 			{ $$ = $1; }
+| 	ref 			{ $$ = $1; }
+| 	call 			{ $$ = $1; }
+| 	exp EQ exp 		{ $$ = new cmp(cmpop::EQ, $1, $3); }
+| 	exp NEQ exp 		{ $$ = new cmp(cmpop::NEQ, $1, $3); }
+| 	exp MULT exp 		{ $$ = new bin(binop::MULT, $1, $3); }
+| 	exp DIV exp 		{ $$ = new bin(binop::DIV, $1, $3); }
+| 	exp PLUS exp 		{ $$ = new bin(binop::PLUS, $1, $3); }
+| 	exp MINUS exp 		{ $$ = new bin(binop::MINUS, $1, $3); }
+| 	LPAREN exp RPAREN 	{ $$ = $2; }
+| 	STR_LIT 		{ $$ = new str_lit($1); }
 ;
 
 exps_comma:
