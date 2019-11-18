@@ -34,6 +34,7 @@
 	PLUS "+"
 	MULT "*"
 	DIV "/"
+	AMPERSAND "&"
 	LPAREN "("
 	RPAREN ")"
 	LBRACE "{"
@@ -166,6 +167,8 @@ exp:
 	ass 			{ $$ = $1; }
 | 	num 			{ $$ = $1; }
 | 	ref 			{ $$ = $1; }
+| 	AMPERSAND ref 		{ $$ = new addrof($2); }
+| 	MULT ref 		{ $$ = new deref($2); }
 | 	call 			{ $$ = $1; }
 | 	exp EQ exp 		{ $$ = new cmp(cmpop::EQ, $1, $3); }
 | 	exp NEQ exp 		{ $$ = new cmp(cmpop::NEQ, $1, $3); }
@@ -196,9 +199,11 @@ ref: ID 	{ $$ = new ref($1); };
 call: ID "(" exps_comma ")" 	{ $$ = new call($1, $3); };
 
 type:
-    	INT 	{ $$ = types::ty::INT; }
-| 	STRING 	{ $$ = types::ty::STRING; }
-| 	VOID 	{ $$ = types::ty::VOID; }
+    	INT	{ $$ = types::type::INT; }
+| 	STRING 	{ $$ = types::type::STRING; }
+| 	VOID 	{ $$ = types::type::VOID; }
+| 	INT MULT { $$ = types::ty(types::type::INT, true); }
+| 	STRING MULT { $$ = types::ty(types::type::STRING, true); }
 ;
 
 %%

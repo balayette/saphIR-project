@@ -27,8 +27,8 @@ int main(int argc, char *argv[])
 	pretty_printer p(std::cout);
 	drv.prog_->accept(p);
 
-        sema::binding_visitor b;
-        drv.prog_->accept(b);
+	sema::binding_visitor b;
+	drv.prog_->accept(b);
 
 	delete drv.prog_;
 

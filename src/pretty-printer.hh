@@ -41,7 +41,7 @@ class pretty_printer : public default_visitor
 				os_ << ", ";
 		}
 
-		os_ << ") " << ty_to_string(s.ret_ty_) << " {\n";
+		os_ << ") " << s.ret_ty_.to_string() << " {\n";
 
 		lvl_++;
 		for (auto *b : s.body_) {
@@ -147,6 +147,18 @@ class pretty_printer : public default_visitor
 	virtual void visit_num(num &e) override { os_ << e.value_; }
 
 	virtual void visit_ref(ref &e) override { os_ << e.name_; }
+
+	virtual void visit_deref(deref &e) override
+	{
+		os_ << '*';
+		e.ref_->accept(*this);
+	}
+
+	virtual void visit_addrof(addrof &e) override
+	{
+		os_ << '&';
+		e.ref_->accept(*this);
+	}
 
 	virtual void visit_call(call &e) override
 	{

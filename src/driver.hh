@@ -21,7 +21,7 @@ class driver
 	void scan_end();
 
 	yy::location location_;
-	decs* prog_;
+	decs *prog_;
 
       private:
 	bool debug_parsing_;

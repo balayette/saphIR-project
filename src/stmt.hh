@@ -18,10 +18,7 @@ struct stmt {
 };
 
 struct dec : public stmt {
-	dec(types::ty type, symbol name)
-	    : type_(type), name_(name), escapes_(false)
-	{
-	}
+	dec(types::ty type, symbol name) : type_(type), name_(name) {}
 
 	virtual void accept(visitor &visitor) = 0;
 
@@ -52,7 +49,7 @@ struct argdec : public dec {
 
 inline std::ostream &operator<<(std::ostream &os, const dec &dec)
 {
-	return os << ty_to_string(dec.type_) << ' ' << dec.name_;
+	return os << dec.type_.to_string() << ' ' << dec.name_;
 }
 
 struct fundec : public stmt {

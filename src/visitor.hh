@@ -17,6 +17,8 @@ struct ass;
 struct cmp;
 struct num;
 struct ref;
+struct deref;
+struct addrof;
 struct call;
 struct str_lit;
 
@@ -31,7 +33,7 @@ class visitor
 {
       public:
 	/* statements */
-	virtual void visit_decs(decs& s) = 0;
+	virtual void visit_decs(decs &s) = 0;
 	virtual void visit_vardec(vardec &s) = 0;
 	virtual void visit_argdec(argdec &s) = 0;
 	virtual void visit_fundec(fundec &s) = 0;
@@ -46,6 +48,8 @@ class visitor
 	virtual void visit_cmp(cmp &e) = 0;
 	virtual void visit_num(num &e) = 0;
 	virtual void visit_ref(ref &e) = 0;
+	virtual void visit_deref(deref &e) = 0;
+	virtual void visit_addrof(addrof &e) = 0;
 	virtual void visit_call(call &e) = 0;
-	virtual void visit_str_lit(str_lit& e) = 0;
+	virtual void visit_str_lit(str_lit &e) = 0;
 };

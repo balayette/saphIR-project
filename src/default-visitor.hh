@@ -70,6 +70,10 @@ class default_visitor : public visitor
 
 	virtual void visit_ref(ref &) override {}
 
+	virtual void visit_deref(deref &e) override { e.ref_->accept(*this); }
+
+	virtual void visit_addrof(addrof &e) override { e.ref_->accept(*this); }
+
 	virtual void visit_call(call &e) override
 	{
 		for (auto *a : e.args_)

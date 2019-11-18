@@ -2,9 +2,12 @@
 
 namespace types
 {
-std::string str[] = {"int", "string", "void", "invalid"};
+std::string str[] = {"int", "string", "void", "invalid", "int*", "string*"};
 
-std::string &ty_to_string(ty t) { return str[static_cast<int>(t)]; }
-
-bool are_compatible(ty t1, ty t2) { return t1 == t2; }
+const std::string &ty::to_string() const
+{
+	if (!ptr_)
+		return str[static_cast<int>(ty_)];
+	return str[4 + static_cast<int>(ty_)];
+}
 } // namespace types

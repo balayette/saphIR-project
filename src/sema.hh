@@ -32,7 +32,7 @@ class binding_visitor : public default_visitor
 		default_visitor::visit_vardec(s);
 		vmap_.add(s.name_, &s);
 
-		if (!are_compatible(s.rhs_->ty_, s.type_)) {
+		if (!s.rhs_->ty_.compatible(s.type_)) {
 			std::cerr
 				<< "TypeError: rhs of declaration of variable '"
 				<< s.name_ << "'\n";
@@ -56,7 +56,7 @@ class binding_visitor : public default_visitor
 		for (auto *b : s.body_)
 			b->accept(*this);
 
-		if (!s.has_return_ && s.ret_ty_ != types::ty::VOID) {
+		if (!s.has_return_ && s.ret_ty_ != types::type::VOID) {
 			std::cerr << "TypeError: Missing return stmt in fun '"
 				  << s.name_ << "' with return type != void\n";
 			std::exit(2);
@@ -70,7 +70,7 @@ class binding_visitor : public default_visitor
 	{
 		s.cond_->accept(*this);
 
-		if (!are_compatible(s.cond_->ty_, types::ty::INT)) {
+		if (!s.cond_->ty_.compatible(types::type::INT)) {
 			std::cerr
 				<< "TypeError: Wrong type for comparison in if\n";
 			std::exit(2);
@@ -92,7 +92,7 @@ class binding_visitor : public default_visitor
 		default_visitor::visit_forstmt(s);
 		end_scope();
 
-		if (!are_compatible(s.cond_->ty_, types::ty::INT)) {
+		if (!s.cond_->ty_.compatible(types::type::INT)) {
 			std::cerr << "TypeError: Wrong type for cond in for\n";
 			std::exit(2);
 		}
@@ -111,7 +111,7 @@ class binding_visitor : public default_visitor
 
 		default_visitor::visit_ass(e);
 
-		if (!are_compatible((*v)->type_, e.rhs_->ty_)) {
+		if (!(*v)->type_.compatible(e.rhs_->ty_)) {
 			std::cerr
 				<< "TypeError: rhs of assignment of variable '"
 				<< e.id_ << "'\n";
@@ -165,8 +165,7 @@ class binding_visitor : public default_visitor
 		default_visitor::visit_call(e);
 
 		for (size_t i = 0; i < e.args_.size(); i++) {
-			if (are_compatible(e.args_[i]->ty_,
-					   (*f)->args_[i]->type_))
+			if (e.args_[i]->ty_.compatible((*f)->args_[i]->type_))
 				continue;
 			std::cerr << "TypeError: Wrong type for argument '"
 				  << (*f)->args_[i]->name_ << "' of call to '"
@@ -179,7 +178,7 @@ class binding_visitor : public default_visitor
 	{
 		default_visitor::visit_cmp(e);
 
-		if (!are_compatible(e.lhs_->ty_, e.rhs_->ty_)) {
+		if (!e.lhs_->ty_.compatible(e.rhs_->ty_)) {
 			std::cerr << "TypeError: Incompatible types in cmp\n";
 			std::exit(2);
 		}
@@ -189,10 +188,13 @@ class binding_visitor : public default_visitor
 	{
 		default_visitor::visit_bin(e);
 
-		if (!are_compatible(e.lhs_->ty_, e.rhs_->ty_)) {
+		if (!e.lhs_->ty_.compatible(e.rhs_->ty_)) {
 			std::cerr << "TypeError: Incompatible types in bin\n";
 			std::exit(2);
 		}
+
+		/* TODO: This only works in the basic case */
+		e.ty_ = e.lhs_->ty_;
 	}
 
 	virtual void visit_ret(ret &s) override
@@ -203,16 +205,48 @@ class binding_visitor : public default_visitor
 		s.fdec_ = cfunc_.get();
 
 		/* return; in void function */
-		if (s.e_ == nullptr && cfunc_->ret_ty_ == types::ty::VOID)
+		if (s.e_ == nullptr && cfunc_->ret_ty_ == types::type::VOID)
 			return;
 
 		if (s.e_ == nullptr /* return; in non void function */
-		    || !are_compatible(s.e_->ty_, cfunc_->ret_ty_)) {
+		    || !s.e_->ty_.compatible(cfunc_->ret_ty_)) {
 			std::cerr
 				<< "TypeError: Incompatible return type in fun "
 				<< cfunc_->name_ << '\n';
 			std::exit(2);
 		}
+	}
+
+	virtual void visit_addrof(addrof &e) override
+	{
+		default_visitor::visit_addrof(e);
+
+		if (e.ty_.ptr_) {
+			std::cerr
+				<< "Pointers to pointers are not supported.\n";
+			std::exit(2);
+		}
+
+		if (e.ty_ == types::type::VOID) {
+			std::cerr << "Pointer to void are not supported.\n";
+			std::exit(2);
+		}
+
+		e.ty_ = e.ref_->ty_;
+		e.ty_.ptr_ = true;
+	}
+
+	virtual void visit_deref(deref &e) override
+	{
+		default_visitor::visit_deref(e);
+
+		if (!e.ref_->ty_.ptr_) {
+			std::cerr << "Can't derefence non pointer type.\n";
+			std::exit(2);
+		}
+
+		e.ty_ = e.ref_->ty_;
+		e.ty_.ptr_ = false;
 	}
 
       private:

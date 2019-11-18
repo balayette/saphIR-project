@@ -16,7 +16,7 @@ struct dec;
 
 struct exp {
       protected:
-	exp() : ty_(types::ty::INVALID) {}
+	exp() : ty_(types::type::INVALID) {}
 	exp(const exp &rhs) = default;
 	exp &operator=(const exp &rhs) = default;
 
@@ -61,7 +61,7 @@ struct ass : public exp {
 struct cmp : public exp {
 	cmp(cmpop op, exp *lhs, exp *rhs) : op_(op), lhs_(lhs), rhs_(rhs)
 	{
-		ty_ = types::ty::INT;
+		ty_ = types::type::INT;
 	}
 
 	virtual ~cmp() override
@@ -78,7 +78,7 @@ struct cmp : public exp {
 };
 
 struct num : public exp {
-	num(int value) : value_(value) { ty_ = types::ty::INT; }
+	num(int value) : value_(value) { ty_ = types::type::INT; }
 
 	ACCEPT(num)
 
@@ -93,6 +93,22 @@ struct ref : public exp {
 	symbol name_;
 
 	dec *dec_;
+};
+
+struct deref : public exp {
+	deref(ref *r) : ref_(r) {}
+
+	ACCEPT(deref)
+
+	ref *ref_;
+};
+
+struct addrof : public exp {
+	addrof(ref *r) : ref_(r) {}
+
+	ACCEPT(addrof)
+
+	ref *ref_;
 };
 
 struct call : public exp {
@@ -116,7 +132,10 @@ struct call : public exp {
 };
 
 struct str_lit : public exp {
-	str_lit(const std::string &str) : str_(str) { ty_ = types::ty::STRING; }
+	str_lit(const std::string &str) : str_(str)
+	{
+		ty_ = types::type::STRING;
+	}
 
 	ACCEPT(str_lit)
 
