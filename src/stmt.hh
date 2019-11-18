@@ -18,7 +18,10 @@ struct stmt {
 };
 
 struct dec : public stmt {
-	dec(types::ty type, symbol name) : type_(type), name_(name) {}
+	dec(types::ty type, symbol name)
+	    : type_(type), name_(name), escapes_(false)
+	{
+	}
 
 	virtual void accept(visitor &visitor) = 0;
 
@@ -115,7 +118,7 @@ struct sexp : public stmt {
 };
 
 struct ret : public stmt {
-	ret(exp *e) : e_(e) {}
+	ret(exp *e) : e_(e), fdec_(nullptr) {}
 	virtual ~ret() override { delete e_; }
 
 	virtual void accept(visitor &visitor) override
@@ -124,6 +127,8 @@ struct ret : public stmt {
 	}
 
 	exp *e_;
+
+	fundec *fdec_;
 };
 
 struct ifstmt : public stmt {

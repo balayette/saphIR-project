@@ -40,7 +40,7 @@ template <typename T> class scoped_ptr
 	scoped_ptr() { static_assert(std::is_pointer<T>::value); }
 	void enter(T elm) { scopes_.emplace(elm); }
 	void leave() { scopes_.pop(); }
-	T value() { return scopes_.top(); }
+	T get() { return scopes_.top(); }
 
 	T operator->() { return scopes_.top(); }
 

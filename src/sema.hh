@@ -117,6 +117,8 @@ class binding_visitor : public default_visitor
 				<< e.id_ << "'\n";
 			std::exit(2);
 		}
+
+		e.dec_ = *v;
 	}
 
 	virtual void visit_ref(ref &e) override
@@ -131,6 +133,7 @@ class binding_visitor : public default_visitor
 		std::cout << "ref: " << e.name_ << " bound to variable " << *v
 			  << '\n';
 		e.ty_ = (*v)->type_;
+		e.dec_ = *v;
 
 		default_visitor::visit_ref(e);
 	}
@@ -157,6 +160,7 @@ class binding_visitor : public default_visitor
 		}
 
 		e.ty_ = (*f)->ret_ty_;
+		e.fdec_ = *f;
 
 		default_visitor::visit_call(e);
 
@@ -196,6 +200,7 @@ class binding_visitor : public default_visitor
 		default_visitor::visit_ret(s);
 
 		cfunc_->has_return_ = true;
+		s.fdec_ = cfunc_.get();
 
 		/* return; in void function */
 		if (s.e_ == nullptr && cfunc_->ret_ty_ == types::ty::VOID)

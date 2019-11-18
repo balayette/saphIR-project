@@ -11,6 +11,9 @@ enum class cmpop { EQ, NEQ };
 const std::string &binop_to_string(binop op);
 const std::string &cmpop_to_string(cmpop op);
 
+struct fundec;
+struct dec;
+
 struct exp {
       protected:
 	exp() : ty_(types::ty::INVALID) {}
@@ -43,7 +46,7 @@ struct bin : public exp {
 };
 
 struct ass : public exp {
-	ass(symbol id, exp *rhs) : id_(id), rhs_(rhs) {}
+	ass(symbol id, exp *rhs) : id_(id), rhs_(rhs), dec_(nullptr) {}
 
 	virtual ~ass() override { delete rhs_; }
 
@@ -51,6 +54,8 @@ struct ass : public exp {
 
 	symbol id_;
 	exp *rhs_;
+
+	dec *dec_;
 };
 
 struct cmp : public exp {
@@ -81,15 +86,20 @@ struct num : public exp {
 };
 
 struct ref : public exp {
-	ref(symbol name) : name_(name) {}
+	ref(symbol name) : name_(name), dec_(nullptr) {}
 
 	ACCEPT(ref)
 
 	symbol name_;
+
+	dec *dec_;
 };
 
 struct call : public exp {
-	call(symbol name, std::vector<exp *> args) : name_(name), args_(args) {}
+	call(symbol name, std::vector<exp *> args)
+	    : name_(name), args_(args), fdec_(nullptr)
+	{
+	}
 
 	ACCEPT(call)
 
@@ -101,6 +111,8 @@ struct call : public exp {
 
 	symbol name_;
 	std::vector<exp *> args_;
+
+	fundec *fdec_;
 };
 
 struct str_lit : public exp {
