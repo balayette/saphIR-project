@@ -52,7 +52,8 @@ inline std::ostream &operator<<(std::ostream &os, const dec &dec)
 struct fundec : public stmt {
 	fundec(ty ret_ty, symbol name, std::vector<argdec *> args,
 	       std::vector<stmt *> body)
-	    : ret_ty_(ret_ty), name_(name), args_(args), body_(body)
+	    : ret_ty_(ret_ty), name_(name), args_(args), body_(body),
+	      has_return_(false)
 	{
 	}
 
@@ -73,8 +74,10 @@ struct fundec : public stmt {
 	symbol name_;
 	std::vector<argdec *> args_;
 	std::vector<stmt *> body_;
+	bool has_return_;
 };
 
+/* This is the toplevel node in the AST */
 struct decs : public stmt {
 	decs() {}
 

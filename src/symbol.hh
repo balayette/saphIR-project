@@ -26,3 +26,13 @@ class symbol
 	std::set<std::string> &get_set();
 	const std::string *instance_;
 };
+
+namespace std
+{
+template <> struct hash<symbol> {
+	std::size_t operator()(const symbol &s) const
+	{
+		return std::hash<std::string>{}(s.get());
+	}
+};
+} // namespace std

@@ -2,6 +2,7 @@
 
 #include "visitor.hh"
 #include "symbol.hh"
+#include "types.hh"
 #include <vector>
 
 enum class binop { MINUS, PLUS, MULT, DIV };
@@ -12,13 +13,15 @@ const std::string &cmpop_to_string(cmpop op);
 
 struct exp {
       protected:
-	exp() = default;
+	exp() : ty_(ty::INVALID) {}
 	exp(const exp &rhs) = default;
 	exp &operator=(const exp &rhs) = default;
 
       public:
 	virtual ~exp() = default;
 	virtual void accept(visitor &visitor) = 0;
+
+	ty ty_;
 };
 
 struct bin : public exp {
@@ -51,7 +54,10 @@ struct ass : public exp {
 };
 
 struct cmp : public exp {
-	cmp(cmpop op, exp *lhs, exp *rhs) : op_(op), lhs_(lhs), rhs_(rhs) {}
+	cmp(cmpop op, exp *lhs, exp *rhs) : op_(op), lhs_(lhs), rhs_(rhs)
+	{
+		ty_ = ty::INT;
+	}
 
 	virtual ~cmp() override
 	{
@@ -67,7 +73,7 @@ struct cmp : public exp {
 };
 
 struct num : public exp {
-	num(int value) : value_(value) {}
+	num(int value) : value_(value) { ty_ = ty::INT; }
 
 	ACCEPT(num)
 
@@ -98,7 +104,7 @@ struct call : public exp {
 };
 
 struct str_lit : public exp {
-	str_lit(const std::string &str) : str_(str) {}
+	str_lit(const std::string &str) : str_(str) { ty_ = ty::STRING; }
 
 	ACCEPT(str_lit)
 

@@ -4,6 +4,8 @@
 #include "exp.hh"
 #include "pretty-printer.hh"
 #include "default-visitor.hh"
+#include "sema.hh"
+#include "sema.hh"
 
 int usage(char *pname)
 {
@@ -24,6 +26,9 @@ int main(int argc, char *argv[])
 
 	pretty_printer p(std::cout);
 	drv.prog_->accept(p);
+
+        sema::binding_visitor b;
+        drv.prog_->accept(b);
 
 	delete drv.prog_;
 
