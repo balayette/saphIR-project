@@ -22,7 +22,7 @@
 id 	[a-zA-Z][a-zA-Z_0-9]*
 int 	-?[0-9]+
 blank 	[ \t\r]
-strlit \"(.*)\"
+strlit \"[^"]*\"
 
 %%
 
