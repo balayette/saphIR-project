@@ -13,7 +13,7 @@ const std::string &cmpop_to_string(cmpop op);
 
 struct exp {
       protected:
-	exp() : ty_(ty::INVALID) {}
+	exp() : ty_(types::ty::INVALID) {}
 	exp(const exp &rhs) = default;
 	exp &operator=(const exp &rhs) = default;
 
@@ -21,7 +21,7 @@ struct exp {
 	virtual ~exp() = default;
 	virtual void accept(visitor &visitor) = 0;
 
-	ty ty_;
+	types::ty ty_;
 };
 
 struct bin : public exp {
@@ -56,7 +56,7 @@ struct ass : public exp {
 struct cmp : public exp {
 	cmp(cmpop op, exp *lhs, exp *rhs) : op_(op), lhs_(lhs), rhs_(rhs)
 	{
-		ty_ = ty::INT;
+		ty_ = types::ty::INT;
 	}
 
 	virtual ~cmp() override
@@ -73,7 +73,7 @@ struct cmp : public exp {
 };
 
 struct num : public exp {
-	num(int value) : value_(value) { ty_ = ty::INT; }
+	num(int value) : value_(value) { ty_ = types::ty::INT; }
 
 	ACCEPT(num)
 
@@ -104,7 +104,7 @@ struct call : public exp {
 };
 
 struct str_lit : public exp {
-	str_lit(const std::string &str) : str_(str) { ty_ = ty::STRING; }
+	str_lit(const std::string &str) : str_(str) { ty_ = types::ty::STRING; }
 
 	ACCEPT(str_lit)
 

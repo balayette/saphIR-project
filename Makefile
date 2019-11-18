@@ -19,7 +19,6 @@ OBJ = \
       src/main.o \
       src/symbol.o \
       src/driver.o \
-      src/compile.o \
       src/types.o \
       src/exp.o \
 

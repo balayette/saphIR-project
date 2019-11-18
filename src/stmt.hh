@@ -18,16 +18,19 @@ struct stmt {
 };
 
 struct dec : public stmt {
-	dec(ty type, symbol name) : type_(type), name_(name) {}
+	dec(types::ty type, symbol name) : type_(type), name_(name) {}
 
 	virtual void accept(visitor &visitor) = 0;
 
-	ty type_;
+	types::ty type_;
 	symbol name_;
 };
 
 struct vardec : public dec {
-	vardec(ty type, symbol name, exp *rhs) : dec(type, name), rhs_(rhs) {}
+	vardec(types::ty type, symbol name, exp *rhs)
+	    : dec(type, name), rhs_(rhs)
+	{
+	}
 	virtual ~vardec() override { delete rhs_; }
 
 	virtual void accept(visitor &visitor) override
@@ -39,7 +42,7 @@ struct vardec : public dec {
 };
 
 struct argdec : public dec {
-	argdec(ty type, symbol name) : dec(type, name) {}
+	argdec(types::ty type, symbol name) : dec(type, name) {}
 
 	ACCEPT(argdec)
 };
@@ -50,7 +53,7 @@ inline std::ostream &operator<<(std::ostream &os, const dec &dec)
 }
 
 struct fundec : public stmt {
-	fundec(ty ret_ty, symbol name, std::vector<argdec *> args,
+	fundec(types::ty ret_ty, symbol name, std::vector<argdec *> args,
 	       std::vector<stmt *> body)
 	    : ret_ty_(ret_ty), name_(name), args_(args), body_(body),
 	      has_return_(false)
@@ -70,7 +73,7 @@ struct fundec : public stmt {
 		visitor.visit_fundec(*this);
 	}
 
-	ty ret_ty_;
+	types::ty ret_ty_;
 	symbol name_;
 	std::vector<argdec *> args_;
 	std::vector<stmt *> body_;

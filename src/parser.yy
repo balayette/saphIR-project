@@ -84,7 +84,7 @@
 %type <ref*> ref
 %type <call*> call
 
-%type <ty> type
+%type <types::ty> type
 
 %nonassoc EQ NEQ ASSIGN
 %left PLUS MINUS
@@ -196,9 +196,9 @@ ref: ID 	{ $$ = new ref($1); };
 call: ID "(" exps_comma ")" 	{ $$ = new call($1, $3); };
 
 type:
-    	INT 	{ $$ = ty::INT; }
-| 	STRING 	{ $$ = ty::STRING; }
-| 	VOID 	{ $$ = ty::VOID; }
+    	INT 	{ $$ = types::ty::INT; }
+| 	STRING 	{ $$ = types::ty::STRING; }
+| 	VOID 	{ $$ = types::ty::VOID; }
 ;
 
 %%

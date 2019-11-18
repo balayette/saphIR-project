@@ -70,7 +70,7 @@ class binding_visitor : public default_visitor
 	{
 		s.cond_->accept(*this);
 
-		if (!are_compatible(s.cond_->ty_, ty::INT)) {
+		if (!are_compatible(s.cond_->ty_, types::ty::INT)) {
 			std::cerr
 				<< "TypeError: Wrong type for comparison in if\n";
 			std::exit(2);
@@ -92,7 +92,7 @@ class binding_visitor : public default_visitor
 		default_visitor::visit_forstmt(s);
 		end_scope();
 
-		if (!are_compatible(s.cond_->ty_, ty::INT)) {
+		if (!are_compatible(s.cond_->ty_, types::ty::INT)) {
 			std::cerr << "TypeError: Wrong type for cond in for\n";
 			std::exit(2);
 		}
