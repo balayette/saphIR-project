@@ -45,19 +45,6 @@ struct bin : public exp {
 	exp *rhs_;
 };
 
-struct ass : public exp {
-	ass(symbol id, exp *rhs) : id_(id), rhs_(rhs), dec_(nullptr) {}
-
-	virtual ~ass() override { delete rhs_; }
-
-	ACCEPT(ass)
-
-	symbol id_;
-	exp *rhs_;
-
-	dec *dec_;
-};
-
 struct cmp : public exp {
 	cmp(cmpop op, exp *lhs, exp *rhs) : op_(op), lhs_(lhs), rhs_(rhs)
 	{
@@ -96,19 +83,19 @@ struct ref : public exp {
 };
 
 struct deref : public exp {
-	deref(ref *r) : ref_(r) {}
+	deref(exp *e) : e_(e) {}
 
 	ACCEPT(deref)
 
-	ref *ref_;
+	exp *e_;
 };
 
 struct addrof : public exp {
-	addrof(ref *r) : ref_(r) {}
+	addrof(exp *e) : e_(e) {}
 
 	ACCEPT(addrof)
 
-	ref *ref_;
+	exp *e_;
 };
 
 struct call : public exp {

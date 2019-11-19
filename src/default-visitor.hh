@@ -52,13 +52,17 @@ class default_visitor : public visitor
 			b->accept(*this);
 	}
 
+	virtual void visit_ass(ass &s) override
+	{
+		s.lhs_->accept(*this);
+		s.rhs_->accept(*this);
+	}
+
 	virtual void visit_bin(bin &e) override
 	{
 		e.lhs_->accept(*this);
 		e.rhs_->accept(*this);
 	}
-
-	virtual void visit_ass(ass &e) override { e.rhs_->accept(*this); }
 
 	virtual void visit_cmp(cmp &e) override
 	{
@@ -70,9 +74,9 @@ class default_visitor : public visitor
 
 	virtual void visit_ref(ref &) override {}
 
-	virtual void visit_deref(deref &e) override { e.ref_->accept(*this); }
+	virtual void visit_deref(deref &e) override { e.e_->accept(*this); }
 
-	virtual void visit_addrof(addrof &e) override { e.ref_->accept(*this); }
+	virtual void visit_addrof(addrof &e) override { e.e_->accept(*this); }
 
 	virtual void visit_call(call &e) override
 	{

@@ -77,6 +77,8 @@
 %type <forstmt*> forstmt
 
 %type <exp*> exp
+%type <exp*> lvalue
+%type <exp*> rvalue
 %type <std::vector<exp*>> exps_comma
 %type <std::vector<exp*>> exps_commap
 
@@ -88,6 +90,7 @@
 %type <types::ty> type
 
 %nonassoc EQ NEQ ASSIGN
+%left AMPERSAND
 %left PLUS MINUS
 %left MULT DIV
 
@@ -139,10 +142,12 @@ stmt_body:
 	vardec 	{ $$ = $1; }
 | 	sexp 	{ $$ = $1; }
 | 	ret 	{ $$ = $1; }
+| 	ass 	{ $$ = $1; }
 ;
 
 vardec: type ID "=" exp { $$ = new vardec($1, $2, $4); };
 
+/* TODO: This accepts 1; */
 sexp: exp { $$ = new sexp($1); };
 
 ret:
@@ -159,25 +164,40 @@ ifstmt:
 	}
 ;
 
-forstmt: FOR "(" stmt_body SEMI exp SEMI exp ")" stmts ROF {
+forstmt:
+	FOR "(" stmt_body SEMI exp SEMI exp ")" stmts ROF {
+		$$ = new forstmt($3, $5, new sexp($7), $9);
+	}
+	/*
+	Assignment is a statement, but is allowed here...
+	return statements are not allowed, though.
+	*/
+| 	FOR "(" stmt_body SEMI exp SEMI ass ")" stmts ROF {
 		$$ = new forstmt($3, $5, $7, $9);
-       };
+	}
+;
 
 exp:
-	ass 			{ $$ = $1; }
-| 	num 			{ $$ = $1; }
-| 	ref 			{ $$ = $1; }
-| 	AMPERSAND ref 		{ $$ = new addrof($2); }
-| 	MULT ref 		{ $$ = new deref($2); }
+	lvalue { $$ = $1; }
+| 	rvalue { $$ = $1; }
+;
+
+lvalue:
+ 	ref 			{ $$ = $1; }
+| 	MULT exp 		{ $$ = new deref($2); }
+;	
+
+rvalue:
+ 	num 			{ $$ = $1; }
 | 	call 			{ $$ = $1; }
+| 	AMPERSAND lvalue 	{ $$ = new addrof($2); }
+| 	STR_LIT 		{ $$ = new str_lit($1); }
 | 	exp EQ exp 		{ $$ = new cmp(cmpop::EQ, $1, $3); }
 | 	exp NEQ exp 		{ $$ = new cmp(cmpop::NEQ, $1, $3); }
 | 	exp MULT exp 		{ $$ = new bin(binop::MULT, $1, $3); }
 | 	exp DIV exp 		{ $$ = new bin(binop::DIV, $1, $3); }
 | 	exp PLUS exp 		{ $$ = new bin(binop::PLUS, $1, $3); }
 | 	exp MINUS exp 		{ $$ = new bin(binop::MINUS, $1, $3); }
-| 	LPAREN exp RPAREN 	{ $$ = $2; }
-| 	STR_LIT 		{ $$ = new str_lit($1); }
 ;
 
 exps_comma:
@@ -190,7 +210,7 @@ exps_commap:
 | 	exps_commap "," exp 	{ $1.push_back($3); $$ = $1; }
 ;
 
-ass: ID "=" exp 	{ $$ = new ass($1, $3); };
+ass: lvalue "=" rvalue 		{ $$ = new ass($1, $3); };
 
 num: INT_LIT 	{ $$ = new num($1); };
 
@@ -202,8 +222,7 @@ type:
     	INT	{ $$ = types::type::INT; }
 | 	STRING 	{ $$ = types::type::STRING; }
 | 	VOID 	{ $$ = types::type::VOID; }
-| 	INT MULT { $$ = types::ty(types::type::INT, true); }
-| 	STRING MULT { $$ = types::ty(types::type::STRING, true); }
+| 	type MULT { $$ = $1; $$.ptr_++; }
 ;
 
 %%

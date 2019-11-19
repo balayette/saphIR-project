@@ -41,10 +41,10 @@ class visitor
 	virtual void visit_ret(ret &s) = 0;
 	virtual void visit_ifstmt(ifstmt &s) = 0;
 	virtual void visit_forstmt(forstmt &s) = 0;
+	virtual void visit_ass(ass &s) = 0;
 
 	/* expressions */
 	virtual void visit_bin(bin &e) = 0;
-	virtual void visit_ass(ass &e) = 0;
 	virtual void visit_cmp(cmp &e) = 0;
 	virtual void visit_num(num &e) = 0;
 	virtual void visit_ref(ref &e) = 0;

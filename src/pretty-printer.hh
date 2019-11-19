@@ -123,17 +123,19 @@ class pretty_printer : public default_visitor
 		indent() << "rof";
 	}
 
+	virtual void visit_ass(ass &s) override
+	{
+		indent();
+		s.lhs_->accept(*this);
+		os_ << " = ";
+		s.rhs_->accept(*this);
+	}
+
 	/* expressions */
 	virtual void visit_bin(bin &e) override
 	{
 		e.lhs_->accept(*this);
 		os_ << " " << binop_to_string(e.op_) << " ";
-		e.rhs_->accept(*this);
-	}
-
-	virtual void visit_ass(ass &e) override
-	{
-		os_ << e.id_ << " = ";
 		e.rhs_->accept(*this);
 	}
 
@@ -151,13 +153,13 @@ class pretty_printer : public default_visitor
 	virtual void visit_deref(deref &e) override
 	{
 		os_ << '*';
-		e.ref_->accept(*this);
+		e.e_->accept(*this);
 	}
 
 	virtual void visit_addrof(addrof &e) override
 	{
 		os_ << '&';
-		e.ref_->accept(*this);
+		e.e_->accept(*this);
 	}
 
 	virtual void visit_call(call &e) override

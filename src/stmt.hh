@@ -154,7 +154,7 @@ struct ifstmt : public stmt {
 };
 
 struct forstmt : public stmt {
-	forstmt(stmt *init, exp *cond, exp *action, std::vector<stmt *> body)
+	forstmt(stmt *init, exp *cond, stmt *action, std::vector<stmt *> body)
 	    : init_(init), cond_(cond), action_(action), body_(body)
 	{
 	}
@@ -173,6 +173,20 @@ struct forstmt : public stmt {
 
 	stmt *init_;
 	exp *cond_;
-	exp *action_;
+	stmt *action_;
 	std::vector<stmt *> body_;
 };
+
+struct ass : public stmt {
+	ass(exp* lhs, exp *rhs) : lhs_(lhs), rhs_(rhs), dec_(nullptr) {}
+
+	virtual ~ass() override { delete lhs_; delete rhs_; }
+
+	ACCEPT(ass)
+
+	exp* lhs_;
+	exp *rhs_;
+
+	dec *dec_;
+};
+

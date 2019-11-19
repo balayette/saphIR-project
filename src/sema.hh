@@ -98,27 +98,14 @@ class binding_visitor : public default_visitor
 		}
 	}
 
-	virtual void visit_ass(ass &e) override
+	virtual void visit_ass(ass &s) override
 	{
-		auto v = vmap_.get(e.id_);
-		if (v == std::nullopt) {
-			std::cerr << "ass: var " << e.id_
-				  << " assigned before definition.\n";
+		default_visitor::visit_ass(s);
+
+		if (!s.lhs_->ty_.compatible(s.rhs_->ty_)) {
+			std::cerr << "TypeError: Wrong type for rhs of ass.\n";
 			std::exit(2);
 		}
-		std::cout << "ass: " << e.id_ << " bound to variable " << *v
-			  << '\n';
-
-		default_visitor::visit_ass(e);
-
-		if (!(*v)->type_.compatible(e.rhs_->ty_)) {
-			std::cerr
-				<< "TypeError: rhs of assignment of variable '"
-				<< e.id_ << "'\n";
-			std::exit(2);
-		}
-
-		e.dec_ = *v;
 	}
 
 	virtual void visit_ref(ref &e) override
@@ -221,32 +208,26 @@ class binding_visitor : public default_visitor
 	{
 		default_visitor::visit_addrof(e);
 
-		if (e.ty_.ptr_) {
-			std::cerr
-				<< "Pointers to pointers are not supported.\n";
-			std::exit(2);
-		}
-
 		if (e.ty_ == types::type::VOID) {
 			std::cerr << "Pointer to void are not supported.\n";
 			std::exit(2);
 		}
 
-		e.ty_ = e.ref_->ty_;
-		e.ty_.ptr_ = true;
+		e.ty_ = e.e_->ty_;
+		e.ty_.ptr_++;
 	}
 
 	virtual void visit_deref(deref &e) override
 	{
 		default_visitor::visit_deref(e);
 
-		if (!e.ref_->ty_.ptr_) {
+		if (!e.e_->ty_.ptr_) {
 			std::cerr << "Can't derefence non pointer type.\n";
 			std::exit(2);
 		}
 
-		e.ty_ = e.ref_->ty_;
-		e.ty_.ptr_ = false;
+		e.ty_ = e.e_->ty_;
+		e.ty_.ptr_--;
 	}
 
       private:

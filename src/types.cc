@@ -2,12 +2,13 @@
 
 namespace types
 {
-std::string str[] = {"int", "string", "void", "invalid", "int*", "string*"};
+const std::string str[] = {"int", "string", "void", "invalid"};
 
-const std::string &ty::to_string() const
+std::string ty::to_string() const
 {
-	if (!ptr_)
-		return str[static_cast<int>(ty_)];
-	return str[4 + static_cast<int>(ty_)];
+	std::string ret(str[static_cast<int>(ty_)]);
+	for (unsigned i = 0; i < ptr_; i++)
+		ret += '*';
+	return ret;
 }
 } // namespace types

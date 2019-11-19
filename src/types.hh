@@ -8,11 +8,11 @@ namespace types
 enum class type { INT, STRING, VOID, INVALID };
 
 struct ty {
-	ty() : ty_(type::INVALID), ptr_(false) {}
-	ty(type t) : ty_(t), ptr_(false) {}
-	ty(type t, bool ptr) : ty_(t), ptr_(ptr) {}
+	ty() : ty_(type::INVALID), ptr_(0) {}
+	ty(type t) : ty_(t), ptr_(0) {}
+	ty(type t, unsigned ptr) : ty_(t), ptr_(ptr) {}
 
-	const std::string &to_string() const;
+	std::string to_string() const;
 
 	bool operator==(const type &t) const { return !ptr_ && t == ty_; }
 
@@ -26,7 +26,7 @@ struct ty {
 	bool compatible(const type t) const { return !ptr_ && ty_ == t; }
 
 	type ty_;
-	bool ptr_;
+	unsigned ptr_;
 };
 
 } // namespace types
