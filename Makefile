@@ -21,6 +21,7 @@ OBJ = \
       src/driver.o \
       src/types.o \
       src/exp.o \
+      src/sema.o \
 
 DEP = $(OBJ:.o=.d)
 
