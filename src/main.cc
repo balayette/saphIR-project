@@ -30,6 +30,9 @@ int main(int argc, char *argv[])
 	sema::binding_visitor b;
 	drv.prog_->accept(b);
 
+	sema::escapes_visitor e;
+	drv.prog_->accept(e);
+
 	delete drv.prog_;
 
 	return 0;

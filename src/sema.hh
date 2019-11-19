@@ -34,4 +34,10 @@ class binding_visitor : public default_visitor
 	scoped_map<symbol, dec *> vmap_;
 	scoped_ptr<fundec *> cfunc_;
 };
+
+class escapes_visitor : public default_visitor
+{
+      public:
+	virtual void visit_addrof(addrof &e) override;
+};
 } // namespace sema

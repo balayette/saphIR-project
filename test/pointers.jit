@@ -1,8 +1,8 @@
-fun f(int *a) int { return *a + 1; }
+fun f(int *a, int **b) int { return *a * **b; }
 
 fun main(int *a) void
 {
 	int b = *a;
 	int *ptr = &b;
-	f(&b);
+	f(&b, &a);
 }

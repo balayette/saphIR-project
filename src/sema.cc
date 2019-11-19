@@ -219,4 +219,16 @@ void binding_visitor::end_scope()
 	fmap_.end_scope();
 	vmap_.end_scope();
 }
+
+void escapes_visitor::visit_addrof(addrof &e)
+{
+	default_visitor::visit_addrof(e);
+
+	if (auto *d = dynamic_cast<ref *>(e.e_)) {
+		if (!d->dec_->escapes_)
+			std::cout << "escape: var '" << d->dec_->name_
+				  << "' escapes\n";
+		d->dec_->escapes_ = true;
+	}
+}
 } // namespace sema

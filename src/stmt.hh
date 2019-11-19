@@ -18,12 +18,16 @@ struct stmt {
 };
 
 struct dec : public stmt {
-	dec(types::ty type, symbol name) : type_(type), name_(name) {}
+	dec(types::ty type, symbol name)
+	    : type_(type), name_(name), escapes_(false)
+	{
+	}
 
 	virtual void accept(visitor &visitor) = 0;
 
 	types::ty type_;
 	symbol name_;
+	bool escapes_;
 };
 
 struct vardec : public dec {
@@ -178,13 +182,17 @@ struct forstmt : public stmt {
 };
 
 struct ass : public stmt {
-	ass(exp* lhs, exp *rhs) : lhs_(lhs), rhs_(rhs), dec_(nullptr) {}
+	ass(exp *lhs, exp *rhs) : lhs_(lhs), rhs_(rhs), dec_(nullptr) {}
 
-	virtual ~ass() override { delete lhs_; delete rhs_; }
+	virtual ~ass() override
+	{
+		delete lhs_;
+		delete rhs_;
+	}
 
 	ACCEPT(ass)
 
-	exp* lhs_;
+	exp *lhs_;
 	exp *rhs_;
 
 	dec *dec_;
