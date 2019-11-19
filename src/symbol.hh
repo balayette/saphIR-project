@@ -27,6 +27,8 @@ class symbol
 	const std::string *instance_;
 };
 
+symbol unique_symbol();
+
 namespace std
 {
 template <> struct hash<symbol> {

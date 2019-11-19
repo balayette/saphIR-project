@@ -42,3 +42,10 @@ std::ostream &operator<<(std::ostream &ostr, const symbol &the)
 size_t symbol::size() const { return instance_->size(); }
 
 const std::string &symbol::get() const { return *instance_; }
+
+symbol unique_symbol()
+{
+	static int uniq_count = 0;
+
+	return symbol(std::string("_t") + std::to_string(uniq_count++));
+}
