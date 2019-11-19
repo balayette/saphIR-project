@@ -43,9 +43,25 @@ size_t symbol::size() const { return instance_->size(); }
 
 const std::string &symbol::get() const { return *instance_; }
 
-symbol unique_symbol()
+symbol unique_temp()
 {
 	static int uniq_count = 0;
 
 	return symbol(std::string("_t") + std::to_string(uniq_count++));
+}
+symbol unique_label(const std::string &s)
+{
+	static int uniq_count = 0;
+
+	return symbol(std::string("_L") + std::to_string(uniq_count++)
+		      + (s.size() != 0 ? "_" + s : ""));
+}
+
+symbol unique_label() { return unique_label(""); }
+
+symbol make_unique(const symbol &sym)
+{
+	static int uniq_count = 0;
+
+	return symbol("__" + sym.get() + "_" + std::to_string(uniq_count++));
 }

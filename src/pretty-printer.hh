@@ -148,7 +148,17 @@ class pretty_printer : public default_visitor
 
 	virtual void visit_num(num &e) override { os_ << e.value_; }
 
-	virtual void visit_ref(ref &e) override { os_ << e.name_; }
+	virtual void visit_ref(ref &e) override
+	{
+		if (e.dec_)
+		{
+			os_ << e.dec_->name_;
+			if (e.dec_->escapes_)
+				os_ << "^";
+		}
+		else
+			os_ << e.name_;
+	}
 
 	virtual void visit_deref(deref &e) override
 	{
@@ -164,7 +174,11 @@ class pretty_printer : public default_visitor
 
 	virtual void visit_call(call &e) override
 	{
-		os_ << e.name_ << "(";
+		if (e.fdec_)
+			os_ << e.fdec_->name_;
+		else
+			os_ << e.name_;
+		os_ << '(';
 
 		for (auto it = e.args_.begin(); it != e.args_.end(); it++) {
 			(*it)->accept(*this);

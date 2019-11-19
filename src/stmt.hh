@@ -5,6 +5,7 @@
 #include "visitor.hh"
 #include "types.hh"
 #include "exp.hh"
+#include "frame.hh"
 
 struct stmt {
       protected:
@@ -43,6 +44,7 @@ struct vardec : public dec {
 	}
 
 	exp *rhs_;
+	frame::access access_;
 };
 
 struct argdec : public dec {
@@ -53,7 +55,10 @@ struct argdec : public dec {
 
 inline std::ostream &operator<<(std::ostream &os, const dec &dec)
 {
-	return os << dec.type_.to_string() << ' ' << dec.name_;
+	os << dec.type_.to_string() << ' ' << dec.name_;
+	if (dec.escapes_)
+		os << '^';
+	return os;
 }
 
 struct fundec : public stmt {
@@ -70,6 +75,7 @@ struct fundec : public stmt {
 			delete arg;
 		for (auto *s : body_)
 			delete s;
+		delete frame_;
 	}
 
 	virtual void accept(visitor &visitor) override
@@ -81,6 +87,7 @@ struct fundec : public stmt {
 	symbol name_;
 	std::vector<argdec *> args_;
 	std::vector<stmt *> body_;
+	frame::frame *frame_;
 	bool has_return_;
 };
 

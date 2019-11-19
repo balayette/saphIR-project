@@ -8,14 +8,21 @@ void binding_visitor::visit_decs(decs &s)
 		v->accept(*this);
 	for (auto *f : s.fundecs_) {
 		f->accept(*this);
-		fmap_.add(f->name_, f);
+		if (!fmap_.add(f->name_, f)) {
+			std::cerr << "fun '" << f->name_
+				 << "' already declared\n";
+			std::exit(2);
+		}
 	}
 }
 
 void binding_visitor::visit_vardec(vardec &s)
 {
 	default_visitor::visit_vardec(s);
-	vmap_.add(s.name_, &s);
+	if (!vmap_.add(s.name_, &s)) {
+		std::cerr << "var '" << s.name_ << "' already declared.\n";
+		std::exit(2);
+	}
 
 	if (!s.rhs_->ty_.compatible(s.type_)) {
 		std::cerr << "TypeError: rhs of declaration of variable '"
@@ -27,7 +34,10 @@ void binding_visitor::visit_vardec(vardec &s)
 void binding_visitor::visit_argdec(argdec &s)
 {
 	default_visitor::visit_argdec(s);
-	vmap_.add(s.name_, &s);
+	if (!vmap_.add(s.name_, &s)) {
+		std::cerr << "arg '" << s.name_ << "' already declared.\n";
+		std::exit(2);
+	}
 }
 
 void binding_visitor::visit_fundec(fundec &s)
@@ -230,5 +240,30 @@ void escapes_visitor::visit_addrof(addrof &e)
 				  << "' escapes\n";
 		d->dec_->escapes_ = true;
 	}
+}
+
+void frame_visitor::visit_fundec(fundec &s)
+{
+	std::vector<bool> escaping;
+	for (auto *arg : s.args_)
+		escaping.push_back(arg->escapes_);
+
+	cframe_ = new frame::frame(unique_label(s.name_.get()), escaping);
+	s.frame_ = cframe_;
+	std::cout << "frame: fun '" << s.name_ << "' at label " << cframe_->s_
+		  << '\n';
+	for (size_t i = 0; i < s.args_.size(); i++) {
+		std::cout << "frame: arg '" << s.args_[i]->name_ << "' "
+			  << cframe_->formals_[i] << '\n';
+	}
+	default_visitor::visit_fundec(s);
+	cframe_ = nullptr;
+}
+
+void frame_visitor::visit_vardec(vardec &s)
+{
+	s.access_ = cframe_->alloc_local(s.escapes_);
+	std::cout << "frame: var '" << s.name_ << "' " << s.access_ << '\n';
+	default_visitor::visit_vardec(s);
 }
 } // namespace sema

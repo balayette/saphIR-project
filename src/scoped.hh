@@ -16,10 +16,8 @@ template <typename K, typename V> class scoped_map
 
 	bool add(const K &k, V v)
 	{
-		if (scopes_.top().find(k) != scopes_.top().end())
-			return false;
-		scopes_.top().emplace(k, v);
-		return true;
+		auto [_, inserted] = scopes_.top().emplace(k, v);
+		return inserted;
 	}
 
 	std::optional<V> get(const K &k)

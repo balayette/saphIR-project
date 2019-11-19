@@ -33,6 +33,9 @@ int main(int argc, char *argv[])
 	sema::escapes_visitor e;
 	drv.prog_->accept(e);
 
+	sema::frame_visitor f;
+	drv.prog_->accept(f);
+
 	delete drv.prog_;
 
 	return 0;

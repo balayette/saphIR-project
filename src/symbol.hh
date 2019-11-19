@@ -27,7 +27,11 @@ class symbol
 	const std::string *instance_;
 };
 
-symbol unique_symbol();
+symbol unique_label();
+symbol unique_label(const std::string &s);
+symbol unique_temp();
+
+symbol make_unique(const symbol &sym);
 
 namespace std
 {

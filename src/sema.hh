@@ -40,4 +40,14 @@ class escapes_visitor : public default_visitor
       public:
 	virtual void visit_addrof(addrof &e) override;
 };
+
+class frame_visitor : public default_visitor
+{
+      public:
+	virtual void visit_fundec(fundec &s) override;
+	virtual void visit_vardec(vardec &s) override;
+
+      private:
+	frame::frame *cframe_;
+};
 } // namespace sema

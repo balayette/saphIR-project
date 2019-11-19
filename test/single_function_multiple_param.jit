@@ -1,4 +1,4 @@
-fun main(int argc, int argv) int {
-	int a = 2;
-	return a;
+fun main(int a, int b, int c, int d, int e, int f, int g, int h) int* {
+	int z = 2;
+	return &a;
 }
