@@ -4,6 +4,7 @@
 #include "exp.hh"
 #include "pretty-printer.hh"
 #include "default-visitor.hh"
+#include "transforms.hh"
 #include "sema.hh"
 #include "sema.hh"
 
@@ -35,6 +36,11 @@ int main(int argc, char *argv[])
 
 	sema::frame_visitor f;
 	drv.prog_->accept(f);
+
+	transforms::unique_ids_visitor u;
+	drv.prog_->accept(u);
+
+	drv.prog_->accept(p);
 
 	delete drv.prog_;
 

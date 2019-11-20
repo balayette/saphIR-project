@@ -22,6 +22,7 @@ OBJ = \
       src/types.o \
       src/exp.o \
       src/sema.o \
+      src/transforms.o \
 
 DEP = $(OBJ:.o=.d)
 
