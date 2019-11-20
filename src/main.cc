@@ -6,7 +6,7 @@
 #include "default-visitor.hh"
 #include "transforms.hh"
 #include "sema.hh"
-#include "sema.hh"
+#include "translate.hh"
 
 int usage(char *pname)
 {
@@ -39,6 +39,9 @@ int main(int argc, char *argv[])
 
 	frontend::transforms::unique_ids_visitor u;
 	drv.prog_->accept(u);
+
+        frontend::translate::translate_visitor t;
+        drv.prog_->accept(t);
 
 	drv.prog_->accept(p);
 
