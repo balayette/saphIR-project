@@ -68,15 +68,12 @@ struct frame {
 
 inline std::ostream &operator<<(std::ostream &os, const access &a)
 {
-	try {
-		auto r = std::get<in_reg>(a);
-		return os << "in_reg(" << r.reg_ << ')';
-	} catch (std::bad_variant_access &) {
-		auto r = std::get<in_frame>(a);
-		if (r.offt_ < 0)
-			return os << "in_frame(sp - " << -r.offt_ << ")";
-		else
-			return os << "in_frame(sp + " << r.offt_ << ")";
-	}
+	if (auto *r = std::get_if<in_reg>(&a))
+		return os << "in_reg(" << r->reg_ << ')';
+	auto *r = std::get_if<in_frame>(&a);
+	if (r->offt_ < 0)
+		return os << "in_frame(sp - " << -r->offt_ << ")";
+	else
+		return os << "in_frame(sp + " << r->offt_ << ")";
 }
 } // namespace frame
