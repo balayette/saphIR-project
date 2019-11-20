@@ -25,19 +25,19 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	pretty_printer p(std::cout);
+	frontend::pretty_printer p(std::cout);
 	drv.prog_->accept(p);
 
-	sema::binding_visitor b;
+	frontend::sema::binding_visitor b;
 	drv.prog_->accept(b);
 
-	sema::escapes_visitor e;
+	frontend::sema::escapes_visitor e;
 	drv.prog_->accept(e);
 
-	sema::frame_visitor f;
+	frontend::sema::frame_visitor f;
 	drv.prog_->accept(f);
 
-	transforms::unique_ids_visitor u;
+	frontend::transforms::unique_ids_visitor u;
 	drv.prog_->accept(u);
 
 	drv.prog_->accept(p);

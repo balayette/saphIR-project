@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 
+namespace frontend
+{
 class pretty_printer : public default_visitor
 {
       public:
@@ -150,13 +152,11 @@ class pretty_printer : public default_visitor
 
 	virtual void visit_ref(ref &e) override
 	{
-		if (e.dec_)
-		{
+		if (e.dec_) {
 			os_ << e.dec_->name_;
 			if (e.dec_->escapes_)
 				os_ << "^";
-		}
-		else
+		} else
 			os_ << e.name_;
 	}
 
@@ -209,3 +209,4 @@ class pretty_printer : public default_visitor
 	unsigned lvl_;
 	bool new_line_;
 };
+} // namespace frontend

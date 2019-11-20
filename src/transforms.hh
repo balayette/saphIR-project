@@ -1,7 +1,7 @@
 #pragma once
 #include "default-visitor.hh"
 
-namespace transforms
+namespace frontend::transforms
 {
 class unique_ids_visitor : public default_visitor
 {

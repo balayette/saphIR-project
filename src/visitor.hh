@@ -1,5 +1,8 @@
 #pragma once
 
+
+namespace frontend
+{
 /* statements */
 struct stmt;
 struct decs;
@@ -53,3 +56,4 @@ class visitor
 	virtual void visit_call(call &e) = 0;
 	virtual void visit_str_lit(str_lit &e) = 0;
 };
+} // namespace frontent

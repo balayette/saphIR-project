@@ -1,5 +1,7 @@
 #include "exp.hh"
 
+namespace frontend
+{
 const std::string binop_str[] = {"-", "+", "*", "/"};
 const std::string cmpop_str[] = {"==", "!="};
 
@@ -12,3 +14,4 @@ const std::string &cmpop_to_string(cmpop op)
 {
 	return cmpop_str[static_cast<int>(op)];
 }
+} // namespace frontend

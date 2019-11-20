@@ -2,6 +2,8 @@
 #include "visitor.hh"
 #include "stmt.hh"
 
+namespace frontend
+{
 class default_visitor : public visitor
 {
       public:
@@ -86,3 +88,4 @@ class default_visitor : public visitor
 
 	virtual void visit_str_lit(str_lit &) override {}
 };
+} // namespace frontend

@@ -13,6 +13,8 @@
 	#include "stmt.hh"
 	#include "exp.hh"
 	class driver;
+
+	using namespace frontend;
 }
 
 %param { driver& d }

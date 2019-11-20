@@ -1,6 +1,6 @@
 #include "sema.hh"
 
-namespace sema
+namespace frontend::sema
 {
 void binding_visitor::visit_decs(decs &s)
 {
@@ -10,7 +10,7 @@ void binding_visitor::visit_decs(decs &s)
 		f->accept(*this);
 		if (!fmap_.add(f->name_, f)) {
 			std::cerr << "fun '" << f->name_
-				 << "' already declared\n";
+				  << "' already declared\n";
 			std::exit(2);
 		}
 	}
@@ -266,4 +266,4 @@ void frame_visitor::visit_vardec(vardec &s)
 	std::cout << "frame: var '" << s.name_ << "' " << s.access_ << '\n';
 	default_visitor::visit_vardec(s);
 }
-} // namespace sema
+} // namespace frontend::sema

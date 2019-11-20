@@ -7,6 +7,8 @@
 #include "exp.hh"
 #include "frame.hh"
 
+namespace frontend
+{
 struct stmt {
       protected:
 	stmt() = default;
@@ -205,3 +207,4 @@ struct ass : public stmt {
 	dec *dec_;
 };
 
+} // namespace frontend

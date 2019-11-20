@@ -5,6 +5,8 @@
 #include "types.hh"
 #include <vector>
 
+namespace frontend
+{
 enum class binop { MINUS, PLUS, MULT, DIV };
 enum class cmpop { EQ, NEQ };
 
@@ -87,6 +89,8 @@ struct deref : public exp {
 
 	ACCEPT(deref)
 
+	virtual ~deref() override { delete e_; }
+
 	exp *e_;
 };
 
@@ -94,6 +98,8 @@ struct addrof : public exp {
 	addrof(exp *e) : e_(e) {}
 
 	ACCEPT(addrof)
+
+	virtual ~addrof() override { delete e_; }
 
 	exp *e_;
 };
@@ -128,3 +134,4 @@ struct str_lit : public exp {
 
 	std::string str_;
 };
+} // namespace frontend

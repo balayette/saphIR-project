@@ -5,7 +5,7 @@
 #include "stmt.hh"
 #include "exp.hh"
 
-namespace sema
+namespace frontend::sema
 {
 class binding_visitor : public default_visitor
 {

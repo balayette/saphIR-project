@@ -1,7 +1,7 @@
 #include "transforms.hh"
 #include "symbol.hh"
 
-namespace transforms
+namespace frontend::transforms
 {
 void unique_ids_visitor::visit_fundec(fundec &s)
 
