@@ -1,6 +1,7 @@
 #pragma once
 
 #include "symbol.hh"
+#include "temp.hh"
 #include <vector>
 #include <variant>
 
@@ -21,9 +22,9 @@ namespace frame
 {
 struct in_reg {
 	in_reg() : reg_("INVALID_INREG_ACCESS") {}
-	in_reg(symbol reg) : reg_(reg) {}
+	in_reg(::temp::temp reg) : reg_(reg) {}
 
-	symbol reg_;
+	::temp::temp reg_;
 };
 
 struct in_frame {
@@ -32,7 +33,14 @@ struct in_frame {
 
 	int offt_;
 };
+
 using access = std::variant<in_reg, in_frame>;
+
+inline const ::temp::temp &fp()
+{
+	static ::temp::temp fp(make_unique("rbp").get());
+	return fp;
+}
 
 struct frame {
 	frame(const symbol &s, const std::vector<bool> &args)
@@ -56,7 +64,7 @@ struct frame {
 		if (escapes)
 			return in_frame(-(escaping_count_++ * 8 + 8));
 		reg_count_++;
-		return in_reg(unique_temp());
+		return in_reg(temp::temp());
 	}
 
 	const symbol &s_;
@@ -72,8 +80,15 @@ inline std::ostream &operator<<(std::ostream &os, const access &a)
 		return os << "in_reg(" << r->reg_ << ')';
 	auto *r = std::get_if<in_frame>(&a);
 	if (r->offt_ < 0)
-		return os << "in_frame(sp - " << -r->offt_ << ")";
+		return os << "in_frame(" << fp() << " - " << -r->offt_ << ")";
 	else
-		return os << "in_frame(sp + " << r->offt_ << ")";
+		return os << "in_frame(" << fp() << " + " << r->offt_ << ")";
+}
+
+inline std::ostream &operator<<(std::ostream &os, const frame &f)
+{
+	for (auto a : f.formals_)
+		os << a << '\n';
+	return os;
 }
 } // namespace frame

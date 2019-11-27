@@ -17,6 +17,7 @@ struct base_temp {
 
 struct temp : base_temp {
 	temp() : base_temp(unique_temp()) {}
+        temp(const std::string& name) : base_temp(name) {}
 };
 
 struct label : base_temp {
