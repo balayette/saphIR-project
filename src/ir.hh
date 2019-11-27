@@ -1,6 +1,7 @@
 #pragma once
 
 #include "symbol.hh"
+#include "temp.hh"
 
 /*
  * IR representation: basically Appel's IR.
@@ -52,17 +53,17 @@ struct cnst : public exp {
 };
 
 struct name : public exp {
-	name(const symbol &label) : label_(label) {}
+	name(const ::temp::label &label) : label_(label) {}
 	TREE_KIND(cnst)
 
-	symbol label_;
+	::temp::label label_;
 };
 
 struct temp : public exp {
-	temp(const symbol &temp) : temp_(temp) {}
+	temp(const ::temp::temp &temp) : temp_(temp) {}
 	TREE_KIND(temp)
 
-	symbol temp_;
+	::temp::temp temp_;
 };
 
 struct binop : public exp {
@@ -119,19 +120,19 @@ struct sexp : public stm {
 };
 
 struct jump : public stm {
-	jump(exp *dest, const std::vector<symbol> &avlbl_dests)
+	jump(exp *dest, const std::vector<::temp::label> &avlbl_dests)
 	    : dest_(dest), avlbl_dests_(avlbl_dests)
 	{
 	}
 	TREE_KIND(jump)
 
 	exp *dest_;
-	std::vector<symbol> avlbl_dests_;
+	std::vector<::temp::label> avlbl_dests_;
 };
 
 struct cjump : public stm {
-	cjump(frontend::cmpop op, exp *lhs, exp *rhs, const symbol &ltrue,
-	      const symbol &lfalse)
+	cjump(frontend::cmpop op, exp *lhs, exp *rhs,
+	      const ::temp::label &ltrue, const ::temp::label &lfalse)
 	    : op_(op), lhs_(lhs), rhs_(rhs), ltrue_(ltrue), lfalse_(lfalse)
 	{
 	}
@@ -140,8 +141,8 @@ struct cjump : public stm {
 	frontend::cmpop op_;
 	exp *lhs_;
 	exp *rhs_;
-	symbol ltrue_;
-	symbol lfalse_;
+	::temp::label ltrue_;
+	::temp::label lfalse_;
 };
 
 struct seq : public stm {
@@ -152,9 +153,9 @@ struct seq : public stm {
 };
 
 struct label : public stm {
-	label(const symbol &name) : name_(name) {}
+	label(const ::temp::label &name) : name_(name) {}
 	TREE_KIND(label)
 
-	symbol name_;
+	::temp::label name_;
 };
 } // namespace backend::tree
