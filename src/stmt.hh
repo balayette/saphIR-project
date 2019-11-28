@@ -31,6 +31,7 @@ struct dec : public stmt {
 	types::ty type_;
 	symbol name_;
 	bool escapes_;
+	frame::access access_;
 };
 
 struct vardec : public dec {
@@ -46,7 +47,6 @@ struct vardec : public dec {
 	}
 
 	exp *rhs_;
-	frame::access access_;
 };
 
 struct argdec : public dec {

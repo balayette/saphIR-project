@@ -2,13 +2,19 @@
 
 #include "symbol.hh"
 #include "temp.hh"
+#include "exp.hh"
+#include "ir-visitor.hh"
 
 /*
  * IR representation: basically Appel's IR.
  */
 
 #define TREE_KIND(X)                                                           \
-	virtual tree_kind kind() override { return tree_kind::X; }
+	virtual tree_kind kind() override { return tree_kind::X; }             \
+	virtual void accept(ir_visitor &visitor) override                      \
+	{                                                                      \
+		visitor.visit_##X(*this);                                      \
+	}
 
 namespace backend::tree
 {
@@ -37,6 +43,8 @@ struct ir_node {
       public:
 	virtual ~ir_node() = default;
 	virtual tree_kind kind() = 0;
+
+	virtual void accept(ir_visitor &visitor) = 0;
 };
 
 struct exp : public ir_node {
@@ -54,7 +62,7 @@ struct cnst : public exp {
 
 struct name : public exp {
 	name(const ::temp::label &label) : label_(label) {}
-	TREE_KIND(cnst)
+	TREE_KIND(name)
 
 	::temp::label label_;
 };

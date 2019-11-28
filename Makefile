@@ -23,6 +23,7 @@ OBJ = \
       src/exp.o \
       src/sema.o \
       src/transforms.o \
+      src/translate.o \
 
 DEP = $(OBJ:.o=.d)
 

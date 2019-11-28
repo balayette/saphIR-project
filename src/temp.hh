@@ -22,8 +22,7 @@ struct temp : base_temp {
 
 struct label : base_temp {
 	label() : base_temp(unique_label()) {}
-
-	label(const std::string &s) : base_temp(unique_label(s)) {}
+	label(const std::string &s) : base_temp(s) {}
 };
 
 inline std::ostream &operator<<(std::ostream &os, const base_temp &t)
