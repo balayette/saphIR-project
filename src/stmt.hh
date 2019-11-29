@@ -6,6 +6,7 @@
 #include "types.hh"
 #include "exp.hh"
 #include "frame.hh"
+#include "utils.hh"
 
 namespace frontend
 {
@@ -31,7 +32,7 @@ struct dec : public stmt {
 	types::ty type_;
 	symbol name_;
 	bool escapes_;
-	frame::access access_;
+	utils::ref<frame::access> access_;
 };
 
 struct vardec : public dec {

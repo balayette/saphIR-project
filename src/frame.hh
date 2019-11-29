@@ -1,6 +1,7 @@
 #pragma once
 
 #include "symbol.hh"
+#include "ir.hh"
 #include "temp.hh"
 #include <vector>
 #include <variant>
@@ -20,27 +21,60 @@
 
 namespace frame
 {
-struct in_reg {
-	in_reg() : reg_("INVALID_INREG_ACCESS") {}
-	in_reg(::temp::temp reg) : reg_(reg) {}
-
-	::temp::temp reg_;
-};
-
-struct in_frame {
-	in_frame() = delete;
-	in_frame(int offt) : offt_(offt) {}
-
-	int offt_;
-};
-
-using access = std::variant<in_reg, in_frame>;
-
 inline const ::temp::temp &fp()
 {
 	static ::temp::temp fp(make_unique("rbp").get());
 	return fp;
 }
+
+struct access {
+	access() = default;
+	virtual ~access() = default;
+	virtual backend::tree::rexp exp() const = 0;
+	virtual std::ostream &print(std::ostream &os) const = 0;
+};
+
+struct in_reg : public access {
+	in_reg() : reg_("INVALID_INREG_ACCESS") {}
+	in_reg(::temp::temp reg) : reg_(reg) {}
+
+	backend::tree::rexp exp() const override
+	{
+		return new backend::tree::temp(reg_);
+	}
+
+	std::ostream &print(std::ostream &os) const override
+	{
+		return os << "in_reg(" << reg_ << ")";
+	}
+
+	::temp::temp reg_;
+};
+
+struct in_frame : public access {
+	in_frame() = delete;
+	in_frame(int offt) : offt_(offt) {}
+
+	backend::tree::rexp exp() const override
+	{
+		return new backend::tree::binop(frontend::binop::PLUS,
+						new backend::tree::temp(fp()),
+						new backend::tree::cnst(offt_));
+	}
+
+
+	std::ostream &print(std::ostream &os) const override
+	{
+		os << "in_frame(" << fp() << " ";
+		if (offt_ < 0)
+			os << "- " << -offt_;
+		else
+			os << "+ " << offt_;
+		return os << ")";
+	}
+
+	int offt_;
+};
 
 struct frame {
 	frame(const symbol &s, const std::vector<bool> &args)
@@ -55,34 +89,28 @@ struct frame {
 			formals_.push_back(alloc_local(args[i]));
 		}
 		for (size_t i = 6; i < args.size(); i++) {
-			formals_.push_back(in_frame((i - 6) * 8 + 16));
+			formals_.push_back(new in_frame((i - 6) * 8 + 16));
 		}
 	}
 
-	access alloc_local(bool escapes)
+	utils::ref<access> alloc_local(bool escapes)
 	{
 		if (escapes)
-			return in_frame(-(escaping_count_++ * 8 + 8));
+			return new in_frame(-(escaping_count_++ * 8 + 8));
 		reg_count_++;
-		return in_reg(temp::temp());
+		return new in_reg(temp::temp());
 	}
 
 	const symbol &s_;
 
-	std::vector<access> formals_;
+	std::vector<utils::ref<access>> formals_;
 	int escaping_count_;
 	size_t reg_count_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const access &a)
 {
-	if (auto *r = std::get_if<in_reg>(&a))
-		return os << "in_reg(" << r->reg_ << ')';
-	auto *r = std::get_if<in_frame>(&a);
-	if (r->offt_ < 0)
-		return os << "in_frame(" << fp() << " - " << -r->offt_ << ")";
-	else
-		return os << "in_frame(" << fp() << " + " << r->offt_ << ")";
+	return a.print(os);
 }
 
 inline std::ostream &operator<<(std::ostream &os, const frame &f)
