@@ -1,19 +1,24 @@
+fun print_ptr(int *a) int {
+        return 1;
+}
+
+fun print(int a) void {
+        return;
+}
+
 fun main(int argc, int argv) int {
-	int a = 2;
-	int b = a * 2 + 3;
+        print_ptr(&argc);
+        print(argv);
 
-	for (int i = 0; i != 10; i = i + 1)
-		print("HELLO");
-	rof
+        for (int i = 0; i != 10; i = i + 1)
+                print_ptr(&i);
+                if (&i == &argc)
+                        print(42);
+                else
+                        print(44);
+                fi
+        rof
 
-	if (a == 2)
-		return 3;
-	fi
-
-	if (a == 2)
-		return 3;
-	else 
-		return 2;
-	fi
-	return a;
+        string s = "lol";
+        return 1;
 }
