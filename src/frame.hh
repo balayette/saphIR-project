@@ -27,6 +27,12 @@ inline const ::temp::temp &fp()
 	return fp;
 }
 
+inline const ::temp::temp &rv()
+{
+	static ::temp::temp rax(make_unique("rax").get());
+	return rax;
+}
+
 struct access {
 	access() = default;
 	virtual ~access() = default;
