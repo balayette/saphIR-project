@@ -32,16 +32,22 @@ template <typename K, typename V> class scoped_map
 	std::stack<map_type> scopes_;
 };
 
-template <typename T> class scoped_ptr
+template <typename T> class scoped_var
 {
       public:
-	scoped_ptr() { static_assert(std::is_pointer<T>::value); }
 	void enter(T elm) { scopes_.emplace(elm); }
 	void leave() { scopes_.pop(); }
 	T get() { return scopes_.top(); }
-
-	T operator->() { return scopes_.top(); }
+	operator T() { return scopes_.top(); }
 
       private:
 	std::stack<T> scopes_;
+};
+
+template <typename T> class scoped_ptr : public scoped_var<T>
+{
+      public:
+	scoped_ptr() { static_assert(std::is_pointer<T>::value); }
+
+	T operator->() { return this->get(); }
 };
