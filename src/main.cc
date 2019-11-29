@@ -48,6 +48,11 @@ int main(int argc, char *argv[])
 	drv.prog_->accept(trans);
 
 	backend::ir_pretty_printer pir(std::cout);
+	for (auto &frag : trans.funs_) {
+		std::cout << "Function: " << frag.frame_.s_
+			  << " - Return label : " << frag.ret_lbl_ << '\n';
+		frag.body_->accept(pir);
+	}
 
 	delete drv.prog_;
 
