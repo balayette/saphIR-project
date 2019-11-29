@@ -63,9 +63,9 @@ struct in_frame : public access {
 
 	backend::tree::rexp exp() const override
 	{
-		return new backend::tree::binop(frontend::binop::PLUS,
-						new backend::tree::temp(fp()),
-						new backend::tree::cnst(offt_));
+		return new backend::tree::mem(new backend::tree::binop(
+			frontend::binop::PLUS, new backend::tree::temp(fp()),
+			new backend::tree::cnst(offt_)));
 	}
 
 
