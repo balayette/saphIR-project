@@ -4,6 +4,7 @@
 #include "temp.hh"
 #include "exp.hh"
 #include "ir-visitor.hh"
+#include "utils.hh"
 
 /*
  * IR representation: basically Appel's IR.
@@ -53,6 +54,9 @@ struct exp : public ir_node {
 struct stm : public ir_node {
 };
 
+using rexp = utils::ref<exp>;
+using rstm = utils::ref<stm>;
+
 struct cnst : public exp {
 	cnst(int value) : value_(value) {}
 	TREE_KIND(cnst);
@@ -75,71 +79,71 @@ struct temp : public exp {
 };
 
 struct binop : public exp {
-	binop(frontend::binop op, exp *lhs, exp *rhs)
+	binop(frontend::binop op, rexp lhs, rexp rhs)
 	    : op_(op), lhs_(lhs), rhs_(rhs)
 	{
 	}
 	TREE_KIND(binop)
 
 	frontend::binop op_;
-	exp *lhs_;
-	exp *rhs_;
+	rexp lhs_;
+	rexp rhs_;
 };
 
 struct mem : public exp {
-	mem(exp *e) : e_(e) {}
+	mem(rexp e) : e_(e) {}
 	TREE_KIND(mem)
 
-	exp *e_;
+	rexp e_;
 };
 
 struct call : public exp {
-	call(const symbol &name, const std::vector<exp *> &args)
+	call(const symbol &name, const std::vector<rexp> &args)
 	    : name_(name), args_(args)
 	{
 	}
 	TREE_KIND(call)
 
 	symbol name_;
-	std::vector<exp *> args_;
+	std::vector<rexp> args_;
 };
 
 struct eseq : public exp {
-	eseq(stm *lhs, exp *rhs) : lhs_(lhs), rhs_(rhs) {}
+	eseq(rstm lhs, rexp rhs) : lhs_(lhs), rhs_(rhs) {}
 	TREE_KIND(eseq)
 
-	stm *lhs_;
-	exp *rhs_;
+	rstm lhs_;
+	rexp rhs_;
 };
 
 struct move : public stm {
-	move(exp *lhs, exp *rhs) : lhs_(lhs), rhs_(rhs) {}
+	move(rexp lhs, rexp rhs) : lhs_(lhs), rhs_(rhs) {}
 	TREE_KIND(move);
 
-	exp *lhs_;
-	exp *rhs_;
+	rexp lhs_;
+	rexp rhs_;
 };
 
 struct sexp : public stm {
-	sexp(exp *e) : e_(e) {}
+	sexp(rexp e) : e_(e) {}
 	TREE_KIND(sexp)
 
-	exp *e_;
+	rexp e_;
 };
 
 struct jump : public stm {
-	jump(exp *dest, const std::vector<::temp::label> &avlbl_dests)
+	jump(rexp dest, const std::vector<::temp::label> &avlbl_dests)
 	    : dest_(dest), avlbl_dests_(avlbl_dests)
 	{
 	}
 	TREE_KIND(jump)
 
-	exp *dest_;
+	rexp dest_;
 	std::vector<::temp::label> avlbl_dests_;
 };
 
 struct cjump : public stm {
-	cjump(frontend::cmpop op, exp *lhs, exp *rhs,
+	cjump(frontend::cmpop op, rexp lhs, rexp rhs,
 	      const ::temp::label &ltrue, const ::temp::label &lfalse)
 	    : op_(op), lhs_(lhs), rhs_(rhs), ltrue_(ltrue), lfalse_(lfalse)
 	{
@@ -147,17 +151,17 @@ struct cjump : public stm {
 	TREE_KIND(cjump)
 
 	frontend::cmpop op_;
-	exp *lhs_;
-	exp *rhs_;
+	rexp lhs_;
+	rexp rhs_;
 	::temp::label ltrue_;
 	::temp::label lfalse_;
 };
 
 struct seq : public stm {
-	seq(const std::vector<stm *> &body) : body_(body) {}
+	seq(const std::vector<rstm> &body) : body_(body) {}
 	TREE_KIND(seq)
 
-	std::vector<stm *> body_;
+	std::vector<rstm> body_;
 };
 
 struct label : public stm {

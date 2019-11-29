@@ -18,7 +18,7 @@ class default_ir_visitor : public ir_visitor
 	virtual void visit_mem(tree::mem &n) override { n.e_->accept(*this); }
 	virtual void visit_call(tree::call &n) override
 	{
-		for (auto *a : n.args_)
+		for (auto a : n.args_)
 			a->accept(*this);
 	}
 	virtual void visit_eseq(tree::eseq &n) override
@@ -43,7 +43,7 @@ class default_ir_visitor : public ir_visitor
 	}
 	virtual void visit_seq(tree::seq &n) override
 	{
-		for (auto *s : n.body_)
+		for (auto s : n.body_)
 			s->accept(*this);
 	}
 	virtual void visit_label(tree::label &) override {}

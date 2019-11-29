@@ -9,51 +9,51 @@ class exp
       public:
 	virtual ~exp() = default;
 
-	virtual backend::tree::exp *un_ex() = 0;
-	virtual backend::tree::stm *un_nx() = 0;
-	virtual backend::tree::stm *un_cx(const temp::label &t,
+	virtual backend::tree::rexp un_ex() = 0;
+	virtual backend::tree::rstm un_nx() = 0;
+	virtual backend::tree::rstm un_cx(const temp::label &t,
 					  const temp::label &f) = 0;
 };
 
 class cx : public exp
 {
       public:
-	cx(frontend::cmpop op, backend::tree::exp *l, backend::tree::exp *r);
+	cx(frontend::cmpop op, backend::tree::rexp l, backend::tree::rexp r);
 
-	backend::tree::exp *un_ex() override;
-	backend::tree::stm *un_nx() override;
-	backend::tree::stm *un_cx(const temp::label &t,
+	backend::tree::rexp un_ex() override;
+	backend::tree::rstm un_nx() override;
+	backend::tree::rstm un_cx(const temp::label &t,
 				  const temp::label &f) override;
 
       private:
 	frontend::cmpop op_;
-	backend::tree::exp *l_;
-	backend::tree::exp *r_;
+	backend::tree::rexp l_;
+	backend::tree::rexp r_;
 };
 
 class ex : public exp
 {
       public:
-	ex(backend::tree::exp *e);
-	backend::tree::exp *un_ex() override;
-	backend::tree::stm *un_nx() override;
-	backend::tree::stm *un_cx(const temp::label &t,
+	ex(backend::tree::rexp e);
+	backend::tree::rexp un_ex() override;
+	backend::tree::rstm un_nx() override;
+	backend::tree::rstm un_cx(const temp::label &t,
 				  const temp::label &f) override;
 
       private:
-	backend::tree::exp *e_;
+	backend::tree::rexp e_;
 };
 
 class nx : public exp
 {
       public:
-	nx(backend::tree::stm *s);
-	backend::tree::exp *un_ex() override;
-	backend::tree::stm *un_nx() override;
-	backend::tree::stm *un_cx(const temp::label &t,
+	nx(backend::tree::rstm s);
+	backend::tree::rexp un_ex() override;
+	backend::tree::rstm un_nx() override;
+	backend::tree::rstm un_cx(const temp::label &t,
 				  const temp::label &f) override;
 
       private:
-	backend::tree::stm *s_;
+	backend::tree::rstm s_;
 };
 } // namespace frontend::translate
