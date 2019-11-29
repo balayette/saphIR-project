@@ -98,13 +98,13 @@ struct mem : public exp {
 };
 
 struct call : public exp {
-	call(const symbol &name, const std::vector<rexp> &args)
+	call(const rexp &name, const std::vector<rexp> &args)
 	    : name_(name), args_(args)
 	{
 	}
 	TREE_KIND(call)
 
-	symbol name_;
+	rexp name_;
 	std::vector<rexp> args_;
 };
 

@@ -249,6 +249,9 @@ void frame_visitor::visit_fundec(fundec &s)
 		escaping.push_back(arg->escapes_);
 
 	cframe_ = new frame::frame(unique_label(s.name_.get()), escaping);
+	for (unsigned i = 0; i < s.args_.size(); i++)
+		s.args_[i]->access_ = cframe_->formals_[i];
+
 	s.frame_ = cframe_;
 	std::cout << "frame: fun '" << s.name_ << "' at label " << cframe_->s_
 		  << '\n';
