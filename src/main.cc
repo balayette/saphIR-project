@@ -8,6 +8,7 @@
 #include "sema.hh"
 #include "translate.hh"
 #include "default-ir-visitor.hh"
+#include "ir-pretty-printer.hh"
 
 int usage(char *pname)
 {
@@ -42,6 +43,11 @@ int main(int argc, char *argv[])
 	drv.prog_->accept(u);
 
 	drv.prog_->accept(p);
+
+	frontend::translate::translate_visitor trans;
+	drv.prog_->accept(trans);
+
+	backend::ir_pretty_printer pir(std::cout);
 
 	delete drv.prog_;
 

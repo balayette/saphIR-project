@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ir.hh"
+#include "default-visitor.hh"
 
 namespace frontend::translate
 {
@@ -56,4 +57,166 @@ class nx : public exp
       private:
 	backend::tree::rstm s_;
 };
+
+class translate_visitor : public default_visitor
+{
+      public:
+	void visit_ref(ref &e) override
+	{
+		ret_ = new ex(e.dec_->access_->exp());
+	}
+
+	void visit_num(num &e) override
+	{
+		ret_ = new ex(new backend::tree::cnst(e.value_));
+	}
+
+	void visit_call(call &e) override
+	{
+		std::vector<backend::tree::rexp> args;
+		for (auto a : e.args_) {
+			a->accept(*this);
+			args.emplace_back(ret_->un_ex());
+		}
+
+		auto *call = new backend::tree::call(
+			new backend::tree::name(e.fdec_->name_.get()), args);
+
+		ret_ = new ex(call);
+	}
+
+	void visit_bin(bin &e) override
+	{
+		e.lhs_->accept(*this);
+		auto left = ret_;
+		e.rhs_->accept(*this);
+		auto right = ret_;
+
+		ret_ = new ex(new backend::tree::binop(e.op_, left->un_ex(),
+						       right->un_ex()));
+	}
+
+	void visit_cmp(cmp &e) override
+	{
+		e.lhs_->accept(*this);
+		auto left = ret_;
+		e.rhs_->accept(*this);
+		auto right = ret_;
+
+		ret_ = new cx(e.op_, left->un_ex(), right->un_ex());
+	}
+
+	void visit_forstmt(forstmt &s) override
+	{
+		s.init_->accept(*this);
+		auto init = ret_;
+		s.cond_->accept(*this);
+		auto cond = ret_;
+		s.action_->accept(*this);
+		auto action = ret_;
+
+		auto body = new backend::tree::seq({});
+		for (auto *s : s.body_) {
+			s->accept(*this);
+			body->body_.push_back(ret_->un_nx());
+		}
+
+		auto cond_lbl = ::temp::label();
+		auto body_lbl = ::temp::label();
+		auto end_lbl = ::temp::label();
+
+		/*
+		 * for (int a = 0; a != 10; a = a + 1)
+		 * 	body
+		 * rof
+		 *
+		 * int a = 0;
+		 * cond_lbl:
+		 * a != 10, body_lbl, end_lbl
+		 * body_lbl:
+		 * body
+		 * action
+		 * jump cond_lbl
+		 * end_lbl:
+		 */
+
+		ret_ = new nx(new backend::tree::seq(
+			{init->un_nx(), new backend::tree::label(cond_lbl),
+			 cond->un_cx(body_lbl, end_lbl),
+			 new backend::tree::label(body_lbl), body,
+			 action->un_nx(),
+			 new backend::tree::jump(
+				 new backend::tree::name(cond_lbl), {cond_lbl}),
+			 new backend::tree::label(end_lbl)}));
+	}
+
+	void visit_ifstmt(ifstmt &s) override
+	{
+		s.cond_->accept(*this);
+		auto cond = ret_;
+
+		auto ibody = new backend::tree::seq({});
+		for (auto *s : s.ibody_) {
+			s->accept(*this);
+			ibody->body_.push_back(ret_->un_nx());
+		}
+		auto ebody = new backend::tree::seq({});
+		for (auto *s : s.ebody_) {
+			s->accept(*this);
+			ebody->body_.push_back(ret_->un_nx());
+		}
+
+		::temp::label i_lbl;
+		::temp::label e_lbl;
+		::temp::label end_lbl;
+
+		/*
+		 * if (a == 2)
+		 *  ibody
+		 * else
+		 *  ebody
+		 * fi
+		 *
+		 * a == 2, i_lbl, e_lbl
+		 * i_lbl:
+		 * ibody
+		 * jump end_lbl
+		 * e_lbl:
+		 * ebody
+		 * end_lbl:
+		 */
+
+		ret_ = new nx(new backend::tree::seq(
+			{cond->un_cx(i_lbl, e_lbl),
+			 new backend::tree::label(i_lbl), ibody,
+			 new backend::tree::jump(
+				 new backend::tree::name(end_lbl), {end_lbl}),
+			 new backend::tree::label(e_lbl), ebody,
+			 new backend::tree::label(end_lbl)}));
+	}
+
+	void visit_ass(ass &s) override
+	{
+		s.lhs_->accept(*this);
+		auto lhs = ret_;
+		s.rhs_->accept(*this);
+		auto rhs = ret_;
+
+		ret_ = new nx(
+			new backend::tree::move(lhs->un_ex(), rhs->un_ex()));
+	}
+
+	void visit_vardec(vardec &s) override
+	{
+		s.rhs_->accept(*this);
+		auto rhs = ret_;
+
+		ret_ = new nx(new backend::tree::move(s.access_->exp(),
+						      rhs->un_ex()));
+	}
+
+      public:
+	utils::ref<exp> ret_;
+};
+
 } // namespace frontend::translate

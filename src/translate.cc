@@ -3,6 +3,9 @@
 #include <iostream>
 #include "exp.hh"
 #include "ir.hh"
+#include "ir-pretty-printer.hh"
+
+#define TRANS_DEBUG 1
 
 namespace frontend::translate
 {
@@ -11,6 +14,12 @@ using namespace backend;
 
 cx::cx(frontend::cmpop op, tree::rexp l, tree::rexp r) : op_(op), l_(l), r_(r)
 {
+#if TRANS_DEBUG
+	backend::ir_pretty_printer p(std::cout);
+	std::cout << "cx: " << cmpop_to_string(op) << '\n';
+	l_->accept(p);
+	r_->accept(p);
+#endif
 }
 
 tree::rexp cx::un_ex()
@@ -47,12 +56,29 @@ tree::rstm cx::un_cx(const temp::label &t, const temp::label &f)
 	return new tree::cjump(op_, l_, r_, t, f);
 }
 
+ex::ex(backend::tree::rexp e) : e_(e)
+{
+#if TRANS_DEBUG
+	backend::ir_pretty_printer p(std::cout);
+	std::cout << "ex:\n";
+	e_->accept(p);
+#endif
+}
 tree::rexp ex::un_ex() { return e_; }
 tree::rstm ex::un_nx() { return new tree::sexp(e_); }
 tree::rstm ex::un_cx(const temp::label &t, const temp::label &f)
 {
 	return new tree::cjump(frontend::cmpop::NEQ, e_, new tree::cnst(0), t,
 			       f);
+}
+
+nx::nx(backend::tree::rstm s) : s_(s)
+{
+#if TRANS_DEBUG
+	backend::ir_pretty_printer p(std::cout);
+	std::cout << "nx:\n";
+	s_->accept(p);
+#endif
 }
 
 tree::rexp nx::un_ex()
