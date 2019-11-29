@@ -107,10 +107,41 @@ struct frame {
 		return new in_reg(temp::temp());
 	}
 
+	backend::tree::rstm proc_entry_exit_1(backend::tree::rstm s)
+	{
+		return s;
+	}
+
 	const symbol s_;
 	std::vector<utils::ref<access>> formals_;
 	int escaping_count_;
 	size_t reg_count_;
+};
+
+struct fragment {
+	fragment() = default;
+	virtual ~fragment() = default;
+};
+
+struct str_fragment : public fragment {
+	str_fragment(::temp::label lab, const std::string &s) : lab_(lab), s_(s)
+	{
+	}
+
+	::temp::label lab_;
+	std::string s_;
+};
+
+struct fun_fragment : public fragment {
+	fun_fragment(backend::tree::rstm body, frame &frame,
+		     ::temp::label ret_lbl)
+	    : body_(body), frame_(frame), ret_lbl_(ret_lbl)
+	{
+	}
+
+	backend::tree::rstm body_;
+	frame frame_;
+	::temp::label ret_lbl_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const access &a)
