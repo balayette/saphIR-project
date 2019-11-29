@@ -41,8 +41,9 @@ class ir_pretty_printer : public default_ir_visitor
 	}
 	virtual void visit_call(tree::call &n) override
 	{
-		indent() << "(call " << n.name_ << "\n";
+		indent() << "(call\n";
 		lvl_++;
+		n.name_->accept(*this);
 		for (auto a : n.args_)
 			a->accept(*this);
 		lvl_--;
@@ -88,7 +89,9 @@ class ir_pretty_printer : public default_ir_visitor
 			 << "\n";
 		lvl_++;
 		n.lhs_->accept(*this);
-		n.lhs_->accept(*this);
+		n.rhs_->accept(*this);
+		indent() << "t => " << n.ltrue_ << '\n';
+		indent() << "f => " << n.lfalse_ << '\n';
 		lvl_--;
 		indent() << ")\n";
 	}
