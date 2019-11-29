@@ -101,8 +101,7 @@ struct frame {
 		return new in_reg(temp::temp());
 	}
 
-	const symbol &s_;
-
+	const symbol s_;
 	std::vector<utils::ref<access>> formals_;
 	int escaping_count_;
 	size_t reg_count_;
