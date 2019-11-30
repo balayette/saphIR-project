@@ -1,11 +1,12 @@
 *.o
 *.d
-src/scanner.hh
-src/scanner.cc
-src/parser.cc
-src/parser.hh
-src/location.hh
+scanner.hh
+scanner.cc
+parser.cc
+parser.hh
+location.hh
 tags
 TAGS
 jit
 src/main
+parser.output

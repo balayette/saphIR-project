@@ -1,29 +1,39 @@
 CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -pedantic -g -MMD
+CPPFLAGS = -Iinclude/
 LINK.o = $(LINK.cc)
 
-GENERATED_SRC = \
-		src/parser.cc \
-		src/scanner.cc \
+PARSER = frontend/parser
 
-GENERATED_HDR = \
-		src/parser.hh \
-		src/location.hh \
+GENERATED = \
+		src/$(PARSER)/parser.cc \
+		src/$(PARSER)/scanner.cc \
 
-GENERATED = $(GENERATED_SRC) $(GENERATED_HDR)
-GENERATED_OBJ = $(GENERATED_SRC:.cc=.o)
+TRASH_HDR = \
+	    src/$(PARSER)/parser.hh \
+	    src/$(PARSER)/location.hh \
+	    include/$(PARSER)/parser.hh \
+	    include/$(PARSER)/location.hh \
+
+GENERATED_OBJ = $(GENERATED:.cc=.o)
 
 OBJ = \
       $(GENERATED_OBJ) \
-      src/scanner.o \
-      src/parser.o \
+      src/frontend/parser/scanner.o \
+      src/frontend/parser/parser.o \
       src/main.o \
-      src/symbol.o \
-      src/driver.o \
-      src/types.o \
-      src/exp.o \
-      src/sema.o \
-      src/transforms.o \
-      src/translate.o \
+      src/utils/symbol.o \
+      src/driver/driver.o \
+      src/frontend/types.o \
+      src/frontend/stmt.o \
+      src/frontend/sema/sema.o \
+      src/frontend/visitors/pretty-printer.o \
+      src/frontend/visitors/transforms.o \
+      src/frontend/visitors/translate.o \
+      src/frontend/visitors/default-visitor.o \
+      src/mach/frame.o \
+      src/ir/visitors/default-ir-visitor.o \
+      src/ir/visitors/ir-pretty-printer.o \
+      src/frontend/ops.o \
 
 DEP = $(OBJ:.o=.d)
 
@@ -36,15 +46,19 @@ src/main: $(OBJ)
 
 src/main.o: $(GENERATED)
 
-src/location.hh: src/parser.hh
-src/parser.hh: src/parser.cc
-src/parser.cc: src/parser.yy
-	bison -v -t src/parser.yy -o src/parser.cc --defines=src/parser.hh
+$(OBJ): src/frontend/parser/parser.cc
+src/frontend/parser/parser.cc: src/frontend/parser/parser.yy
+	bison -v -t src/frontend/parser/parser.yy -o \
+		src/frontend/parser/parser.cc \
+		--defines=include/frontend/parser/parser.hh
+	cp src/$(PARSER)/location.hh include/$(PARSER)/location.hh
+	cp include/$(PARSER)/parser.hh src/$(PARSER)/parser.hh
 
-src/scanner.cc: src/parser.hh src/scanner.ll
-	flex -f -o src/scanner.cc src/scanner.ll
+src/frontend/parser/scanner.cc: src/$(PARSER)/parser.cc
+	flex -f -o src/frontend/parser/scanner.cc src/frontend/parser/scanner.ll
 
 clean:
-	$(RM) $(OBJ) src/main $(BIN_OUT) $(DEP) $(GENERATED)
+	$(RM) $(OBJ) src/main $(BIN_OUT) $(DEP) $(GENERATED) $(TRASH_HDR)
+	$(RM) src/$(PARSER)/parser.output
 
 -include $(DEP)

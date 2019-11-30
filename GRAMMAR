@@ -9,12 +9,12 @@ stmt:
 	- ret 	  => exp: Return from function, exp = null => void
 	- ifstmt  => exp, stmt list, stmt list: if else
 	- forstmt => stmt, exp, stmt, stmt list: for loop
+	- ass   => id, exp: Assignment
 
 Expressions:
 
 exp:
 	- bin   => binop, exp, exp: Binary operation (+, -, *, /)
-	- ass   => id, exp: Assignment
 	- cmp   => cmpop, exp, exp: Comparison (==, !=)
 	- num   => int: Integer
 	- ref   => id: Variable reference 

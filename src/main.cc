@@ -1,14 +1,10 @@
 #include <iostream>
-#include "stmt.hh"
-#include "driver.hh"
-#include "exp.hh"
-#include "pretty-printer.hh"
-#include "default-visitor.hh"
-#include "transforms.hh"
-#include "sema.hh"
-#include "translate.hh"
-#include "default-ir-visitor.hh"
-#include "ir-pretty-printer.hh"
+#include "driver/driver.hh"
+#include "frontend/visitors/pretty-printer.hh"
+#include "frontend/visitors/transforms.hh"
+#include "frontend/sema/sema.hh"
+#include "frontend/visitors/translate.hh"
+#include "ir/visitors/ir-pretty-printer.hh"
 
 int usage(char *pname)
 {
