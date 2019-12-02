@@ -20,5 +20,5 @@ fun main(int argc, int argv) int {
         rof
 
         string s = "lol";
-        return 1;
+        return 1 == 2;
 }

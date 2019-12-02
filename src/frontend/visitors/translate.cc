@@ -152,11 +152,12 @@ void translate_visitor::visit_forstmt(forstmt &s)
 	s.action_->accept(*this);
 	auto action = ret_;
 
-	auto body = new backend::tree::seq({});
+	std::vector<backend::tree::rstm> stms;
 	for (auto *s : s.body_) {
 		s->accept(*this);
-		body->body_.push_back(ret_->un_nx());
+		stms.push_back(ret_->un_nx());
 	}
+	auto body = new backend::tree::seq(stms);
 
 	::temp::label cond_lbl;
 	::temp::label body_lbl;
@@ -195,16 +196,19 @@ void translate_visitor::visit_ifstmt(ifstmt &s)
 	s.cond_->accept(*this);
 	auto cond = ret_;
 
-	auto ibody = new backend::tree::seq({});
+	std::vector<backend::tree::rstm> istms;
 	for (auto *s : s.ibody_) {
 		s->accept(*this);
-		ibody->body_.push_back(ret_->un_nx());
+		istms.push_back(ret_->un_nx());
 	}
-	auto ebody = new backend::tree::seq({});
+	auto ibody = new backend::tree::seq(istms);
+
+	std::vector<backend::tree::rstm> estms;
 	for (auto *s : s.ebody_) {
 		s->accept(*this);
-		ebody->body_.push_back(ret_->un_nx());
+		estms.push_back(ret_->un_nx());
 	}
+	auto ebody = new backend::tree::seq(estms);
 
 	::temp::label i_lbl;
 	::temp::label e_lbl;
@@ -286,11 +290,12 @@ void translate_visitor::visit_fundec(fundec &s)
 {
 	ret_lbl_.enter(::temp::label());
 
-	auto body = new backend::tree::seq({});
+        std::vector<backend::tree::rstm> stms;
 	for (auto *stm : s.body_) {
 		stm->accept(*this);
-		body->body_.push_back(ret_->un_nx());
+		stms.push_back(ret_->un_nx());
 	}
+	auto body = new backend::tree::seq(stms);
 
 	funs_.emplace_back(s.frame_->proc_entry_exit_1(body), *s.frame_,
 			   ret_lbl_);

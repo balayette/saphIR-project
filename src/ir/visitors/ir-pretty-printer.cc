@@ -22,8 +22,8 @@ void ir_pretty_printer::visit_binop(tree::binop &n)
 {
 	indent() << "(binop " << ops::binop_to_string(n.op_) << "\n";
 	lvl_++;
-	n.lhs_->accept(*this);
-	n.rhs_->accept(*this);
+	n.lhs()->accept(*this);
+	n.rhs()->accept(*this);
 	lvl_--;
 	indent() << ")\n";
 }
@@ -32,7 +32,7 @@ void ir_pretty_printer::visit_mem(tree::mem &n)
 {
 	indent() << "(mem\n";
 	lvl_++;
-	n.e_->accept(*this);
+	n.e()->accept(*this);
 	lvl_--;
 	indent() << ")\n";
 }
@@ -41,8 +41,8 @@ void ir_pretty_printer::visit_call(tree::call &n)
 {
 	indent() << "(call\n";
 	lvl_++;
-	n.name_->accept(*this);
-	for (auto a : n.args_)
+	n.name()->accept(*this);
+	for (auto a : n.args())
 		a->accept(*this);
 	lvl_--;
 	indent() << ")\n";
@@ -52,8 +52,8 @@ void ir_pretty_printer::visit_eseq(tree::eseq &n)
 {
 	indent() << "(eseq\n";
 	lvl_++;
-	n.lhs_->accept(*this);
-	n.rhs_->accept(*this);
+	n.lhs()->accept(*this);
+	n.rhs()->accept(*this);
 	lvl_--;
 	indent() << ")\n";
 }
@@ -62,8 +62,8 @@ void ir_pretty_printer::visit_move(tree::move &n)
 {
 	indent() << "(mov\n";
 	lvl_++;
-	n.lhs_->accept(*this);
-	n.rhs_->accept(*this);
+	n.lhs()->accept(*this);
+	n.rhs()->accept(*this);
 	lvl_--;
 	indent() << ")\n";
 }
@@ -72,7 +72,7 @@ void ir_pretty_printer::visit_sexp(tree::sexp &n)
 {
 	indent() << "(sexp\n";
 	lvl_++;
-	n.e_->accept(*this);
+	n.e()->accept(*this);
 	lvl_--;
 	indent() << ")\n";
 }
@@ -81,7 +81,7 @@ void ir_pretty_printer::visit_jump(tree::jump &n)
 {
 	indent() << "(jump\n";
 	lvl_++;
-	n.dest_->accept(*this);
+	n.dest()->accept(*this);
 	lvl_--;
 	indent() << ")\n";
 }
@@ -90,8 +90,8 @@ void ir_pretty_printer::visit_cjump(tree::cjump &n)
 {
 	indent() << "(cjump " << ops::cmpop_to_string(n.op_) << "\n";
 	lvl_++;
-	n.lhs_->accept(*this);
-	n.rhs_->accept(*this);
+	n.lhs()->accept(*this);
+	n.rhs()->accept(*this);
 	indent() << "t => " << n.ltrue_ << '\n';
 	indent() << "f => " << n.lfalse_ << '\n';
 	lvl_--;
@@ -102,7 +102,7 @@ void ir_pretty_printer::visit_seq(tree::seq &n)
 {
 	indent() << "(seq\n";
 	lvl_++;
-	for (auto s : n.body_)
+	for (auto s : n.body())
 		s->accept(*this);
 	lvl_--;
 	indent() << ")\n";

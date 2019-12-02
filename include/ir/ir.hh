@@ -47,6 +47,8 @@ struct ir_node {
 	virtual tree_kind kind() = 0;
 
 	virtual void accept(ir_visitor &visitor) = 0;
+
+	std::vector<utils::ref<ir_node>> children_;
 };
 
 struct exp : public ir_node {
@@ -80,89 +82,112 @@ struct temp : public exp {
 };
 
 struct binop : public exp {
-	binop(ops::binop op, rexp lhs, rexp rhs)
-	    : op_(op), lhs_(lhs), rhs_(rhs)
+	binop(ops::binop op, rexp lhs, rexp rhs) : op_(op)
 	{
+		children_.emplace_back(lhs);
+		children_.emplace_back(rhs);
 	}
 	TREE_KIND(binop)
 
+	rexp lhs() { return children_[0].as<exp>(); }
+	rexp rhs() { return children_[1].as<exp>(); }
+
 	ops::binop op_;
-	rexp lhs_;
-	rexp rhs_;
 };
 
 struct mem : public exp {
-	mem(rexp e) : e_(e) {}
+	mem(rexp e) { children_.emplace_back(e); }
 	TREE_KIND(mem)
 
-	rexp e_;
+	rexp e() { return children_[0].as<exp>(); }
 };
 
 struct call : public exp {
 	call(const rexp &name, const std::vector<rexp> &args)
-	    : name_(name), args_(args)
 	{
+		children_.emplace_back(name);
+		children_.insert(children_.end(), args.begin(), args.end());
 	}
 	TREE_KIND(call)
 
-	rexp name_;
-	std::vector<rexp> args_;
+	rexp name() { return children_[0].as<exp>(); }
+
+	std::vector<rexp> args()
+	{
+		std::vector<rexp> args;
+		for (auto it = children_.begin() + 1; it != children_.end();
+		     ++it)
+			args.emplace_back(it->as<exp>());
+		return args;
+	}
 };
 
 struct eseq : public exp {
-	eseq(rstm lhs, rexp rhs) : lhs_(lhs), rhs_(rhs) {}
+	eseq(rstm lhs, rexp rhs) { children_ = {lhs, rhs}; }
 	TREE_KIND(eseq)
 
-	rstm lhs_;
-	rexp rhs_;
+	rstm lhs() { return children_[0].as<stm>(); }
+	rexp rhs() { return children_[1].as<exp>(); }
 };
 
 struct move : public stm {
-	move(rexp lhs, rexp rhs) : lhs_(lhs), rhs_(rhs) {}
+	move(rexp lhs, rexp rhs) { children_ = {lhs, rhs}; }
 	TREE_KIND(move);
 
-	rexp lhs_;
-	rexp rhs_;
+	rexp lhs() { return children_[0].as<exp>(); }
+	rexp rhs() { return children_[1].as<exp>(); };
 };
 
 struct sexp : public stm {
-	sexp(rexp e) : e_(e) {}
+	sexp(rexp e) { children_ = {e}; }
 	TREE_KIND(sexp)
 
-	rexp e_;
+	rexp e() { return children_[0].as<exp>(); }
 };
 
 struct jump : public stm {
 	jump(rexp dest, const std::vector<::temp::label> &avlbl_dests)
-	    : dest_(dest), avlbl_dests_(avlbl_dests)
+	    : avlbl_dests_(avlbl_dests)
 	{
+		children_ = {dest};
 	}
 	TREE_KIND(jump)
+	rexp dest() { return children_[0].as<exp>(); }
 
-	rexp dest_;
 	std::vector<::temp::label> avlbl_dests_;
 };
 
 struct cjump : public stm {
-	cjump(ops::cmpop op, rexp lhs, rexp rhs,
-	      const ::temp::label &ltrue, const ::temp::label &lfalse)
-	    : op_(op), lhs_(lhs), rhs_(rhs), ltrue_(ltrue), lfalse_(lfalse)
+	cjump(ops::cmpop op, rexp lhs, rexp rhs, const ::temp::label &ltrue,
+	      const ::temp::label &lfalse)
+	    : op_(op), ltrue_(ltrue), lfalse_(lfalse)
 	{
+		children_ = {lhs, rhs};
 	}
 	TREE_KIND(cjump)
+	rexp lhs() { return children_[0].as<exp>(); }
+	rexp rhs() { return children_[1].as<exp>(); }
 
 	ops::cmpop op_;
-	rexp lhs_;
-	rexp rhs_;
 	::temp::label ltrue_;
 	::temp::label lfalse_;
 };
 
 struct seq : public stm {
-	seq(const std::vector<rstm> &body) : body_(body) {}
+	seq(const std::vector<rstm> &body)
+	{
+		for (auto c : body)
+			children_.push_back(c);
+	}
 	TREE_KIND(seq)
 
-	std::vector<rstm> body_;
+	std::vector<rstm> body()
+	{
+		std::vector<rstm> ret;
+		for (auto c : children_)
+			ret.emplace_back(c.as<stm>());
+		return ret;
+	}
 };
 
 struct label : public stm {

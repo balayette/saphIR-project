@@ -9,43 +9,43 @@ void default_ir_visitor::visit_temp(tree::temp &) {}
 
 void default_ir_visitor::visit_binop(tree::binop &n)
 {
-	n.lhs_->accept(*this);
-	n.rhs_->accept(*this);
+	n.lhs()->accept(*this);
+	n.rhs()->accept(*this);
 }
 
-void default_ir_visitor::visit_mem(tree::mem &n) { n.e_->accept(*this); }
+void default_ir_visitor::visit_mem(tree::mem &n) { n.e()->accept(*this); }
 
 void default_ir_visitor::visit_call(tree::call &n)
 {
-	for (auto a : n.args_)
+	for (auto a : n.args())
 		a->accept(*this);
 }
 
 void default_ir_visitor::visit_eseq(tree::eseq &n)
 {
-	n.lhs_->accept(*this);
-	n.rhs_->accept(*this);
+	n.lhs()->accept(*this);
+	n.rhs()->accept(*this);
 }
 
 void default_ir_visitor::visit_move(tree::move &n)
 {
-	n.lhs_->accept(*this);
-	n.rhs_->accept(*this);
+	n.lhs()->accept(*this);
+	n.rhs()->accept(*this);
 }
 
-void default_ir_visitor::visit_sexp(tree::sexp &n) { n.e_->accept(*this); }
+void default_ir_visitor::visit_sexp(tree::sexp &n) { n.e()->accept(*this); }
 
-void default_ir_visitor::visit_jump(tree::jump &n) { n.dest_->accept(*this); }
+void default_ir_visitor::visit_jump(tree::jump &n) { n.dest()->accept(*this); }
 
 void default_ir_visitor::visit_cjump(tree::cjump &n)
 {
-	n.lhs_->accept(*this);
-	n.lhs_->accept(*this);
+	n.lhs()->accept(*this);
+	n.lhs()->accept(*this);
 }
 
 void default_ir_visitor::visit_seq(tree::seq &n)
 {
-	for (auto s : n.body_)
+	for (auto s : n.body())
 		s->accept(*this);
 }
 
