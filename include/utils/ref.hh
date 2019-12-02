@@ -11,8 +11,14 @@ template <typename T> class ref : public std::shared_ptr<T>
 
       public:
 	ref(T *ptr = nullptr);
+
+	template <typename Derived> ref(const ref<Derived> &rhs);
+	template <typename Derived> ref(const std::shared_ptr<Derived> &rhs);
+
 	bool operator==(const T *rhs);
 	bool operator!=(const T *rhs);
+
+	template <typename U> ref<U> as();
 };
 
 template <typename T>

@@ -21,4 +21,21 @@ inline std::ostream &operator<<(std::ostream &os, const ref<T> &p)
 {
 	return os << *p;
 }
+
+template <typename T> template <typename Dest> ref<Dest> ref<T>::as()
+{
+	return std::dynamic_pointer_cast<Dest>(*this);
+}
+
+template <typename T>
+template <typename Dest>
+ref<T>::ref(const ref<Dest> &rhs) : std::shared_ptr<T>(rhs)
+{
+}
+
+template <typename T>
+template <typename Dest>
+ref<T>::ref(const std::shared_ptr<Dest> &rhs) : std::shared_ptr<T>(rhs)
+{
+}
 } // namespace utils
