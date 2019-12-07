@@ -1,0 +1,1 @@
+Can't have pointer derefs on the lhs of an assignment, because I hate parsing.
