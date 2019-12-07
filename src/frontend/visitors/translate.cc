@@ -290,7 +290,7 @@ void translate_visitor::visit_fundec(fundec &s)
 {
 	ret_lbl_.enter(::temp::label());
 
-        std::vector<backend::tree::rstm> stms;
+	std::vector<backend::tree::rstm> stms;
 	for (auto *stm : s.body_) {
 		stm->accept(*this);
 		stms.push_back(ret_->un_nx());
@@ -301,5 +301,29 @@ void translate_visitor::visit_fundec(fundec &s)
 			   ret_lbl_);
 
 	ret_lbl_.leave();
+}
+
+void translate_visitor::visit_deref(deref &e)
+{
+	e.e_->accept(*this);
+	ret_ = new ex(new backend::tree::mem(ret_->un_ex()));
+}
+
+void translate_visitor::visit_addrof(addrof &e)
+{
+	e.e_->accept(*this);
+	auto ret = ret_->un_ex();
+	// When taking the address of a variable, we know that it escapes and
+	// is stored in memory. Because we need the address and not the value,
+	// we remove the mem node.
+        // There are no pointes in Tiger, but I think that this is how they
+        // work.
+	auto r = ret_->un_ex().as<backend::tree::mem>();
+	if (!r) {
+		std::cout << "Taking the address of a non escaping variable?";
+		std::exit(6);
+	}
+
+	ret_ = new ex(r->e());
 }
 } // namespace frontend::translate
