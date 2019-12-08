@@ -33,6 +33,7 @@ OBJ = \
       src/mach/frame.o \
       src/ir/canon/linearize.o \
       src/ir/canon/bb.o \
+      src/ir/canon/trace.o \
       src/ir/visitors/default-ir-visitor.o \
       src/ir/visitors/ir-pretty-printer.o \
       src/frontend/ops.o \

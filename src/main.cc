@@ -7,6 +7,7 @@
 #include "ir/visitors/ir-pretty-printer.hh"
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
+#include "ir/canon/trace.hh"
 
 int usage(char *pname)
 {
@@ -68,6 +69,15 @@ int main(int argc, char *argv[])
 			for (auto s : v.instrs_) {
 				s->accept(pir);
 			}
+		}
+
+		std::cout << "Traces:\n";
+		auto traces = backend::create_traces(bbs);
+		optimize_traces(traces);
+		for (auto trace : traces) {
+			std::cout << "-------------------------\n";
+			for (auto s : trace.instrs_)
+				s->accept(pir);
 		}
 	}
 
