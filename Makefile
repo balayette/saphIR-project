@@ -31,6 +31,7 @@ OBJ = \
       src/frontend/visitors/translate.o \
       src/frontend/visitors/default-visitor.o \
       src/mach/frame.o \
+      src/ir/canon/linearize.o \
       src/ir/visitors/default-ir-visitor.o \
       src/ir/visitors/ir-pretty-printer.o \
       src/frontend/ops.o \

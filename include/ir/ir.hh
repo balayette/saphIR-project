@@ -51,6 +51,8 @@ struct ir_node {
 	std::vector<utils::ref<ir_node>> children_;
 };
 
+using rnode = utils::ref<ir_node>;
+
 struct exp : public ir_node {
 };
 

@@ -5,6 +5,7 @@
 #include "frontend/sema/sema.hh"
 #include "frontend/visitors/translate.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
+#include "ir/canon/linearize.hh"
 
 int usage(char *pname)
 {
@@ -48,6 +49,15 @@ int main(int argc, char *argv[])
 		std::cout << "Function: " << frag.frame_.s_
 			  << " - Return label : " << frag.ret_lbl_ << '\n';
 		frag.body_->accept(pir);
+	}
+
+	for (auto frag : trans.funs_) {
+		auto canoned = backend::canon(frag.body_);
+                std::cout << "Precannon:\n";
+                frag.body_->accept(pir);
+                std::cout << "\nCannoned:\n";
+		canoned->accept(pir);
+                std::cout << "--\n";
 	}
 
 	delete drv.prog_;
