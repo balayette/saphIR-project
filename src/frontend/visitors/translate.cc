@@ -297,7 +297,7 @@ void translate_visitor::visit_fundec(fundec &s)
 	}
 	auto body = new backend::tree::seq(stms);
 
-	funs_.emplace_back(s.frame_->proc_entry_exit_1(body), *s.frame_,
+	funs_.emplace_back(s.frame_->proc_entry_exit_1(body, ret_lbl_), *s.frame_,
 			   ret_lbl_);
 
 	ret_lbl_.leave();

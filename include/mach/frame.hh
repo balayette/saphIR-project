@@ -58,7 +58,8 @@ struct frame {
 
 	utils::ref<access> alloc_local(bool escapes);
 
-	backend::tree::rstm proc_entry_exit_1(backend::tree::rstm s);
+	backend::tree::rstm proc_entry_exit_1(backend::tree::rstm s,
+					      ::temp::label ret_lbl);
 
 	const symbol s_;
 	std::vector<utils::ref<access>> formals_;

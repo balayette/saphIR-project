@@ -1,1 +1,4 @@
 Can't have pointer derefs on the lhs of an assignment, because I hate parsing.
+
+Remove all std::exit(...) calls, split them into compilation errors due to
+malformed programs, and unreachable code / assertion failures.

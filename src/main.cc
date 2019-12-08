@@ -6,6 +6,7 @@
 #include "frontend/visitors/translate.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
 #include "ir/canon/linearize.hh"
+#include "ir/canon/bb.hh"
 
 int usage(char *pname)
 {
@@ -53,11 +54,21 @@ int main(int argc, char *argv[])
 
 	for (auto frag : trans.funs_) {
 		auto canoned = backend::canon(frag.body_);
-                std::cout << "Precannon:\n";
-                frag.body_->accept(pir);
-                std::cout << "\nCannoned:\n";
+		std::cout << "Precannon:\n";
+		frag.body_->accept(pir);
+		std::cout << "\nCannoned:\n";
 		canoned->accept(pir);
-                std::cout << "--\n";
+		std::cout << "--\n";
+
+		::temp::label pro;
+		auto bbs = backend::create_bbs(canoned, pro);
+
+		for (auto [_, v] : bbs) {
+			std::cout << "----\n";
+			for (auto s : v.instrs_) {
+				s->accept(pir);
+			}
+		}
 	}
 
 	delete drv.prog_;

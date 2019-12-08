@@ -52,6 +52,7 @@ struct ir_node {
 };
 
 using rnode = utils::ref<ir_node>;
+using rnodevec = std::vector<rnode>;
 
 struct exp : public ir_node {
 };

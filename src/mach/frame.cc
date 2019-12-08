@@ -81,8 +81,10 @@ utils::ref<access> frame::alloc_local(bool escapes)
 	return new in_reg(temp::temp());
 }
 
-backend::tree::rstm frame::proc_entry_exit_1(backend::tree::rstm s)
+backend::tree::rstm frame::proc_entry_exit_1(backend::tree::rstm s,
+					     ::temp::label ret_lbl)
 {
-	return s;
+	// Placeholder for the epilogue
+	return new backend::tree::seq({s, new backend::tree::label(ret_lbl)});
 }
 } // namespace frame
