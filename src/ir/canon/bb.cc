@@ -1,7 +1,7 @@
 #include "ir/canon/bb.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
 
-namespace backend
+namespace ir
 {
 bb::bb(tree::rnodevec::iterator begin, tree::rnodevec::iterator end)
     : instrs_(tree::rnodevec(begin, end))
@@ -133,4 +133,4 @@ std::unordered_map<::temp::label, bb> create_bbs(tree::rnode stm,
 	return done;
 }
 
-} // namespace backend
+} // namespace ir

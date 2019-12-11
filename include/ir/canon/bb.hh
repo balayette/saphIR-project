@@ -3,7 +3,7 @@
 #include "ir/ir.hh"
 #include <unordered_map>
 
-namespace backend
+namespace ir
 {
 ::temp::label done_lbl();
 
@@ -16,6 +16,6 @@ struct bb {
 	tree::rnodevec instrs_;
 };
 
-std::unordered_map<::temp::label, bb>
-create_bbs(tree::rnode stm, ::temp::label &prologue);
-} // namespace backend
+std::unordered_map<::temp::label, bb> create_bbs(tree::rnode stm,
+						 ::temp::label &prologue);
+} // namespace ir

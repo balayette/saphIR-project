@@ -50,4 +50,4 @@ class frame_visitor : public default_visitor
       private:
 	frame::frame *cframe_;
 };
-} // namespace sema
+} // namespace frontend::sema

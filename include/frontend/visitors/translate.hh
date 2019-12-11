@@ -14,52 +14,52 @@ class exp
       public:
 	virtual ~exp() = default;
 
-	virtual backend::tree::rexp un_ex() = 0;
-	virtual backend::tree::rstm un_nx() = 0;
-	virtual backend::tree::rstm un_cx(const temp::label &t,
-					  const temp::label &f) = 0;
+	virtual ir::tree::rexp un_ex() = 0;
+	virtual ir::tree::rstm un_nx() = 0;
+	virtual ir::tree::rstm un_cx(const temp::label &t,
+				     const temp::label &f) = 0;
 };
 
 class cx : public exp
 {
       public:
-	cx(ops::cmpop op, backend::tree::rexp l, backend::tree::rexp r);
+	cx(ops::cmpop op, ir::tree::rexp l, ir::tree::rexp r);
 
-	backend::tree::rexp un_ex() override;
-	backend::tree::rstm un_nx() override;
-	backend::tree::rstm un_cx(const temp::label &t,
-				  const temp::label &f) override;
+	ir::tree::rexp un_ex() override;
+	ir::tree::rstm un_nx() override;
+	ir::tree::rstm un_cx(const temp::label &t,
+			     const temp::label &f) override;
 
       private:
 	ops::cmpop op_;
-	backend::tree::rexp l_;
-	backend::tree::rexp r_;
+	ir::tree::rexp l_;
+	ir::tree::rexp r_;
 };
 
 class ex : public exp
 {
       public:
-	ex(backend::tree::rexp e);
-	backend::tree::rexp un_ex() override;
-	backend::tree::rstm un_nx() override;
-	backend::tree::rstm un_cx(const temp::label &t,
-				  const temp::label &f) override;
+	ex(ir::tree::rexp e);
+	ir::tree::rexp un_ex() override;
+	ir::tree::rstm un_nx() override;
+	ir::tree::rstm un_cx(const temp::label &t,
+			     const temp::label &f) override;
 
       private:
-	backend::tree::rexp e_;
+	ir::tree::rexp e_;
 };
 
 class nx : public exp
 {
       public:
-	nx(backend::tree::rstm s);
-	backend::tree::rexp un_ex() override;
-	backend::tree::rstm un_nx() override;
-	backend::tree::rstm un_cx(const temp::label &t,
-				  const temp::label &f) override;
+	nx(ir::tree::rstm s);
+	ir::tree::rexp un_ex() override;
+	ir::tree::rstm un_nx() override;
+	ir::tree::rstm un_cx(const temp::label &t,
+			     const temp::label &f) override;
 
       private:
-	backend::tree::rstm s_;
+	ir::tree::rstm s_;
 };
 
 class translate_visitor : public default_visitor

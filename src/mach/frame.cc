@@ -28,10 +28,7 @@ std::ostream &operator<<(std::ostream &os, const frame &f)
 
 in_reg::in_reg(::temp::temp reg) : reg_(reg) {}
 
-backend::tree::rexp in_reg::exp() const
-{
-	return new backend::tree::temp(reg_);
-}
+ir::tree::rexp in_reg::exp() const { return new ir::tree::temp(reg_); }
 
 std::ostream &in_reg::print(std::ostream &os) const
 {
@@ -40,11 +37,11 @@ std::ostream &in_reg::print(std::ostream &os) const
 
 in_frame::in_frame(int offt) : offt_(offt) {}
 
-backend::tree::rexp in_frame::exp() const
+ir::tree::rexp in_frame::exp() const
 {
-	return new backend::tree::mem(new backend::tree::binop(
-		ops::binop::PLUS, new backend::tree::temp(fp()),
-		new backend::tree::cnst(offt_)));
+	return new ir::tree::mem(
+		new ir::tree::binop(ops::binop::PLUS, new ir::tree::temp(fp()),
+				    new ir::tree::cnst(offt_)));
 }
 
 std::ostream &in_frame::print(std::ostream &os) const
@@ -81,10 +78,9 @@ utils::ref<access> frame::alloc_local(bool escapes)
 	return new in_reg(temp::temp());
 }
 
-backend::tree::rstm frame::proc_entry_exit_1(backend::tree::rstm s,
-					     ::temp::label ret_lbl)
+ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, ::temp::label ret_lbl)
 {
 	// Placeholder for the epilogue
-	return new backend::tree::seq({s, new backend::tree::label(ret_lbl)});
+	return new ir::tree::seq({s, new ir::tree::label(ret_lbl)});
 }
 } // namespace frame

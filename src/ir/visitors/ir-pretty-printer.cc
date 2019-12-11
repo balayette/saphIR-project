@@ -1,5 +1,5 @@
 #include "ir/visitors/ir-pretty-printer.hh"
-namespace backend
+namespace ir
 {
 ir_pretty_printer::ir_pretty_printer(std::ostream &os) : os_(os), lvl_(0) {}
 
@@ -119,4 +119,4 @@ std::ostream &ir_pretty_printer::indent()
 		os_ << "    ";
 	return os_;
 }
-} // namespace backend
+} // namespace ir

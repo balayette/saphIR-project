@@ -25,7 +25,8 @@ struct exp {
 };
 
 struct bin : public exp {
-	bin(ops::binop op, exp *lhs, exp *rhs) : exp(), op_(op), lhs_(lhs), rhs_(rhs)
+	bin(ops::binop op, exp *lhs, exp *rhs)
+	    : exp(), op_(op), lhs_(lhs), rhs_(rhs)
 	{
 	}
 

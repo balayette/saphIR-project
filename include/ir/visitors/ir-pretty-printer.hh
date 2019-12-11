@@ -4,7 +4,7 @@
 #include "default-ir-visitor.hh"
 #include "ir/ir.hh"
 
-namespace backend
+namespace ir
 {
 class ir_pretty_printer : public default_ir_visitor
 {
@@ -30,4 +30,4 @@ class ir_pretty_printer : public default_ir_visitor
 	std::ostream &os_;
 	unsigned lvl_;
 };
-} // namespace backend
+} // namespace ir

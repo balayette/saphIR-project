@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	frontend::translate::translate_visitor trans;
 	drv.prog_->accept(trans);
 
-	backend::ir_pretty_printer pir(std::cout);
+	ir::ir_pretty_printer pir(std::cout);
 	for (auto &frag : trans.funs_) {
 		std::cout << "Function: " << frag.frame_.s_
 			  << " - Return label : " << frag.ret_lbl_ << '\n';
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	}
 
 	for (auto frag : trans.funs_) {
-		auto canoned = backend::canon(frag.body_);
+		auto canoned = ir::canon(frag.body_);
 		std::cout << "Precannon:\n";
 		frag.body_->accept(pir);
 		std::cout << "\nCannoned:\n";
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 		std::cout << "--\n";
 
 		::temp::label pro;
-		auto bbs = backend::create_bbs(canoned, pro);
+		auto bbs = ir::create_bbs(canoned, pro);
 
 		for (auto [_, v] : bbs) {
 			std::cout << "----\n";
@@ -72,8 +72,8 @@ int main(int argc, char *argv[])
 		}
 
 		std::cout << "Traces:\n";
-		auto traces = backend::create_traces(bbs);
-		optimize_traces(traces);
+		auto traces = ir::create_traces(bbs);
+		ir::optimize_traces(traces);
 		for (auto trace : traces) {
 			std::cout << "-------------------------\n";
 			for (auto s : trace.instrs_)

@@ -29,14 +29,14 @@ const ::temp::temp &rv();
 struct access {
 	access() = default;
 	virtual ~access() = default;
-	virtual backend::tree::rexp exp() const = 0;
+	virtual ir::tree::rexp exp() const = 0;
 	virtual std::ostream &print(std::ostream &os) const = 0;
 };
 
 struct in_reg : public access {
 	in_reg(::temp::temp reg);
 
-	backend::tree::rexp exp() const override;
+	ir::tree::rexp exp() const override;
 
 	std::ostream &print(std::ostream &os) const override;
 
@@ -46,7 +46,7 @@ struct in_reg : public access {
 struct in_frame : public access {
 	in_frame(int offt);
 
-	backend::tree::rexp exp() const override;
+	ir::tree::rexp exp() const override;
 
 	std::ostream &print(std::ostream &os) const override;
 
@@ -58,8 +58,8 @@ struct frame {
 
 	utils::ref<access> alloc_local(bool escapes);
 
-	backend::tree::rstm proc_entry_exit_1(backend::tree::rstm s,
-					      ::temp::label ret_lbl);
+	ir::tree::rstm proc_entry_exit_1(ir::tree::rstm s,
+					 ::temp::label ret_lbl);
 
 	const symbol s_;
 	std::vector<utils::ref<access>> formals_;
@@ -82,13 +82,12 @@ struct str_fragment : public fragment {
 };
 
 struct fun_fragment : public fragment {
-	fun_fragment(backend::tree::rstm body, frame &frame,
-		     ::temp::label ret_lbl)
+	fun_fragment(ir::tree::rstm body, frame &frame, ::temp::label ret_lbl)
 	    : body_(body), frame_(frame), ret_lbl_(ret_lbl)
 	{
 	}
 
-	backend::tree::rstm body_;
+	ir::tree::rstm body_;
 	frame frame_;
 	::temp::label ret_lbl_;
 };

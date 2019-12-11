@@ -11,12 +11,12 @@
 namespace frontend::translate
 {
 
-using namespace backend;
+using namespace ir;
 
 cx::cx(ops::cmpop op, tree::rexp l, tree::rexp r) : op_(op), l_(l), r_(r)
 {
 #if TRANS_DEBUG
-	backend::ir_pretty_printer p(std::cout);
+	ir::ir_pretty_printer p(std::cout);
 	std::cout << "cx: " << ops::cmpop_to_string(op) << '\n';
 	l_->accept(p);
 	r_->accept(p);
@@ -57,10 +57,10 @@ tree::rstm cx::un_cx(const temp::label &t, const temp::label &f)
 	return new tree::cjump(op_, l_, r_, t, f);
 }
 
-ex::ex(backend::tree::rexp e) : e_(e)
+ex::ex(ir::tree::rexp e) : e_(e)
 {
 #if TRANS_DEBUG
-	backend::ir_pretty_printer p(std::cout);
+	ir::ir_pretty_printer p(std::cout);
 	std::cout << "ex:\n";
 	e_->accept(p);
 #endif
@@ -75,10 +75,10 @@ tree::rstm ex::un_cx(const temp::label &t, const temp::label &f)
 	return new tree::cjump(ops::cmpop::NEQ, e_, new tree::cnst(0), t, f);
 }
 
-nx::nx(backend::tree::rstm s) : s_(s)
+nx::nx(ir::tree::rstm s) : s_(s)
 {
 #if TRANS_DEBUG
-	backend::ir_pretty_printer p(std::cout);
+	ir::ir_pretty_printer p(std::cout);
 	std::cout << "nx:\n";
 	s_->accept(p);
 #endif
@@ -105,19 +105,19 @@ void translate_visitor::visit_ref(ref &e)
 
 void translate_visitor::visit_num(num &e)
 {
-	ret_ = new ex(new backend::tree::cnst(e.value_));
+	ret_ = new ex(new ir::tree::cnst(e.value_));
 }
 
 void translate_visitor::visit_call(call &e)
 {
-	std::vector<backend::tree::rexp> args;
+	std::vector<ir::tree::rexp> args;
 	for (auto a : e.args_) {
 		a->accept(*this);
 		args.emplace_back(ret_->un_ex());
 	}
 
-	auto *call = new backend::tree::call(
-		new backend::tree::name(e.fdec_->name_.get()), args);
+	auto *call = new ir::tree::call(
+		new ir::tree::name(e.fdec_->name_.get()), args);
 
 	ret_ = new ex(call);
 }
@@ -130,7 +130,7 @@ void translate_visitor::visit_bin(bin &e)
 	auto right = ret_;
 
 	ret_ = new ex(
-		new backend::tree::binop(e.op_, left->un_ex(), right->un_ex()));
+		new ir::tree::binop(e.op_, left->un_ex(), right->un_ex()));
 }
 
 void translate_visitor::visit_cmp(cmp &e)
@@ -152,12 +152,12 @@ void translate_visitor::visit_forstmt(forstmt &s)
 	s.action_->accept(*this);
 	auto action = ret_;
 
-	std::vector<backend::tree::rstm> stms;
+	std::vector<ir::tree::rstm> stms;
 	for (auto *s : s.body_) {
 		s->accept(*this);
 		stms.push_back(ret_->un_nx());
 	}
-	auto body = new backend::tree::seq(stms);
+	auto body = new ir::tree::seq(stms);
 
 	::temp::label cond_lbl;
 	::temp::label body_lbl;
@@ -178,16 +178,15 @@ void translate_visitor::visit_forstmt(forstmt &s)
 	 * end_lbl:
 	 */
 
-	ret_ = new nx(new backend::tree::seq({
+	ret_ = new nx(new ir::tree::seq({
 		init->un_nx(),
-		new backend::tree::label(cond_lbl),
+		new ir::tree::label(cond_lbl),
 		cond->un_cx(body_lbl, end_lbl),
-		new backend::tree::label(body_lbl),
+		new ir::tree::label(body_lbl),
 		body,
 		action->un_nx(),
-		new backend::tree::jump(new backend::tree::name(cond_lbl),
-					{cond_lbl}),
-		new backend::tree::label(end_lbl),
+		new ir::tree::jump(new ir::tree::name(cond_lbl), {cond_lbl}),
+		new ir::tree::label(end_lbl),
 	}));
 }
 
@@ -196,19 +195,19 @@ void translate_visitor::visit_ifstmt(ifstmt &s)
 	s.cond_->accept(*this);
 	auto cond = ret_;
 
-	std::vector<backend::tree::rstm> istms;
+	std::vector<ir::tree::rstm> istms;
 	for (auto *s : s.ibody_) {
 		s->accept(*this);
 		istms.push_back(ret_->un_nx());
 	}
-	auto ibody = new backend::tree::seq(istms);
+	auto ibody = new ir::tree::seq(istms);
 
-	std::vector<backend::tree::rstm> estms;
+	std::vector<ir::tree::rstm> estms;
 	for (auto *s : s.ebody_) {
 		s->accept(*this);
 		estms.push_back(ret_->un_nx());
 	}
-	auto ebody = new backend::tree::seq(estms);
+	auto ebody = new ir::tree::seq(estms);
 
 	::temp::label i_lbl;
 	::temp::label e_lbl;
@@ -230,15 +229,14 @@ void translate_visitor::visit_ifstmt(ifstmt &s)
 	 * end_lbl:
 	 */
 
-	ret_ = new nx(new backend::tree::seq({
+	ret_ = new nx(new ir::tree::seq({
 		cond->un_cx(i_lbl, e_lbl),
-		new backend::tree::label(i_lbl),
+		new ir::tree::label(i_lbl),
 		ibody,
-		new backend::tree::jump(new backend::tree::name(end_lbl),
-					{end_lbl}),
-		new backend::tree::label(e_lbl),
+		new ir::tree::jump(new ir::tree::name(end_lbl), {end_lbl}),
+		new ir::tree::label(e_lbl),
 		ebody,
-		new backend::tree::label(end_lbl),
+		new ir::tree::label(end_lbl),
 	}));
 }
 
@@ -249,7 +247,7 @@ void translate_visitor::visit_ass(ass &s)
 	s.rhs_->accept(*this);
 	auto rhs = ret_;
 
-	ret_ = new nx(new backend::tree::move(lhs->un_ex(), rhs->un_ex()));
+	ret_ = new nx(new ir::tree::move(lhs->un_ex(), rhs->un_ex()));
 }
 
 void translate_visitor::visit_vardec(vardec &s)
@@ -257,23 +255,22 @@ void translate_visitor::visit_vardec(vardec &s)
 	s.rhs_->accept(*this);
 	auto rhs = ret_;
 
-	ret_ = new nx(new backend::tree::move(s.access_->exp(), rhs->un_ex()));
+	ret_ = new nx(new ir::tree::move(s.access_->exp(), rhs->un_ex()));
 }
 
 void translate_visitor::visit_ret(ret &s)
 {
 	if (!s.e_) {
-		ret_ = new nx(new backend::tree::jump(
-			new backend::tree::name(ret_lbl_), {ret_lbl_}));
+		ret_ = new nx(new ir::tree::jump(new ir::tree::name(ret_lbl_),
+						 {ret_lbl_}));
 		return;
 	}
 	s.e_->accept(*this);
 	auto lhs = ret_;
-	ret_ = new nx(new backend::tree::seq({
-		new backend::tree::move(new backend::tree::temp(frame::rv()),
-					lhs->un_ex()),
-		new backend::tree::jump(new backend::tree::name(ret_lbl_),
-					{ret_lbl_}),
+	ret_ = new nx(new ir::tree::seq({
+		new ir::tree::move(new ir::tree::temp(frame::rv()),
+				   lhs->un_ex()),
+		new ir::tree::jump(new ir::tree::name(ret_lbl_), {ret_lbl_}),
 	}));
 }
 
@@ -281,7 +278,7 @@ void translate_visitor::visit_str_lit(str_lit &e)
 {
 	::temp::label lab;
 
-	ret_ = new ex(new backend::tree::name(lab));
+	ret_ = new ex(new ir::tree::name(lab));
 
 	str_lits_.emplace(lab, e);
 }
@@ -290,15 +287,15 @@ void translate_visitor::visit_fundec(fundec &s)
 {
 	ret_lbl_.enter(::temp::label());
 
-	std::vector<backend::tree::rstm> stms;
+	std::vector<ir::tree::rstm> stms;
 	for (auto *stm : s.body_) {
 		stm->accept(*this);
 		stms.push_back(ret_->un_nx());
 	}
-	auto body = new backend::tree::seq(stms);
+	auto body = new ir::tree::seq(stms);
 
-	funs_.emplace_back(s.frame_->proc_entry_exit_1(body, ret_lbl_), *s.frame_,
-			   ret_lbl_);
+	funs_.emplace_back(s.frame_->proc_entry_exit_1(body, ret_lbl_),
+			   *s.frame_, ret_lbl_);
 
 	ret_lbl_.leave();
 }
@@ -306,7 +303,7 @@ void translate_visitor::visit_fundec(fundec &s)
 void translate_visitor::visit_deref(deref &e)
 {
 	e.e_->accept(*this);
-	ret_ = new ex(new backend::tree::mem(ret_->un_ex()));
+	ret_ = new ex(new ir::tree::mem(ret_->un_ex()));
 }
 
 void translate_visitor::visit_addrof(addrof &e)
@@ -316,9 +313,9 @@ void translate_visitor::visit_addrof(addrof &e)
 	// When taking the address of a variable, we know that it escapes and
 	// is stored in memory. Because we need the address and not the value,
 	// we remove the mem node.
-        // There are no pointes in Tiger, but I think that this is how they
-        // work.
-	auto r = ret_->un_ex().as<backend::tree::mem>();
+	// There are no pointes in Tiger, but I think that this is how they
+	// work.
+	auto r = ret_->un_ex().as<ir::tree::mem>();
 	if (!r) {
 		std::cout << "Taking the address of a non escaping variable?";
 		std::exit(6);

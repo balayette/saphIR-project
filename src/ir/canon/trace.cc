@@ -2,7 +2,7 @@
 #include "frontend/ops.hh"
 #include <unordered_set>
 
-namespace backend
+namespace ir
 {
 std::vector<trace> create_traces(std::unordered_map<::temp::label, bb> bbs)
 {
@@ -100,4 +100,4 @@ void optimize_traces(std::vector<trace> &traces)
 	for (auto &t : traces)
 		optimize_trace(t.instrs_);
 }
-} // namespace backend
+} // namespace ir

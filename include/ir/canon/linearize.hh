@@ -8,7 +8,7 @@
  * language is quite different from Tiger.
  * XXX: I could be wrong.
  */
-namespace backend
+namespace ir
 {
 tree::rnode canon(tree::rnode tree);
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace backend
+namespace ir
 {
 namespace tree
 {
@@ -36,4 +36,4 @@ class ir_visitor
 	virtual void visit_seq(tree::seq &n) = 0;
 	virtual void visit_label(tree::label &n) = 0;
 };
-} // namespace backend
+} // namespace ir

@@ -2,7 +2,7 @@
 #include "ir/visitors/ir-pretty-printer.hh"
 #include "ir/canon/linearize.hh"
 
-namespace backend
+namespace ir
 {
 bool is_nop(tree::rnode stm)
 {
@@ -166,4 +166,4 @@ tree::rnode canon(tree::rnode tree)
 
 	return tree;
 }
-} // namespace backend
+} // namespace ir

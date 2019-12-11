@@ -1,5 +1,5 @@
 #include "ir/visitors/default-ir-visitor.hh"
-namespace backend
+namespace ir
 {
 void default_ir_visitor::visit_cnst(tree::cnst &) {}
 
@@ -50,4 +50,4 @@ void default_ir_visitor::visit_seq(tree::seq &n)
 }
 
 void default_ir_visitor::visit_label(tree::label &) {}
-} // namespace backend
+} // namespace ir

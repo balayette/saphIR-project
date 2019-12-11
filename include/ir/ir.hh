@@ -18,7 +18,7 @@
 		visitor.visit_##X(*this);                                      \
 	}
 
-namespace backend::tree
+namespace ir::tree
 {
 enum class tree_kind {
 	cnst,
@@ -199,4 +199,4 @@ struct label : public stm {
 
 	::temp::label name_;
 };
-} // namespace backend::tree
+} // namespace ir::tree

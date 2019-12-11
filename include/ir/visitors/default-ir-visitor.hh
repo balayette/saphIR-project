@@ -2,7 +2,7 @@
 #include "ir-visitor.hh"
 #include "ir/ir.hh"
 
-namespace backend
+namespace ir
 {
 class default_ir_visitor : public ir_visitor
 {
@@ -21,4 +21,4 @@ class default_ir_visitor : public ir_visitor
 	virtual void visit_seq(tree::seq &n) override;
 	virtual void visit_label(tree::label &) override;
 };
-} // namespace backend
+} // namespace ir
