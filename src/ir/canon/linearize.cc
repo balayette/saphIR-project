@@ -13,7 +13,6 @@ bool is_nop(tree::rnode stm)
 
 tree::rstm make_stm(tree::rstm stm1, tree::rstm stm2)
 {
-	std::cout << "make_stm\n";
 	if (!stm1 || is_nop(stm1))
 		return stm2;
 	if (!stm2 || is_nop(stm2))
@@ -40,7 +39,6 @@ tree::rstm make_stm(tree::rstm stm1, tree::rstm stm2)
 
 tree::rexp make_eseq(tree::rstm stm, tree::rexp exp)
 {
-	std::cout << "make_eseq\n";
 	if (!stm || is_nop(stm))
 		return exp;
 
@@ -93,12 +91,10 @@ tree::rnode canon_default(tree::rnode &tree)
 						  new tree::sexp(eseq->rhs()));
 				// nop statement
 				*ichild = new tree::cnst(0);
+			} else {
+				bigseq = make_stm(bigseq, eseq->lhs());
+				*ichild = eseq->rhs();
 			}
-                        else
-                        {
-                                bigseq = make_stm(bigseq, eseq->lhs());
-                                *ichild = eseq->rhs();
-                        }
 		}
 
 		if (auto call = ichild->as<tree::call>()) {
@@ -135,23 +131,19 @@ tree::rnode canon_default(tree::rnode &tree)
 
 tree::rnode canon_eseq(utils::ref<tree::eseq> tree)
 {
-	std::cout << "canon_eseq\n";
 	return make_eseq(tree->lhs(), tree->rhs());
 }
 
 tree::rnode canon_seq(utils::ref<tree::seq> tree)
 {
-	std::cout << "canon_seq\n";
-
 	std::vector<tree::rnode> res;
 	std::vector<tree::rnode> &children = tree->children_;
 
 	for (tree::rnode &t : children) {
-		if (auto seq = t.as<tree::seq>()) {
-			std::cout << "Appending seq\n";
+		if (auto seq = t.as<tree::seq>())
 			res.insert(res.end(), seq->children_.begin(),
 				   seq->children_.end());
-		} else if (!is_nop(t))
+		else if (!is_nop(t))
 			res.emplace_back(t);
 	}
 
@@ -169,14 +161,8 @@ tree::rnode canon(tree::rnode tree)
 		tree = canon_eseq(t);
 	if (auto t = tree.as<tree::seq>())
 		tree = canon_seq(t);
-	else {
-		ir_pretty_printer pp(std::cout);
-		std::cout << "\n\nbefore\n";
-		tree->accept(pp);
+	else
 		tree = canon_default(tree);
-		std::cout << "After\n";
-		tree->accept(pp);
-	}
 
 	return tree;
 }
