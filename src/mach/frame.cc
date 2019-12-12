@@ -1,18 +1,46 @@
 #include "mach/frame.hh"
 
+#include <array>
+
 namespace frame
 {
-const ::temp::temp &fp()
-{
-	static ::temp::temp fp(make_unique("rbp").get());
-	return fp;
-}
+enum regs {
+	RAX,
+	RBX,
+	RCX,
+	RDX,
+	RSI,
+	RDI,
+	RSP,
+	RBP,
+	R8,
+	R9,
+	R10,
+	R11,
+	R12,
+	R13,
+	R14,
+	R15
+};
 
-const ::temp::temp &rv()
-{
-	static ::temp::temp rax(make_unique("rax").get());
-	return rax;
-}
+std::array<::temp::temp, 16> reg_to_temp{
+	make_unique("rax").get(), make_unique("rbx").get(),
+	make_unique("rcx").get(), make_unique("rdx").get(),
+	make_unique("rsi").get(), make_unique("rdi").get(),
+	make_unique("rsp").get(), make_unique("rbp").get(),
+	make_unique("r8").get(),  make_unique("r9").get(),
+	make_unique("r10").get(), make_unique("r11").get(),
+	make_unique("r12").get(), make_unique("r13").get(),
+	make_unique("r14").get(), make_unique("r15").get(),
+};
+
+std::array<std::string, 16> reg_to_str{
+	"%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi", "%rsp", "%rbp",
+	"%r8",	"%r9",	"%r10", "%r11", "%r12", "%r13", "%r14", "%r15"};
+
+const ::temp::temp &fp() { return reg_to_temp[regs::RBP]; }
+
+const ::temp::temp &rv() { return reg_to_temp[regs::RAX]; }
 
 std::ostream &operator<<(std::ostream &os, const access &a)
 {

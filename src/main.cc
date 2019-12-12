@@ -8,6 +8,7 @@
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
+#include "mach/codegen.hh"
 
 int usage(char *pname)
 {
@@ -79,6 +80,11 @@ int main(int argc, char *argv[])
 			for (auto s : trace.instrs_)
 				s->accept(pir);
 		}
+
+                std::cout << "==========\n";
+                for (auto trace: traces) {
+                        mach::codegen(frag.frame_, trace.instrs_);
+                }
 	}
 
 	delete drv.prog_;

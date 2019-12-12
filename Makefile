@@ -36,6 +36,8 @@ OBJ = \
       src/ir/canon/trace.o \
       src/ir/visitors/default-ir-visitor.o \
       src/ir/visitors/ir-pretty-printer.o \
+      src/ass/instr.o \
+      src/mach/codegen.o \
       src/frontend/ops.o \
 
 DEP = $(OBJ:.o=.d)
