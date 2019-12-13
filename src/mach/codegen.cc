@@ -29,7 +29,7 @@ struct generator : public default_ir_visitor {
 	void visit_mem(tree::mem &) override;
 	void visit_call(tree::call &n) override;
 	void visit_move(tree::move &) override;
-	// void visit_sexp(tree::sexp &n) override;
+	void visit_name(tree::name &n) override;
 	void visit_jump(tree::jump &) override;
 	void visit_cjump(tree::cjump &) override;
 	void visit_label(tree::label &) override;
@@ -55,13 +55,25 @@ std::vector<assem::instr> codegen(mach::frame &f, tree::rnodevec instrs)
 	return g.instrs_;
 }
 
+void generator::visit_name(tree::name &n)
+{
+	std::string repr("lea ");
+	repr += label_to_asm(n.label_);
+	repr += ", `d0";
+
+        ::temp::temp ret;
+	emit(assem::move(repr, {ret}, {}));
+
+        ret_ = ret;
+}
+
 void generator::visit_call(tree::call &c)
 {
 	auto name = c.name().as<tree::name>()->label_;
 	unsigned i = 0;
 	std::vector<::temp::temp> src;
-        // XXX: More than 7 args
-        auto cc = args_regs();
+	// XXX: More than 7 args
+	auto cc = args_regs();
 	for (auto arg : c.args()) {
 		arg->accept(*this);
 		auto arglbl = ret_;
@@ -79,11 +91,11 @@ void generator::visit_call(tree::call &c)
 	repr += name.sym_.get();
 
 	emit(assem::oper(repr, caller_saved_regs(), src, {}));
-        ::temp::temp ret;
+	::temp::temp ret;
 	emit(assem::move("mov `s0, `d0", {ret}, {reg_to_temp(regs::RAX)}));
 
-        // XXX: The last move is not necessary if (sexp (call))
-        ret_ = ret;
+	// XXX: The last move is not necessary if (sexp (call))
+	ret_ = ret;
 }
 
 void generator::visit_cjump(tree::cjump &cj)
@@ -202,13 +214,13 @@ void generator::visit_binop(tree::binop &b)
 
 void generator::emit(const assem::instr &ins)
 {
-        /*
+	/*
 	unsigned width = 30;
 	std::cout << ins.repr_;
 	for (unsigned i = 0; i < width - ins.repr_.size(); i++)
 		std::cout << ' ';
 	std::cout << ins.to_string() << '\n';
-        */
+	*/
 
 	instrs_.push_back(ins);
 }
