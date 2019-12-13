@@ -4,12 +4,16 @@
 #include "ir/ir.hh"
 #include "frontend/ops.hh"
 #include "utils/temp.hh"
+#include "ass/instr.hh"
 #include <vector>
 #include <variant>
 
 /*
  * x86_64 calling convention:
  * RDI, RSI, RDX, RCX, R8, R9, (R10 = static link), stack (right to left)
+ *
+ * Callee saved: RBX, RBP, and R12, R13, R14, R15
+ * Clobbered: RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11
  *
  * fun f(a, b, c, d, e, f, g, h)
  *
@@ -20,11 +24,39 @@
  * fp + ... 	-> local variables
  */
 
-namespace frame
+namespace mach
 {
-const ::temp::temp &fp();
+enum regs {
+	RAX,
+	RBX,
+	RCX,
+	RDX,
+	RSI,
+	RDI,
+	RSP,
+	RBP,
+	R8,
+	R9,
+	R10,
+	R11,
+	R12,
+	R13,
+	R14,
+	R15
+};
 
-const ::temp::temp &rv();
+::temp::temp reg_to_temp(regs r);
+
+::temp::temp reg_to_str(regs r);
+
+::temp::temp fp();
+
+::temp::temp rv();
+
+std::vector<::temp::temp> caller_saved_regs();
+std::vector<::temp::temp> callee_saved_regs();
+std::vector<::temp::temp> args_regs();
+std::vector<::temp::temp> special_regs();
 
 struct access {
 	access() = default;
@@ -61,10 +93,13 @@ struct frame {
 	ir::tree::rstm proc_entry_exit_1(ir::tree::rstm s,
 					 ::temp::label ret_lbl);
 
+	void proc_entry_exit_2(std::vector<assem::instr> &instrs);
+	void proc_entry_exit_3(std::vector<assem::instr> &instrs);
 	const symbol s_;
 	std::vector<utils::ref<access>> formals_;
 	int escaping_count_;
 	size_t reg_count_;
+	::temp::label body_begin_;
 };
 
 struct fragment {
@@ -95,4 +130,4 @@ struct fun_fragment : public fragment {
 std::ostream &operator<<(std::ostream &os, const access &a);
 
 std::ostream &operator<<(std::ostream &os, const frame &f);
-} // namespace frame
+} // namespace mach

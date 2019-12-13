@@ -1,4 +1,8 @@
-fun main(int a, int b, int c, int d, int e, int f, int g, int h) int* {
-	int z = 2;
-	return &a;
+fun main(int a, int b, int c, int d) int {
+        return a + b + c + d;
+}
+ fun f() int
+{
+        main(1, 2, 3, 4);
+        return 1;
 }

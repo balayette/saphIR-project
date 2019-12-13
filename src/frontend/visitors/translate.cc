@@ -268,7 +268,7 @@ void translate_visitor::visit_ret(ret &s)
 	s.e_->accept(*this);
 	auto lhs = ret_;
 	ret_ = new nx(new ir::tree::seq({
-		new ir::tree::move(new ir::tree::temp(frame::rv()),
+		new ir::tree::move(new ir::tree::temp(mach::rv()),
 				   lhs->un_ex()),
 		new ir::tree::jump(new ir::tree::name(ret_lbl_), {ret_lbl_}),
 	}));

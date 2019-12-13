@@ -83,7 +83,12 @@ int main(int argc, char *argv[])
 
                 std::cout << "==========\n";
                 for (auto trace: traces) {
-                        mach::codegen(frag.frame_, trace.instrs_);
+                        auto instrs = mach::codegen(frag.frame_, trace.instrs_);
+                        frag.frame_.proc_entry_exit_2(instrs);
+                        frag.frame_.proc_entry_exit_3(instrs);
+
+                        for (auto ins: instrs)
+                                std::cout << ins.to_string() << '\n';
                 }
 	}
 

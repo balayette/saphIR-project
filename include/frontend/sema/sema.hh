@@ -48,6 +48,6 @@ class frame_visitor : public default_visitor
 	virtual void visit_vardec(vardec &s) override;
 
       private:
-	frame::frame *cframe_;
+	mach::frame *cframe_;
 };
 } // namespace frontend::sema

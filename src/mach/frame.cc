@@ -2,28 +2,9 @@
 
 #include <array>
 
-namespace frame
+namespace mach
 {
-enum regs {
-	RAX,
-	RBX,
-	RCX,
-	RDX,
-	RSI,
-	RDI,
-	RSP,
-	RBP,
-	R8,
-	R9,
-	R10,
-	R11,
-	R12,
-	R13,
-	R14,
-	R15
-};
-
-std::array<::temp::temp, 16> reg_to_temp{
+std::array<::temp::temp, 16> reg_temp{
 	make_unique("rax").get(), make_unique("rbx").get(),
 	make_unique("rcx").get(), make_unique("rdx").get(),
 	make_unique("rsi").get(), make_unique("rdi").get(),
@@ -34,13 +15,52 @@ std::array<::temp::temp, 16> reg_to_temp{
 	make_unique("r14").get(), make_unique("r15").get(),
 };
 
-std::array<std::string, 16> reg_to_str{
+std::array<std::string, 16> reg_str{
 	"%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi", "%rsp", "%rbp",
 	"%r8",	"%r9",	"%r10", "%r11", "%r12", "%r13", "%r14", "%r15"};
 
-const ::temp::temp &fp() { return reg_to_temp[regs::RBP]; }
+::temp::temp reg_to_temp(regs r) { return reg_temp[r]; }
 
-const ::temp::temp &rv() { return reg_to_temp[regs::RAX]; }
+::temp::temp reg_to_str(regs r) { return reg_str[r]; }
+
+::temp::temp fp() { return reg_temp[regs::RBP]; }
+
+::temp::temp rv() { return reg_temp[regs::RAX]; }
+
+std::vector<::temp::temp> caller_saved_regs()
+{
+	return {
+		reg_to_temp(regs::RAX),
+		reg_to_temp(regs::R11),
+	};
+}
+
+std::vector<::temp::temp> callee_saved_regs()
+{
+	return {
+		reg_to_temp(regs::RBX), reg_to_temp(regs::R12),
+		reg_to_temp(regs::R13), reg_to_temp(regs::R14),
+		reg_to_temp(regs::R15),
+	};
+}
+
+std::vector<::temp::temp> args_regs()
+{
+	return {
+		reg_to_temp(regs::RDI), reg_to_temp(regs::RSI),
+		reg_to_temp(regs::RDX), reg_to_temp(regs::RCX),
+		reg_to_temp(regs::R8),	reg_to_temp(regs::R9),
+		reg_to_temp(regs::R10),
+	};
+}
+
+std::vector<::temp::temp> special_regs()
+{
+	return {
+		reg_to_temp(regs::RBP),
+		reg_to_temp(regs::RSP),
+	};
+}
 
 std::ostream &operator<<(std::ostream &os, const access &a)
 {
@@ -111,4 +131,14 @@ ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, ::temp::label ret_lbl)
 	// Placeholder for the epilogue
 	return new ir::tree::seq({s, new ir::tree::label(ret_lbl)});
 }
-} // namespace frame
+
+void frame::proc_entry_exit_2(std::vector<assem::instr> &instrs)
+{
+	instrs.push_back(assem::oper("", {}, special_regs(), {}));
+}
+
+void frame::proc_entry_exit_3(std::vector<assem::instr> &instrs)
+{
+	(void)instrs;
+}
+} // namespace mach

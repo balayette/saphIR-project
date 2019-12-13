@@ -32,7 +32,7 @@ struct dec : public stmt {
 	types::ty type_;
 	symbol name_;
 	bool escapes_;
-	utils::ref<frame::access> access_;
+	utils::ref<mach::access> access_;
 };
 
 struct vardec : public dec {
@@ -84,7 +84,7 @@ struct fundec : public stmt {
 	symbol name_;
 	std::vector<argdec *> args_;
 	std::vector<stmt *> body_;
-	frame::frame *frame_;
+	mach::frame *frame_;
 	bool has_return_;
 };
 

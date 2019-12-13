@@ -24,11 +24,10 @@ struct generator : public default_ir_visitor {
 	void emit(const assem::instr &i);
 
 	void visit_cnst(tree::cnst &) override;
-	// void visit_name(tree::name &) override;
 	void visit_temp(tree::temp &) override;
 	void visit_binop(tree::binop &) override;
 	void visit_mem(tree::mem &) override;
-	// void visit_call(tree::call &n) override;
+	void visit_call(tree::call &n) override;
 	void visit_move(tree::move &) override;
 	// void visit_sexp(tree::sexp &n) override;
 	void visit_jump(tree::jump &) override;
@@ -39,7 +38,7 @@ struct generator : public default_ir_visitor {
 	::temp::temp ret_;
 };
 
-std::vector<assem::instr> codegen(frame::frame &f, tree::rnodevec instrs)
+std::vector<assem::instr> codegen(mach::frame &f, tree::rnodevec instrs)
 {
 	generator g;
 	(void)f;
@@ -55,6 +54,38 @@ std::vector<assem::instr> codegen(frame::frame &f, tree::rnodevec instrs)
 
 	return g.instrs_;
 }
+
+void generator::visit_call(tree::call &c)
+{
+	auto name = c.name().as<tree::name>()->label_;
+	unsigned i = 0;
+	std::vector<::temp::temp> src;
+        // XXX: More than 7 args
+        auto cc = args_regs();
+	for (auto arg : c.args()) {
+		arg->accept(*this);
+		auto arglbl = ret_;
+		auto dest = cc[i];
+		src.push_back(arglbl);
+
+		std::string repr("mov `s0, ");
+		repr += dest.sym_.get();
+
+		emit(assem::move(repr, {dest}, {arglbl}));
+		i++;
+	}
+
+	std::string repr("call ");
+	repr += name.sym_.get();
+
+	emit(assem::oper(repr, caller_saved_regs(), src, {}));
+        ::temp::temp ret;
+	emit(assem::move("mov `s0, `d0", {ret}, {reg_to_temp(regs::RAX)}));
+
+        // XXX: The last move is not necessary if (sexp (call))
+        ret_ = ret;
+}
+
 void generator::visit_cjump(tree::cjump &cj)
 {
 	cj.lhs()->accept(*this);
@@ -171,11 +202,13 @@ void generator::visit_binop(tree::binop &b)
 
 void generator::emit(const assem::instr &ins)
 {
+        /*
 	unsigned width = 30;
 	std::cout << ins.repr_;
 	for (unsigned i = 0; i < width - ins.repr_.size(); i++)
 		std::cout << ' ';
 	std::cout << ins.to_string() << '\n';
+        */
 
 	instrs_.push_back(ins);
 }

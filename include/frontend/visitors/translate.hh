@@ -83,7 +83,7 @@ class translate_visitor : public default_visitor
 	utils::ref<exp> ret_;
 	utils::scoped_var<::temp::label> ret_lbl_;
 	std::unordered_map<::temp::label, str_lit> str_lits_;
-	std::vector<frame::fun_fragment> funs_;
+	std::vector<mach::fun_fragment> funs_;
 };
 
 } // namespace frontend::translate

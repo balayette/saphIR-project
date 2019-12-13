@@ -248,7 +248,7 @@ void frame_visitor::visit_fundec(fundec &s)
 	for (auto *arg : s.args_)
 		escaping.push_back(arg->escapes_);
 
-	cframe_ = new frame::frame(unique_label(s.name_.get()), escaping);
+	cframe_ = new mach::frame(unique_label(s.name_.get()), escaping);
 	for (unsigned i = 0; i < s.args_.size(); i++)
 		s.args_[i]->access_ = cframe_->formals_[i];
 
