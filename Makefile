@@ -38,6 +38,7 @@ OBJ = \
       src/ir/visitors/ir-pretty-printer.o \
       src/ass/instr.o \
       src/mach/codegen.o \
+      src/backend/cfg.o \
       src/frontend/ops.o \
 
 DEP = $(OBJ:.o=.d)

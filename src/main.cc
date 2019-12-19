@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include "driver/driver.hh"
 #include "frontend/visitors/pretty-printer.hh"
 #include "frontend/visitors/transforms.hh"
@@ -8,6 +9,7 @@
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
+#include "backend/cfg.hh"
 #include "mach/codegen.hh"
 
 int usage(char *pname)
@@ -74,22 +76,20 @@ int main(int argc, char *argv[])
 
 		std::cout << "Traces:\n";
 		auto traces = ir::create_traces(bbs);
-		ir::optimize_traces(traces);
-		for (auto trace : traces) {
-			std::cout << "-------------------------\n";
-			for (auto s : trace.instrs_)
-				s->accept(pir);
-		}
+		auto trace = ir::optimize_traces(traces);
+		std::cout << "-------------------------\n";
+		for (auto s : trace)
+			s->accept(pir);
 
-                std::cout << "==========\n";
-                for (auto trace: traces) {
-                        auto instrs = mach::codegen(frag.frame_, trace.instrs_);
-                        frag.frame_.proc_entry_exit_2(instrs);
-                        frag.frame_.proc_entry_exit_3(instrs);
+		std::cout << "==========\n";
+		auto instrs = mach::codegen(frag.frame_, trace);
+		frag.frame_.proc_entry_exit_2(instrs);
+		frag.frame_.proc_entry_exit_3(instrs);
 
-                        for (auto ins: instrs)
-                                std::cout << ins.to_string() << '\n';
-                }
+		backend::cfg cfg(instrs, pro);
+		std::ofstream out(std::string("cfg") + frag.frame_.s_.get()
+				  + std::string(".dot"));
+		cfg.cfg_.dump_dot(out);
 	}
 
 	delete drv.prog_;
