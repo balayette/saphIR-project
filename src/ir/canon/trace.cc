@@ -82,22 +82,30 @@ void optimize_trace(tree::rnodevec &instrs)
 			}
 		}
 
-		if (auto j = instrs[i].as<tree::jump>()) {
-			if (i + 1 == instrs.size())
+                if (auto j = instrs[i].as<tree::jump>()) {
+			if (i + 1 == instrs.size()
+			    || j->avlbl_dests_.size() > 1)
 				continue;
 
 			// If we're followed by our label, remove the jump.
-			// We're always followed by our label if we're not the
-			// last in the trace.
-			std::cout << "Remove useless jump\n";
-			instrs.erase(instrs.begin() + i);
+			if (auto lb = instrs[i + 1].as<tree::label>()) {
+				if (lb->name_ == j->avlbl_dests_[0]) {
+					instrs.erase(instrs.begin() + i);
+					std::cout << "Remove useless jump\n";
+				}
+			}
 		}
 	}
 }
 
-void optimize_traces(std::vector<trace> &traces)
+tree::rnodevec optimize_traces(std::vector<trace> &traces)
 {
+	tree::rnodevec ret;
 	for (auto &t : traces)
-		optimize_trace(t.instrs_);
+		ret.insert(ret.end(), t.instrs_.begin(), t.instrs_.end());
+
+	optimize_trace(ret);
+
+	return ret;
 }
 } // namespace ir

@@ -11,5 +11,5 @@ struct trace {
 };
 
 std::vector<trace> create_traces(std::unordered_map<::temp::label, bb> bbs);
-void optimize_traces(std::vector<trace> &traces);
+tree::rnodevec optimize_traces(std::vector<trace> &traces);
 } // namespace ir
