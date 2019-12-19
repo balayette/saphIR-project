@@ -26,6 +26,11 @@ std::string format_repr(std::string repr, std::vector<::temp::temp> src,
 	return ret;
 }
 
+std::ostream &operator<<(std::ostream &os, const instr &ins)
+{
+	return os << ins.repr_;
+}
+
 instr::instr(const std::string &repr, std::vector<::temp::temp> dst,
 	     std::vector<::temp::temp> src, std::vector<::temp::label> jmps)
     : repr_(repr), dst_(dst), src_(src), jmps_(jmps)

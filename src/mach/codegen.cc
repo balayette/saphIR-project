@@ -2,12 +2,19 @@
 #include "ir/visitors/default-ir-visitor.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
 
+#include <sstream>
+
 using namespace ir;
 
 /*
  * The generator heavily relies on the register allocator to remove redundant
  * moves, and makes little effort to limit the temporary use.
  */
+
+#define EMIT(x)                                                                \
+	do {                                                                   \
+		emit(new x);                                                   \
+	} while (0)
 
 namespace mach
 {
@@ -21,7 +28,7 @@ std::string label_to_asm(const ::temp::label &lbl)
 }
 
 struct generator : public default_ir_visitor {
-	void emit(const assem::instr &i);
+	void emit(assem::rinstr i);
 
 	void visit_cnst(tree::cnst &) override;
 	void visit_temp(tree::temp &) override;
@@ -34,11 +41,11 @@ struct generator : public default_ir_visitor {
 	void visit_cjump(tree::cjump &) override;
 	void visit_label(tree::label &) override;
 
-	std::vector<assem::instr> instrs_;
+	std::vector<assem::rinstr> instrs_;
 	::temp::temp ret_;
 };
 
-std::vector<assem::instr> codegen(mach::frame &f, tree::rnodevec instrs)
+std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
 {
 	generator g;
 	(void)f;
@@ -61,10 +68,10 @@ void generator::visit_name(tree::name &n)
 	repr += label_to_asm(n.label_);
 	repr += ", `d0";
 
-        ::temp::temp ret;
-	emit(assem::move(repr, {ret}, {}));
+	::temp::temp ret;
+	EMIT(assem::move(repr, {ret}, {}));
 
-        ret_ = ret;
+	ret_ = ret;
 }
 
 void generator::visit_call(tree::call &c)
@@ -83,16 +90,16 @@ void generator::visit_call(tree::call &c)
 		std::string repr("mov `s0, ");
 		repr += dest.sym_.get();
 
-		emit(assem::move(repr, {dest}, {arglbl}));
+		EMIT(assem::move(repr, {dest}, {arglbl}));
 		i++;
 	}
 
 	std::string repr("call ");
 	repr += name.sym_.get();
 
-	emit(assem::oper(repr, caller_saved_regs(), src, {}));
+	EMIT(assem::oper(repr, caller_saved_regs(), src, {}));
 	::temp::temp ret;
-	emit(assem::move("mov `s0, `d0", {ret}, {reg_to_temp(regs::RAX)}));
+	EMIT(assem::move("mov `s0, `d0", {ret}, {reg_to_temp(regs::RAX)}));
 
 	// XXX: The last move is not necessary if (sexp (call))
 	ret_ = ret;
@@ -105,7 +112,7 @@ void generator::visit_cjump(tree::cjump &cj)
 	cj.rhs()->accept(*this);
 	auto rhs = ret_;
 
-	emit(assem::oper("cmp `s0, `s1", {}, {lhs, rhs}, {}));
+	EMIT(assem::oper("cmp `s0, `s1", {}, {lhs, rhs}, {}));
 	std::string repr;
 	if (cj.op_ == ops::cmpop::EQ) {
 		repr += "jeq ";
@@ -117,12 +124,12 @@ void generator::visit_cjump(tree::cjump &cj)
 	} else
 		repr += "INVALID JUMP";
 
-	emit(assem::instr(repr, {}, {}, {cj.ltrue_, cj.lfalse_}));
+	EMIT(assem::oper(repr, {}, {}, {cj.ltrue_, cj.lfalse_}));
 }
 
 void generator::visit_label(tree::label &l)
 {
-	emit(assem::label(label_to_asm(l.name_) + std::string(":"), l.name_));
+	EMIT(assem::label(label_to_asm(l.name_) + std::string(":"), l.name_));
 }
 
 void generator::visit_jump(tree::jump &j)
@@ -131,9 +138,9 @@ void generator::visit_jump(tree::jump &j)
 		std::string repr("jmp ");
 		repr += label_to_asm(dest->label_);
 
-		emit(assem::oper(repr, {}, {}, {dest->label_}));
+		EMIT(assem::oper(repr, {}, {}, {dest->label_}));
 	} else
-		emit(assem::oper("BADJUMP", {}, {}, {}));
+		EMIT(assem::oper("BADJUMP", {}, {}, {}));
 }
 
 void generator::visit_move(tree::move &mv)
@@ -148,8 +155,8 @@ void generator::visit_move(tree::move &mv)
 			rmem->e()->accept(*this);
 			auto rhs = ret_;
 
-			emit(assem::move("mov (`s0), `d0", {rhs}, {rhs}));
-			emit(assem::move("mov `s0, (`d0)", {lhs}, {rhs}));
+			EMIT(assem::move("mov (`s0), `d0", {rhs}, {rhs}));
+			EMIT(assem::move("mov `s0, (`d0)", {lhs}, {rhs}));
 			return;
 		}
 
@@ -160,7 +167,7 @@ void generator::visit_move(tree::move &mv)
 		mv.rhs()->accept(*this);
 		auto rhs = ret_;
 
-		emit(assem::move("mov `s0, `(d0)", {lhs}, {rhs}));
+		EMIT(assem::move("mov `s0, `(d0)", {lhs}, {rhs}));
 		return;
 	}
 
@@ -169,14 +176,14 @@ void generator::visit_move(tree::move &mv)
 	mv.rhs()->accept(*this);
 	auto rhs = ret_;
 
-	emit(assem::move("mov `s0, `d0", {lhs}, {rhs}));
+	EMIT(assem::move("mov `s0, `d0", {lhs}, {rhs}));
 }
 
 void generator::visit_mem(tree::mem &mm)
 {
 	mm.e()->accept(*this);
 	::temp::temp dst;
-	emit(assem::move("mov (`s0), `d0", {dst}, {ret_}));
+	EMIT(assem::move("mov (`s0), `d0", {dst}, {ret_}));
 	ret_ = dst;
 }
 
@@ -187,7 +194,7 @@ void generator::visit_cnst(tree::cnst &c)
 	instr += std::to_string(c.value_);
 	instr += ", `d0";
 
-	emit(assem::oper(instr, {dst}, {}, {}));
+	EMIT(assem::move(instr, {dst}, {}));
 
 	ret_ = dst;
 }
@@ -203,24 +210,34 @@ void generator::visit_binop(tree::binop &b)
 
 	::temp::temp dst;
 
-	emit(assem::move("mov `s0, `d0", {dst}, {rhs}));
+	EMIT(assem::move("mov `s0, `d0", {dst}, {rhs}));
 	if (b.op_ == ops::binop::PLUS)
-		emit(assem::oper("add `s0, `d0", {dst}, {lhs}, {}));
+		EMIT(assem::oper("add `s0, `d0", {dst}, {lhs}, {}));
 	else if (b.op_ == ops::binop::MINUS)
-		emit(assem::oper("sub `s0, `d0", {dst}, {lhs}, {}));
+		EMIT(assem::oper("sub `s0, `d0", {dst}, {lhs}, {}));
 
 	ret_ = dst;
 }
 
-void generator::emit(const assem::instr &ins)
+void generator::emit(assem::rinstr ins)
 {
-	/*
-	unsigned width = 30;
-	std::cout << ins.repr_;
-	for (unsigned i = 0; i < width - ins.repr_.size(); i++)
-		std::cout << ' ';
-	std::cout << ins.to_string() << '\n';
-	*/
+	unsigned width = 50;
+	std::stringstream str;
+	str << ins->repr_;
+
+	while (str.str().size() <= width / 2)
+		str << " ";
+	if (ins->jmps_.size() > 0)
+		str << " # Jumps:";
+	for (auto lb : ins->jmps_)
+		str << " " << lb;
+
+	while (str.str().size() < width)
+		str << " ";
+	str << "| ";
+	str << ins->to_string() << '\n';
+
+	std::cout << str.str();
 
 	instrs_.push_back(ins);
 }

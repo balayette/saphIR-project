@@ -7,5 +7,5 @@
 
 namespace mach
 {
-std::vector<assem::instr> codegen(mach::frame &f, ir::tree::rnodevec instrs);
+std::vector<assem::rinstr> codegen(mach::frame &f, ir::tree::rnodevec instrs);
 } // namespace mach

@@ -2,6 +2,8 @@
 
 #include <string>
 #include <vector>
+#include <ostream>
+#include "utils/ref.hh"
 #include "utils/temp.hh"
 
 namespace assem
@@ -11,7 +13,6 @@ struct instr {
 	      std::vector<::temp::temp> src, std::vector<::temp::label> jmps);
 
 	virtual ~instr() = default;
-
 	virtual std::string to_string() const;
 
 	std::string repr_;
@@ -19,6 +20,10 @@ struct instr {
 	std::vector<::temp::temp> src_;
 	std::vector<::temp::label> jmps_;
 };
+
+std::ostream& operator<<(std::ostream& os, const instr& ins);
+
+using rinstr = utils::ref<instr>;
 
 struct oper : public instr {
 	oper(const std::string &repr, std::vector<::temp::temp> dst,

@@ -132,12 +132,12 @@ ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, ::temp::label ret_lbl)
 	return new ir::tree::seq({s, new ir::tree::label(ret_lbl)});
 }
 
-void frame::proc_entry_exit_2(std::vector<assem::instr> &instrs)
+void frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 {
-	instrs.push_back(assem::oper("", {}, special_regs(), {}));
+	instrs.push_back(new assem::oper("", {}, special_regs(), {}));
 }
 
-void frame::proc_entry_exit_3(std::vector<assem::instr> &instrs)
+void frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs)
 {
 	(void)instrs;
 }

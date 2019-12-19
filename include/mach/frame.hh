@@ -93,8 +93,8 @@ struct frame {
 	ir::tree::rstm proc_entry_exit_1(ir::tree::rstm s,
 					 ::temp::label ret_lbl);
 
-	void proc_entry_exit_2(std::vector<assem::instr> &instrs);
-	void proc_entry_exit_3(std::vector<assem::instr> &instrs);
+	void proc_entry_exit_2(std::vector<assem::rinstr> &instrs);
+	void proc_entry_exit_3(std::vector<assem::rinstr> &instrs);
 	const symbol s_;
 	std::vector<utils::ref<access>> formals_;
 	int escaping_count_;
