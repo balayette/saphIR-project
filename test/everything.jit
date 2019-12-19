@@ -11,6 +11,9 @@ fun main(int argc, int argv) int {
         print(argv);
 
         for (int i = 0; i != 10; i = i + 1)
+                for (int lol = 0; lol == 10; lol = lol * 2)
+                        print(lol);
+                rof
                 print_ptr(&i);
                 if (&i == &argc)
                         print(42);
