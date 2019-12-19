@@ -5,17 +5,17 @@
 
 namespace ir
 {
-::temp::label done_lbl();
+utils::label done_lbl();
 
 struct bb {
 	bb(tree::rnodevec::iterator begin, tree::rnodevec::iterator end);
 
-	std::vector<::temp::label> successors();
-	::temp::label entry();
+	std::vector<utils::label> successors();
+	utils::label entry();
 
 	tree::rnodevec instrs_;
 };
 
-std::unordered_map<::temp::label, bb> create_bbs(tree::rnode stm,
-						 ::temp::label &prologue);
+std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
+						 utils::label &prologue);
 } // namespace ir

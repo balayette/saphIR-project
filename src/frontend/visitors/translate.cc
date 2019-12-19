@@ -2,6 +2,7 @@
 #include "utils/temp.hh"
 #include "frontend/ops.hh"
 #include <iostream>
+#include "utils/assert.hh"
 #include "frontend/exp.hh"
 #include "ir/ir.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
@@ -25,10 +26,10 @@ cx::cx(ops::cmpop op, tree::rexp l, tree::rexp r) : op_(op), l_(l), r_(r)
 
 tree::rexp cx::un_ex()
 {
-	auto ret = temp::temp();
-	auto t_lbl = temp::label();
-	auto f_lbl = temp::label();
-	auto e_lbl = temp::label();
+	utils::temp ret;
+	auto t_lbl = utils::label();
+	auto f_lbl = utils::label();
+	auto e_lbl = utils::label();
 
 	auto *lt = new tree::label(t_lbl);
 	auto *lf = new tree::label(f_lbl);
@@ -52,7 +53,7 @@ tree::rstm cx::un_nx()
 	return new tree::seq({new tree::sexp(l_), new tree::sexp(r_)});
 }
 
-tree::rstm cx::un_cx(const temp::label &t, const temp::label &f)
+tree::rstm cx::un_cx(const utils::label &t, const utils::label &f)
 {
 	return new tree::cjump(op_, l_, r_, t, f);
 }
@@ -70,7 +71,7 @@ tree::rexp ex::un_ex() { return e_; }
 
 tree::rstm ex::un_nx() { return new tree::sexp(e_); }
 
-tree::rstm ex::un_cx(const temp::label &t, const temp::label &f)
+tree::rstm ex::un_cx(const utils::label &t, const utils::label &f)
 {
 	return new tree::cjump(ops::cmpop::NEQ, e_, new tree::cnst(0), t, f);
 }
@@ -84,18 +85,13 @@ nx::nx(ir::tree::rstm s) : s_(s)
 #endif
 }
 
-tree::rexp nx::un_ex()
-{
-	std::cerr << "Can't un_ex an nx\n";
-	std::exit(5);
-}
+tree::rexp nx::un_ex() { ASSERT(false, "Can't un_ex an nx"); }
 
 tree::rstm nx::un_nx() { return s_; }
 
-tree::rstm nx::un_cx(const temp::label &, const temp::label &)
+tree::rstm nx::un_cx(const utils::label &, const utils::label &)
 {
-	std::cerr << "Can't un_cx an nx\n";
-	std::exit(5);
+	ASSERT(false, "Can't un_cx an nx");
 }
 
 void translate_visitor::visit_ref(ref &e)
@@ -159,9 +155,9 @@ void translate_visitor::visit_forstmt(forstmt &s)
 	}
 	auto body = new ir::tree::seq(stms);
 
-	::temp::label cond_lbl;
-	::temp::label body_lbl;
-	::temp::label end_lbl;
+	utils::label cond_lbl;
+	utils::label body_lbl;
+	utils::label end_lbl;
 
 	/*
 	 * for (int a = 0; a != 10; a = a + 1)
@@ -209,9 +205,9 @@ void translate_visitor::visit_ifstmt(ifstmt &s)
 	}
 	auto ebody = new ir::tree::seq(estms);
 
-	::temp::label i_lbl;
-	::temp::label e_lbl;
-	::temp::label end_lbl;
+	utils::label i_lbl;
+	utils::label e_lbl;
+	utils::label end_lbl;
 
 	/*
 	 * if (a == 2)
@@ -276,7 +272,7 @@ void translate_visitor::visit_ret(ret &s)
 
 void translate_visitor::visit_str_lit(str_lit &e)
 {
-	::temp::label lab;
+	utils::label lab;
 
 	ret_ = new ex(new ir::tree::name(lab));
 
@@ -285,7 +281,7 @@ void translate_visitor::visit_str_lit(str_lit &e)
 
 void translate_visitor::visit_fundec(fundec &s)
 {
-	ret_lbl_.enter(::temp::label());
+	ret_lbl_.enter(utils::label());
 
 	std::vector<ir::tree::rstm> stms;
 	for (auto *stm : s.body_) {

@@ -4,7 +4,7 @@
 #include <string>
 #include "utils/symbol.hh"
 
-namespace temp
+namespace utils
 {
 struct base_temp {
       protected:
@@ -12,6 +12,7 @@ struct base_temp {
 
       public:
 	base_temp() = delete;
+	const std::string &get() const { return sym_.get(); }
 	bool operator==(const base_temp &rhs) const { return sym_ == rhs.sym_; }
 	bool operator!=(const base_temp &rhs) const
 	{
@@ -35,12 +36,12 @@ inline std::ostream &operator<<(std::ostream &os, const base_temp &t)
 	return os << t.sym_;
 }
 
-} // namespace temp
+} // namespace utils
 
 namespace std
 {
-template <> struct hash<temp::label> {
-	std::size_t operator()(const temp::label &s) const
+template <> struct hash<utils::label> {
+	std::size_t operator()(const utils::label &s) const
 	{
 		return std::hash<std::string>{}(s.sym_.get());
 	}

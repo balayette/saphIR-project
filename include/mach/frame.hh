@@ -45,18 +45,18 @@ enum regs {
 	R15
 };
 
-::temp::temp reg_to_temp(regs r);
+utils::temp reg_to_temp(regs r);
 
-::temp::temp reg_to_str(regs r);
+utils::temp reg_to_str(regs r);
 
-::temp::temp fp();
+utils::temp fp();
 
-::temp::temp rv();
+utils::temp rv();
 
-std::vector<::temp::temp> caller_saved_regs();
-std::vector<::temp::temp> callee_saved_regs();
-std::vector<::temp::temp> args_regs();
-std::vector<::temp::temp> special_regs();
+std::vector<utils::temp> caller_saved_regs();
+std::vector<utils::temp> callee_saved_regs();
+std::vector<utils::temp> args_regs();
+std::vector<utils::temp> special_regs();
 
 struct access {
 	access() = default;
@@ -66,13 +66,13 @@ struct access {
 };
 
 struct in_reg : public access {
-	in_reg(::temp::temp reg);
+	in_reg(utils::temp reg);
 
 	ir::tree::rexp exp() const override;
 
 	std::ostream &print(std::ostream &os) const override;
 
-	::temp::temp reg_;
+	utils::temp reg_;
 };
 
 struct in_frame : public access {
@@ -91,7 +91,7 @@ struct frame {
 	utils::ref<access> alloc_local(bool escapes);
 
 	ir::tree::rstm proc_entry_exit_1(ir::tree::rstm s,
-					 ::temp::label ret_lbl);
+					 utils::label ret_lbl);
 
 	void proc_entry_exit_2(std::vector<assem::rinstr> &instrs);
 	void proc_entry_exit_3(std::vector<assem::rinstr> &instrs);
@@ -99,7 +99,7 @@ struct frame {
 	std::vector<utils::ref<access>> formals_;
 	int escaping_count_;
 	size_t reg_count_;
-	::temp::label body_begin_;
+	utils::label body_begin_;
 };
 
 struct fragment {
@@ -108,23 +108,23 @@ struct fragment {
 };
 
 struct str_fragment : public fragment {
-	str_fragment(::temp::label lab, const std::string &s) : lab_(lab), s_(s)
+	str_fragment(utils::label lab, const std::string &s) : lab_(lab), s_(s)
 	{
 	}
 
-	::temp::label lab_;
+	utils::label lab_;
 	std::string s_;
 };
 
 struct fun_fragment : public fragment {
-	fun_fragment(ir::tree::rstm body, frame &frame, ::temp::label ret_lbl)
+	fun_fragment(ir::tree::rstm body, frame &frame, utils::label ret_lbl)
 	    : body_(body), frame_(frame), ret_lbl_(ret_lbl)
 	{
 	}
 
 	ir::tree::rstm body_;
 	frame frame_;
-	::temp::label ret_lbl_;
+	utils::label ret_lbl_;
 };
 
 std::ostream &operator<<(std::ostream &os, const access &a);

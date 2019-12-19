@@ -7,6 +7,7 @@
 
 #include "driver/driver.hh"
 #include "frontend/parser/parser.hh"
+#include "utils/assert.hh"
 %}
 
 %option noyywrap nounput noinput batch debug
@@ -61,7 +62,7 @@ strlit \"[^"]*\"
 
 . 		{
 	std::cerr << "invalid character: " << yytext << '\n';
-	std::exit(2);
+        COMPILATION_ERROR(utils::cfail::LEXING);
 }
 
 <<EOF>> 	return TOKEN(EOF);

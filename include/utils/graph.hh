@@ -15,13 +15,15 @@ template <typename T> struct gnode {
 	std::vector<unsigned> succ_;
 };
 
+using node_id = size_t;
+
 template <typename T> class graph
 {
       public:
-	unsigned add_node(T value);
-	void add_edge(unsigned n1, unsigned n2);
-	T *get(unsigned idx);
-        void dump_dot(std::ostream& os);
+	node_id add_node(T value);
+	void add_edge(node_id n1, node_id n2);
+	T *get(node_id idx);
+	void dump_dot(std::ostream &os);
 
       private:
 	std::vector<gnode<T>> nodes_;

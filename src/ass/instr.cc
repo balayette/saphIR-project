@@ -2,8 +2,8 @@
 
 namespace assem
 {
-std::string format_repr(std::string repr, std::vector<::temp::temp> src,
-			std::vector<::temp::temp> dst)
+std::string format_repr(std::string repr, std::vector<utils::temp> src,
+			std::vector<utils::temp> dst)
 {
 	std::string ret;
 
@@ -18,9 +18,9 @@ std::string format_repr(std::string repr, std::vector<::temp::temp> src,
 		c = repr[++i];
 		int idx = c - '0';
 		if (source)
-			ret += src[idx].sym_.get();
+			ret += src[idx].get();
 		else
-			ret += dst[idx].sym_.get();
+			ret += dst[idx].get();
 	}
 
 	return ret;
@@ -31,27 +31,27 @@ std::ostream &operator<<(std::ostream &os, const instr &ins)
 	return os << ins.repr_;
 }
 
-instr::instr(const std::string &repr, std::vector<::temp::temp> dst,
-	     std::vector<::temp::temp> src, std::vector<::temp::label> jmps)
+instr::instr(const std::string &repr, std::vector<utils::temp> dst,
+	     std::vector<utils::temp> src, std::vector<utils::label> jmps)
     : repr_(repr), dst_(dst), src_(src), jmps_(jmps)
 {
 }
 
 std::string instr::to_string() const { return format_repr(repr_, src_, dst_); }
 
-oper::oper(const std::string &repr, std::vector<::temp::temp> dst,
-	   std::vector<::temp::temp> src, std::vector<::temp::label> jmps)
+oper::oper(const std::string &repr, std::vector<utils::temp> dst,
+	   std::vector<utils::temp> src, std::vector<utils::label> jmps)
     : instr(repr, dst, src, jmps)
 {
 }
 
-label::label(const std::string &repr, ::temp::label lab)
+label::label(const std::string &repr, utils::label lab)
     : instr(repr, {}, {}, {}), lab_(lab)
 {
 }
 
-move::move(const std::string &repr, std::vector<::temp::temp> dst,
-	   std::vector<::temp::temp> src)
+move::move(const std::string &repr, std::vector<utils::temp> dst,
+	   std::vector<utils::temp> src)
     : instr(repr, dst, src, {})
 {
 }

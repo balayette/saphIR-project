@@ -1,5 +1,6 @@
 #include "ir/canon/bb.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
+#include "utils/assert.hh"
 
 namespace ir
 {
@@ -8,7 +9,7 @@ bb::bb(tree::rnodevec::iterator begin, tree::rnodevec::iterator end)
 {
 }
 
-std::vector<::temp::label> bb::successors()
+std::vector<utils::label> bb::successors()
 {
 	if (auto cjump = instrs_.back().as<tree::cjump>())
 		return {cjump->ltrue_, cjump->lfalse_};
@@ -18,11 +19,12 @@ std::vector<::temp::label> bb::successors()
 	return {};
 }
 
-::temp::label bb::entry()
+utils::label bb::entry()
 {
-	if (auto lbl = instrs_.front().as<tree::label>())
-		return lbl->name_;
-	std::exit(11);
+	auto lbl = instrs_.front().as<tree::label>();
+	ASSERT(lbl != nullptr,
+	       "First instruction of a basic block not a label.");
+	return lbl->name_;
 }
 
 bool is_jump(tree::tree_kind k)
@@ -30,8 +32,8 @@ bool is_jump(tree::tree_kind k)
 	return k == tree::tree_kind::cjump || k == tree::tree_kind::jump;
 }
 
-std::unordered_map<::temp::label, bb> create_bbs(tree::rnode stm,
-						 ::temp::label &prologue)
+std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
+						utils::label &prologue)
 {
 	// stm is a seq, and is the only seq/eseq in the program.
 	auto seq = stm.as<tree::seq>();
@@ -63,7 +65,7 @@ std::unordered_map<::temp::label, bb> create_bbs(tree::rnode stm,
 				prologue =
 					stmts.front().as<tree::label>()->name_;
 			else {
-				prologue = ::temp::label();
+				prologue = utils::label();
 				stmts.insert(stmts.begin(),
 					     new tree::label(prologue));
 			}
@@ -114,7 +116,7 @@ std::unordered_map<::temp::label, bb> create_bbs(tree::rnode stm,
 		basic_blocks.push_back(block);
 	}
 
-	std::unordered_map<::temp::label, bb> ret;
+	std::unordered_map<utils::label, bb> ret;
 	for (auto block : basic_blocks) {
 		std::cout << "Block " << block.entry() << " ->";
 		for (auto s : block.successors())
@@ -126,9 +128,9 @@ std::unordered_map<::temp::label, bb> create_bbs(tree::rnode stm,
 	return ret;
 }
 
-::temp::label done_lbl()
+utils::label done_lbl()
 {
-	static ::temp::label done(unique_label("done").get());
+	static utils::label done(unique_label("done").get());
 
 	return done;
 }

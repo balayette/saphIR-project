@@ -3,7 +3,7 @@
 
 namespace backend
 {
-cfgnode::cfgnode(std::vector<::temp::temp> def, std::vector<::temp::temp> use,
+cfgnode::cfgnode(std::vector<utils::temp> def, std::vector<utils::temp> use,
 		 bool is_move)
     : def(def), use(use), is_move(is_move)
 {
@@ -25,7 +25,7 @@ std::ostream &operator<<(std::ostream &os, const cfgnode &node)
 	return os << "]";
 }
 
-cfg::cfg(std::vector<assem::rinstr> instrs, ::temp::label prologue)
+cfg::cfg(std::vector<assem::rinstr> instrs, utils::label prologue)
     : instrs_(instrs)
 {
 	for (unsigned i = 0; i < instrs_.size(); i++) {
@@ -36,7 +36,7 @@ cfg::cfg(std::vector<assem::rinstr> instrs, ::temp::label prologue)
 	build(label_to_node_[prologue], std::nullopt);
 }
 
-void cfg::build(unsigned idx, std::optional<unsigned> pred)
+void cfg::build(unsigned idx, std::optional<utils::node_id> pred)
 {
 	if (visited_.count(idx)) {
 		if (pred != std::nullopt)
@@ -50,7 +50,7 @@ void cfg::build(unsigned idx, std::optional<unsigned> pred)
 
 	cfgnode nn(def, use, is_move);
 	nn.debug = instrs_[idx]->to_string();
-	unsigned n = cfg_.add_node(nn);
+	utils::node_id n = cfg_.add_node(nn);
 	visited_.insert({idx, n});
 
 	if (pred != std::nullopt)

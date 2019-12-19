@@ -10,6 +10,6 @@ struct trace {
 	tree::rnodevec instrs_;
 };
 
-std::vector<trace> create_traces(std::unordered_map<::temp::label, bb> bbs);
+std::vector<trace> create_traces(std::unordered_map<utils::label, bb> bbs);
 tree::rnodevec optimize_traces(std::vector<trace> &traces);
 } // namespace ir

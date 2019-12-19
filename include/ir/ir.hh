@@ -71,17 +71,17 @@ struct cnst : public exp {
 };
 
 struct name : public exp {
-	name(const ::temp::label &label) : label_(label) {}
+	name(const utils::label &label) : label_(label) {}
 	TREE_KIND(name)
 
-	::temp::label label_;
+	utils::label label_;
 };
 
 struct temp : public exp {
-	temp(const ::temp::temp &temp) : temp_(temp) {}
+	temp(const utils::temp &temp) : temp_(temp) {}
 	TREE_KIND(temp)
 
-	::temp::temp temp_;
+	utils::temp temp_;
 };
 
 struct binop : public exp {
@@ -149,7 +149,7 @@ struct sexp : public stm {
 };
 
 struct jump : public stm {
-	jump(rexp dest, const std::vector<::temp::label> &avlbl_dests)
+	jump(rexp dest, const std::vector<utils::label> &avlbl_dests)
 	    : avlbl_dests_(avlbl_dests)
 	{
 		children_ = {dest};
@@ -157,12 +157,12 @@ struct jump : public stm {
 	TREE_KIND(jump)
 	rexp dest() { return children_[0].as<exp>(); }
 
-	std::vector<::temp::label> avlbl_dests_;
+	std::vector<utils::label> avlbl_dests_;
 };
 
 struct cjump : public stm {
-	cjump(ops::cmpop op, rexp lhs, rexp rhs, const ::temp::label &ltrue,
-	      const ::temp::label &lfalse)
+	cjump(ops::cmpop op, rexp lhs, rexp rhs, const utils::label &ltrue,
+	      const utils::label &lfalse)
 	    : op_(op), ltrue_(ltrue), lfalse_(lfalse)
 	{
 		children_ = {lhs, rhs};
@@ -172,8 +172,8 @@ struct cjump : public stm {
 	rexp rhs() { return children_[1].as<exp>(); }
 
 	ops::cmpop op_;
-	::temp::label ltrue_;
-	::temp::label lfalse_;
+	utils::label ltrue_;
+	utils::label lfalse_;
 };
 
 struct seq : public stm {
@@ -194,9 +194,9 @@ struct seq : public stm {
 };
 
 struct label : public stm {
-	label(const ::temp::label &name) : name_(name) {}
+	label(const utils::label &name) : name_(name) {}
 	TREE_KIND(label)
 
-	::temp::label name_;
+	utils::label name_;
 };
 } // namespace ir::tree

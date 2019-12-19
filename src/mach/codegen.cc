@@ -1,6 +1,7 @@
 #include "mach/codegen.hh"
 #include "ir/visitors/default-ir-visitor.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
+#include "utils/assert.hh"
 
 #include <sstream>
 
@@ -19,10 +20,10 @@ using namespace ir;
 namespace mach
 {
 
-std::string label_to_asm(const ::temp::label &lbl)
+std::string label_to_asm(const utils::label &lbl)
 {
 	std::string ret(".L_");
-	ret += lbl.sym_.get();
+	ret += lbl.get();
 
 	return ret;
 }
@@ -42,7 +43,7 @@ struct generator : public default_ir_visitor {
 	void visit_label(tree::label &) override;
 
 	std::vector<assem::rinstr> instrs_;
-	::temp::temp ret_;
+	utils::temp ret_;
 };
 
 std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
@@ -68,7 +69,7 @@ void generator::visit_name(tree::name &n)
 	repr += label_to_asm(n.label_);
 	repr += ", `d0";
 
-	::temp::temp ret;
+	utils::temp ret;
 	EMIT(assem::move(repr, {ret}, {}));
 
 	ret_ = ret;
@@ -78,9 +79,9 @@ void generator::visit_call(tree::call &c)
 {
 	auto name = c.name().as<tree::name>()->label_;
 	unsigned i = 0;
-	std::vector<::temp::temp> src;
-	// XXX: More than 7 args
+	std::vector<utils::temp> src;
 	auto cc = args_regs();
+	ASSERT(c.args().size() <= cc.size(), "Too many function parameters.");
 	for (auto arg : c.args()) {
 		arg->accept(*this);
 		auto arglbl = ret_;
@@ -88,17 +89,17 @@ void generator::visit_call(tree::call &c)
 		src.push_back(arglbl);
 
 		std::string repr("mov `s0, ");
-		repr += dest.sym_.get();
+		repr += dest.get();
 
 		EMIT(assem::move(repr, {dest}, {arglbl}));
 		i++;
 	}
 
 	std::string repr("call ");
-	repr += name.sym_.get();
+	repr += name.get();
 
 	EMIT(assem::oper(repr, caller_saved_regs(), src, {}));
-	::temp::temp ret;
+	utils::temp ret;
 	EMIT(assem::move("mov `s0, `d0", {ret}, {reg_to_temp(regs::RAX)}));
 
 	// XXX: The last move is not necessary if (sexp (call))
@@ -122,7 +123,7 @@ void generator::visit_cjump(tree::cjump &cj)
 		repr += label_to_asm(cj.ltrue_);
 
 	} else
-		repr += "INVALID JUMP";
+		UNREACHABLE("Impossible cmpop");
 
 	EMIT(assem::oper(repr, {}, {}, {cj.ltrue_, cj.lfalse_}));
 }
@@ -140,7 +141,7 @@ void generator::visit_jump(tree::jump &j)
 
 		EMIT(assem::oper(repr, {}, {}, {dest->label_}));
 	} else
-		EMIT(assem::oper("BADJUMP", {}, {}, {}));
+		UNREACHABLE("Destination of jump must be a name");
 }
 
 void generator::visit_move(tree::move &mv)
@@ -182,14 +183,14 @@ void generator::visit_move(tree::move &mv)
 void generator::visit_mem(tree::mem &mm)
 {
 	mm.e()->accept(*this);
-	::temp::temp dst;
+	utils::temp dst;
 	EMIT(assem::move("mov (`s0), `d0", {dst}, {ret_}));
 	ret_ = dst;
 }
 
 void generator::visit_cnst(tree::cnst &c)
 {
-	::temp::temp dst;
+	utils::temp dst;
 	std::string instr("mov $");
 	instr += std::to_string(c.value_);
 	instr += ", `d0";
@@ -208,7 +209,7 @@ void generator::visit_binop(tree::binop &b)
 	b.rhs()->accept(*this);
 	auto rhs = ret_;
 
-	::temp::temp dst;
+	utils::temp dst;
 
 	EMIT(assem::move("mov `s0, `d0", {dst}, {rhs}));
 	if (b.op_ == ops::binop::PLUS)

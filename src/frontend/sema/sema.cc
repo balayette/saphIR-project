@@ -1,4 +1,5 @@
 #include "frontend/sema/sema.hh"
+#include "utils/assert.hh"
 
 namespace frontend::sema
 {
@@ -11,7 +12,7 @@ void binding_visitor::visit_decs(decs &s)
 		if (!fmap_.add(f->name_, f)) {
 			std::cerr << "fun '" << f->name_
 				  << "' already declared\n";
-			std::exit(2);
+			COMPILATION_ERROR(utils::cfail::SEMA);
 		}
 	}
 }
@@ -21,13 +22,13 @@ void binding_visitor::visit_vardec(vardec &s)
 	default_visitor::visit_vardec(s);
 	if (!vmap_.add(s.name_, &s)) {
 		std::cerr << "var '" << s.name_ << "' already declared.\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
 	if (!s.rhs_->ty_.compatible(s.type_)) {
 		std::cerr << "TypeError: rhs of declaration of variable '"
 			  << s.name_ << "'\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -36,7 +37,7 @@ void binding_visitor::visit_argdec(argdec &s)
 	default_visitor::visit_argdec(s);
 	if (!vmap_.add(s.name_, &s)) {
 		std::cerr << "arg '" << s.name_ << "' already declared.\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -53,7 +54,7 @@ void binding_visitor::visit_fundec(fundec &s)
 	if (!s.has_return_ && s.ret_ty_ != types::type::VOID) {
 		std::cerr << "TypeError: Missing return stmt in fun '"
 			  << s.name_ << "' with return type != void\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
 	cfunc_.leave();
@@ -66,7 +67,7 @@ void binding_visitor::visit_ifstmt(ifstmt &s)
 
 	if (!s.cond_->ty_.compatible(types::type::INT)) {
 		std::cerr << "TypeError: Wrong type for comparison in if\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
 	new_scope();
@@ -87,7 +88,7 @@ void binding_visitor::visit_forstmt(forstmt &s)
 
 	if (!s.cond_->ty_.compatible(types::type::INT)) {
 		std::cerr << "TypeError: Wrong type for cond in for\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -97,7 +98,7 @@ void binding_visitor::visit_ass(ass &s)
 
 	if (!s.lhs_->ty_.compatible(s.rhs_->ty_)) {
 		std::cerr << "TypeError: Wrong type for rhs of ass.\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -108,7 +109,7 @@ void binding_visitor::visit_ref(ref &e)
 	if (v == std::nullopt) {
 		std::cerr << "ref: var " << e.name_
 			  << " used before definition.\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 	std::cout << "ref: " << e.name_ << " bound to variable " << *v << '\n';
 	e.ty_ = (*v)->type_;
@@ -124,7 +125,7 @@ void binding_visitor::visit_call(call &e)
 	if (f == std::nullopt) {
 		std::cerr << "call: Couldn't find a definition for fun '"
 			  << e.name_ << "'\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 	std::cout << "call: " << e.name_ << " bound to function " << *f << '\n';
 
@@ -132,7 +133,7 @@ void binding_visitor::visit_call(call &e)
 		std::cerr << "call: Wrong number of arguments for fun '"
 			  << e.name_ << "', expected " << (*f)->args_.size()
 			  << ", got " << e.args_.size() << '\n';
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
 	e.ty_ = (*f)->ret_ty_;
@@ -146,7 +147,7 @@ void binding_visitor::visit_call(call &e)
 		std::cerr << "TypeError: Wrong type for argument '"
 			  << (*f)->args_[i]->name_ << "' of call to '"
 			  << e.name_ << "'\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -156,7 +157,7 @@ void binding_visitor::visit_cmp(cmp &e)
 
 	if (!e.lhs_->ty_.compatible(e.rhs_->ty_)) {
 		std::cerr << "TypeError: Incompatible types in cmp\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -166,7 +167,7 @@ void binding_visitor::visit_bin(bin &e)
 
 	if (!e.lhs_->ty_.compatible(e.rhs_->ty_)) {
 		std::cerr << "TypeError: Incompatible types in bin\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
 	/* TODO: This only works in the basic case */
@@ -188,7 +189,7 @@ void binding_visitor::visit_ret(ret &s)
 	    || !s.e_->ty_.compatible(cfunc_->ret_ty_)) {
 		std::cerr << "TypeError: Incompatible return type in fun "
 			  << cfunc_->name_ << '\n';
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -198,7 +199,7 @@ void binding_visitor::visit_addrof(addrof &e)
 
 	if (e.ty_ == types::type::VOID) {
 		std::cerr << "Pointer to void are not supported.\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
 	e.ty_ = e.e_->ty_;
@@ -211,7 +212,7 @@ void binding_visitor::visit_deref(deref &e)
 
 	if (!e.e_->ty_.ptr_) {
 		std::cerr << "Can't derefence non pointer type.\n";
-		std::exit(2);
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
 	e.ty_ = e.e_->ty_;

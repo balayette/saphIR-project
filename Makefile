@@ -22,6 +22,7 @@ OBJ = \
       src/frontend/parser/parser.o \
       src/main.o \
       src/utils/symbol.o \
+      src/utils/assert.o \
       src/driver/driver.o \
       src/frontend/types.o \
       src/frontend/stmt.o \

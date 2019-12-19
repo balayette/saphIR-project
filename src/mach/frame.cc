@@ -4,7 +4,7 @@
 
 namespace mach
 {
-std::array<::temp::temp, 16> reg_temp{
+std::array<utils::temp, 16> reg_temp{
 	make_unique("rax").get(), make_unique("rbx").get(),
 	make_unique("rcx").get(), make_unique("rdx").get(),
 	make_unique("rsi").get(), make_unique("rdi").get(),
@@ -19,15 +19,15 @@ std::array<std::string, 16> reg_str{
 	"%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi", "%rsp", "%rbp",
 	"%r8",	"%r9",	"%r10", "%r11", "%r12", "%r13", "%r14", "%r15"};
 
-::temp::temp reg_to_temp(regs r) { return reg_temp[r]; }
+utils::temp reg_to_temp(regs r) { return reg_temp[r]; }
 
-::temp::temp reg_to_str(regs r) { return reg_str[r]; }
+utils::temp reg_to_str(regs r) { return reg_str[r]; }
 
-::temp::temp fp() { return reg_temp[regs::RBP]; }
+utils::temp fp() { return reg_temp[regs::RBP]; }
 
-::temp::temp rv() { return reg_temp[regs::RAX]; }
+utils::temp rv() { return reg_temp[regs::RAX]; }
 
-std::vector<::temp::temp> caller_saved_regs()
+std::vector<utils::temp> caller_saved_regs()
 {
 	return {
 		reg_to_temp(regs::RAX),
@@ -35,7 +35,7 @@ std::vector<::temp::temp> caller_saved_regs()
 	};
 }
 
-std::vector<::temp::temp> callee_saved_regs()
+std::vector<utils::temp> callee_saved_regs()
 {
 	return {
 		reg_to_temp(regs::RBX), reg_to_temp(regs::R12),
@@ -44,7 +44,7 @@ std::vector<::temp::temp> callee_saved_regs()
 	};
 }
 
-std::vector<::temp::temp> args_regs()
+std::vector<utils::temp> args_regs()
 {
 	return {
 		reg_to_temp(regs::RDI), reg_to_temp(regs::RSI),
@@ -54,7 +54,7 @@ std::vector<::temp::temp> args_regs()
 	};
 }
 
-std::vector<::temp::temp> special_regs()
+std::vector<utils::temp> special_regs()
 {
 	return {
 		reg_to_temp(regs::RBP),
@@ -74,7 +74,7 @@ std::ostream &operator<<(std::ostream &os, const frame &f)
 	return os;
 }
 
-in_reg::in_reg(::temp::temp reg) : reg_(reg) {}
+in_reg::in_reg(utils::temp reg) : reg_(reg) {}
 
 ir::tree::rexp in_reg::exp() const { return new ir::tree::temp(reg_); }
 
@@ -123,10 +123,10 @@ utils::ref<access> frame::alloc_local(bool escapes)
 	if (escapes)
 		return new in_frame(-(escaping_count_++ * 8 + 8));
 	reg_count_++;
-	return new in_reg(temp::temp());
+	return new in_reg(utils::temp());
 }
 
-ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, ::temp::label ret_lbl)
+ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, utils::label ret_lbl)
 {
 	// Placeholder for the epilogue
 	return new ir::tree::seq({s, new ir::tree::label(ret_lbl)});

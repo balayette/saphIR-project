@@ -4,9 +4,9 @@
 
 namespace ir
 {
-std::vector<trace> create_traces(std::unordered_map<::temp::label, bb> bbs)
+std::vector<trace> create_traces(std::unordered_map<utils::label, bb> bbs)
 {
-	std::unordered_set<::temp::label> visited;
+	std::unordered_set<utils::label> visited;
 	std::vector<bb> blocks;
 	std::vector<trace> ret;
 	for (auto [_, b] : bbs)
@@ -48,7 +48,7 @@ void optimize_trace(tree::rnodevec &instrs)
 				std::cout << "cjump expansion\n";
 				// The final instruction is a cjump, we expand
 				// it.
-				::temp::label lab;
+				utils::label lab;
 				auto ncj = new tree::cjump(cj->op_, cj->lhs(),
 							   cj->rhs(),
 							   cj->ltrue_, lab);

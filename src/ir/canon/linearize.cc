@@ -99,7 +99,7 @@ tree::rnode canon_default(tree::rnode &tree)
 
 		if (auto call = ichild->as<tree::call>()) {
 			if (!valid_call(tree, call)) {
-				::temp::temp tmp;
+				utils::temp tmp;
 				bigseq = make_stm(
 					bigseq,
 					new tree::move(new tree::temp(tmp),
@@ -111,7 +111,7 @@ tree::rnode canon_default(tree::rnode &tree)
 		auto mv = tree.as<tree::move>();
 		if (mv && ichild == children.begin()) {
 			if (auto mem = ichild->as<tree::mem>()) {
-				::temp::temp tmp;
+				utils::temp tmp;
 				bigseq = make_stm(
 					bigseq,
 					new tree::move(new tree::temp(tmp),

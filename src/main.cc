@@ -11,6 +11,7 @@
 #include "ir/canon/trace.hh"
 #include "backend/cfg.hh"
 #include "mach/codegen.hh"
+#include "utils/assert.hh"
 
 int usage(char *pname)
 {
@@ -25,8 +26,7 @@ int main(int argc, char *argv[])
 
 	driver drv;
 	if (drv.parse(argv[1])) {
-		std::cerr << "Parsing failed.\n";
-		return 2;
+		COMPILATION_ERROR(utils::cfail::PARSING);
 	}
 
 	frontend::pretty_printer p(std::cout);
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 		canoned->accept(pir);
 		std::cout << "--\n";
 
-		::temp::label pro;
+		utils::label pro;
 		auto bbs = ir::create_bbs(canoned, pro);
 
 		for (auto [_, v] : bbs) {

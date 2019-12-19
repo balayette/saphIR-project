@@ -16,8 +16,8 @@ class exp
 
 	virtual ir::tree::rexp un_ex() = 0;
 	virtual ir::tree::rstm un_nx() = 0;
-	virtual ir::tree::rstm un_cx(const temp::label &t,
-				     const temp::label &f) = 0;
+	virtual ir::tree::rstm un_cx(const utils::label &t,
+				     const utils::label &f) = 0;
 };
 
 class cx : public exp
@@ -27,8 +27,8 @@ class cx : public exp
 
 	ir::tree::rexp un_ex() override;
 	ir::tree::rstm un_nx() override;
-	ir::tree::rstm un_cx(const temp::label &t,
-			     const temp::label &f) override;
+	ir::tree::rstm un_cx(const utils::label &t,
+			     const utils::label &f) override;
 
       private:
 	ops::cmpop op_;
@@ -42,8 +42,8 @@ class ex : public exp
 	ex(ir::tree::rexp e);
 	ir::tree::rexp un_ex() override;
 	ir::tree::rstm un_nx() override;
-	ir::tree::rstm un_cx(const temp::label &t,
-			     const temp::label &f) override;
+	ir::tree::rstm un_cx(const utils::label &t,
+			     const utils::label &f) override;
 
       private:
 	ir::tree::rexp e_;
@@ -55,8 +55,8 @@ class nx : public exp
 	nx(ir::tree::rstm s);
 	ir::tree::rexp un_ex() override;
 	ir::tree::rstm un_nx() override;
-	ir::tree::rstm un_cx(const temp::label &t,
-			     const temp::label &f) override;
+	ir::tree::rstm un_cx(const utils::label &t,
+			     const utils::label &f) override;
 
       private:
 	ir::tree::rstm s_;
@@ -81,8 +81,8 @@ class translate_visitor : public default_visitor
 	void visit_addrof(addrof &e) override;
 
 	utils::ref<exp> ret_;
-	utils::scoped_var<::temp::label> ret_lbl_;
-	std::unordered_map<::temp::label, str_lit> str_lits_;
+	utils::scoped_var<utils::label> ret_lbl_;
+	std::unordered_map<utils::label, str_lit> str_lits_;
 	std::vector<mach::fun_fragment> funs_;
 };
 
