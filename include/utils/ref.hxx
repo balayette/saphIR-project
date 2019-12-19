@@ -16,6 +16,16 @@ template <typename T> bool ref<T>::operator!=(const T *rhs)
 	return !(*this == rhs);
 }
 
+template <typename T> bool ref<T>::operator==(std::nullptr_t rhs)
+{
+	return std::shared_ptr<T>::get() == rhs;
+}
+
+template <typename T> bool ref<T>::operator!=(std::nullptr_t rhs)
+{
+	return !(*this == rhs);
+}
+
 template <typename T>
 inline std::ostream &operator<<(std::ostream &os, const ref<T> &p)
 {
