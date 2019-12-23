@@ -24,6 +24,7 @@ template <typename T> class graph
 	void add_edge(node_id n1, node_id n2);
 	T *get(node_id idx);
 	void dump_dot(std::ostream &os);
+	size_t size() const;
 
       private:
 	std::vector<gnode<T>> nodes_;

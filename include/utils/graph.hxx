@@ -36,11 +36,13 @@ template <typename T> void graph<T>::dump_dot(std::ostream &os)
 	os << "digraph {\n";
 	for (node_id i = 0; i < nodes_.size(); i++) {
 		os << '"' << i << '"';
-                // XXX: Add dot dumpers to classes.
+		// XXX: Add dot dumpers to classes.
 		os << *nodes_[i] << "\n";
 		for (auto s : nodes_[i].succ_)
 			os << '"' << i << "\" -> \"" << s << "\";\n";
 	}
 	os << "}\n";
 }
+
+template <typename T> size_t graph<T>::size() const { return nodes_.size(); }
 } // namespace utils
