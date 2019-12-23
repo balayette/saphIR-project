@@ -3,8 +3,8 @@
 
 namespace backend
 {
-cfgnode::cfgnode(std::vector<utils::temp> def, std::vector<utils::temp> use,
-		 bool is_move)
+cfgnode::cfgnode(utils::uset<utils::temp> def,
+		 utils::uset<utils::temp> use, bool is_move)
     : def(def), use(use), is_move(is_move)
 {
 }
@@ -44,8 +44,8 @@ void cfg::build(unsigned idx, std::optional<utils::node_id> pred)
 		return;
 	}
 
-	auto def(instrs_[idx]->dst_);
-	auto use(instrs_[idx]->src_);
+	utils::uset<utils::temp> def(instrs_[idx]->dst_);
+	utils::uset<utils::temp> use(instrs_[idx]->src_);
 	bool is_move = instrs_[idx].as<assem::move>() != nullptr;
 
 	cfgnode nn(def, use, is_move);

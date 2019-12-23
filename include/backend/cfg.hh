@@ -3,18 +3,18 @@
 #include "utils/graph.hh"
 #include "utils/temp.hh"
 #include "ass/instr.hh"
+#include "utils/uset.hh"
 #include <unordered_map>
-#include <unordered_set>
 #include <optional>
 #include <iostream>
 
 namespace backend
 {
 struct cfgnode {
-	cfgnode(std::vector<utils::temp> def, std::vector<utils::temp> use,
-		bool is_move);
-	std::vector<utils::temp> def;
-	std::vector<utils::temp> use;
+	cfgnode(utils::uset<utils::temp> def,
+		utils::uset<utils::temp> use, bool is_move);
+	utils::uset<utils::temp> def;
+	utils::uset<utils::temp> use;
 	bool is_move;
 	std::string debug;
 };
