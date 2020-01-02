@@ -11,8 +11,8 @@ template <typename T> class uset : public std::unordered_set<T>
 	uset() = default;
 	uset(std::vector<T> &elms);
 
-	uset<T> operator+(uset &rhs);
-	uset<T> operator-(uset &rhs);
+	uset<T> operator+(const uset &rhs) const;
+	uset<T> operator-(const uset &rhs) const;
 };
 } // namespace utils
 
