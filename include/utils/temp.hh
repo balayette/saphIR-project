@@ -43,7 +43,13 @@ namespace std
 template <> struct hash<utils::label> {
 	std::size_t operator()(const utils::label &s) const
 	{
-		return std::hash<std::string>{}(s.sym_.get());
+		return std::hash<std::string>{}(s.get());
+	}
+};
+template <> struct hash<utils::temp> {
+	std::size_t operator()(const utils::temp &t) const
+	{
+		return std::hash<std::string>{}(t.get());
 	}
 };
 } // namespace std
