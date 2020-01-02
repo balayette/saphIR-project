@@ -10,6 +10,7 @@
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
 #include "backend/cfg.hh"
+#include "backend/liveness.hh"
 #include "mach/codegen.hh"
 #include "utils/assert.hh"
 
@@ -90,6 +91,10 @@ int main(int argc, char *argv[])
 		std::ofstream out(std::string("cfg") + frag.frame_.s_.get()
 				  + std::string(".dot"));
 		cfg.cfg_.dump_dot(out);
+
+                backend::ifence_graph ifence(cfg.cfg_);
+                std::ofstream out2("ifence.dot");
+                ifence.graph_.dump_dot(out2, false);
 	}
 
 	delete drv.prog_;

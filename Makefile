@@ -40,6 +40,7 @@ OBJ = \
       src/ass/instr.o \
       src/mach/codegen.o \
       src/backend/cfg.o \
+      src/backend/liveness.o \
       src/frontend/ops.o \
 
 DEP = $(OBJ:.o=.d)
