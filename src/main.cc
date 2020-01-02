@@ -54,7 +54,6 @@ int main(int argc, char *argv[])
 	for (auto &frag : trans.funs_) {
 		std::cout << "Function: " << frag.frame_.s_
 			  << " - Return label : " << frag.ret_lbl_ << '\n';
-		frag.body_->accept(pir);
 	}
 
 	for (auto frag : trans.funs_) {
@@ -69,18 +68,20 @@ int main(int argc, char *argv[])
 		auto bbs = ir::create_bbs(canoned, pro);
 
 		for (auto [_, v] : bbs) {
-			std::cout << "----\n";
+			std::cout << "+++++++++++++++++++++++++++++++++++++\n";
 			for (auto s : v.instrs_) {
 				s->accept(pir);
 			}
 		}
+		std::cout << "+++++++++++++++++++++++++++++++++++++\n";
 
-		std::cout << "Traces:\n";
 		auto traces = ir::create_traces(bbs);
 		auto trace = ir::optimize_traces(traces);
-		std::cout << "-------------------------\n";
+		std::cout << "Trace:\n";
+		std::cout << "-------------------------------------\n";
 		for (auto s : trace)
 			s->accept(pir);
+		std::cout << "-------------------------------------\n";
 
 		std::cout << "==========\n";
 		auto instrs = mach::codegen(frag.frame_, trace);
@@ -88,13 +89,15 @@ int main(int argc, char *argv[])
 		frag.frame_.proc_entry_exit_3(instrs);
 
 		backend::cfg cfg(instrs, pro);
-		std::ofstream out(std::string("cfg") + frag.frame_.s_.get()
-				  + std::string(".dot"));
-		cfg.cfg_.dump_dot(out);
+		std::ofstream cfg_out(std::string("cfg") + frag.frame_.s_.get()
+				      + std::string(".dot"));
+		cfg.cfg_.dump_dot(cfg_out);
 
-                backend::ifence_graph ifence(cfg.cfg_);
-                std::ofstream out2("ifence.dot");
-                ifence.graph_.dump_dot(out2, false);
+		backend::ifence_graph ifence(cfg.cfg_);
+		std::ofstream ifence_out(std::string("ifence")
+					 + frag.frame_.s_.get()
+					 + std::string(".dot"));
+		ifence.graph_.dump_dot(ifence_out, false);
 	}
 
 	delete drv.prog_;

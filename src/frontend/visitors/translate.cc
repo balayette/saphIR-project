@@ -7,7 +7,7 @@
 #include "ir/ir.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
 
-#define TRANS_DEBUG 1
+#define TRANS_DEBUG 0
 
 namespace frontend::translate
 {

@@ -23,7 +23,6 @@ std::vector<trace> create_traces(std::unordered_map<utils::label, bb> bbs)
 
 			for (auto s : b.successors()) {
 				if (!visited.count(s)) {
-					std::cout << s << " is not visited\n";
 					auto it = bbs.find(s);
 					if (it == bbs.end())
 						continue;
@@ -45,7 +44,6 @@ void optimize_trace(tree::rnodevec &instrs)
 		auto instr = instrs[i];
 		if (auto cj = instr.as<tree::cjump>()) {
 			if (i + 1 == instrs.size()) {
-				std::cout << "cjump expansion\n";
 				// The final instruction is a cjump, we expand
 				// it.
 				utils::label lab;
@@ -74,7 +72,6 @@ void optimize_trace(tree::rnodevec &instrs)
 				if (lbl->name_ == cj->lfalse_)
 					continue;
 
-				std::cout << "cjump inversion\n";
 				// The cjump is followed by its false label,
 				// we swap the labels and the condition.
 				std::swap(cj->ltrue_, cj->lfalse_);
@@ -82,17 +79,15 @@ void optimize_trace(tree::rnodevec &instrs)
 			}
 		}
 
-                if (auto j = instrs[i].as<tree::jump>()) {
+		if (auto j = instrs[i].as<tree::jump>()) {
 			if (i + 1 == instrs.size()
 			    || j->avlbl_dests_.size() > 1)
 				continue;
 
 			// If we're followed by our label, remove the jump.
 			if (auto lb = instrs[i + 1].as<tree::label>()) {
-				if (lb->name_ == j->avlbl_dests_[0]) {
+				if (lb->name_ == j->avlbl_dests_[0])
 					instrs.erase(instrs.begin() + i);
-					std::cout << "Remove useless jump\n";
-				}
 			}
 		}
 	}

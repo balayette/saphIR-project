@@ -42,23 +42,6 @@ ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
 
 	for (utils::node_id n = 0; n < cfg.size(); n++) {
 		auto *node = cfg.get(n);
-		std::cout << n << " (" << node->debug << "):\n";
-		std::cout << " Use:\n";
-		for (auto u : node->use)
-			std::cout << "  " << u << '\n';
-		std::cout << " Def:\n";
-		for (auto d : node->def)
-			std::cout << "  " << d << '\n';
-		std::cout << " In:\n";
-		for (auto i : in[n])
-			std::cout << "  " << i << '\n';
-		std::cout << " Out:\n";
-		for (auto o : out[n])
-			std::cout << "  " << o << '\n';
-	}
-
-	for (utils::node_id n = 0; n < cfg.size(); n++) {
-		auto *node = cfg.get(n);
 		if (node->is_move) {
 			ASSERT(node->def.size() == 1, "Multiple defs in move");
 			ASSERT(node->use.size() <= 1, "Multiple uses in move");

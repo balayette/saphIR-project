@@ -71,8 +71,6 @@ bool valid_call(tree::rnode tree, utils::ref<tree::call> call)
 
 tree::rnode canon_default(tree::rnode &tree)
 {
-	std::cout << "canon_default\n";
-
 	tree::rstm bigseq;
 
 	std::vector<tree::rnode> &children = tree->children_;

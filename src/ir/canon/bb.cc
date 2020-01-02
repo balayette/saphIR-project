@@ -65,7 +65,7 @@ std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
 				prologue =
 					stmts.front().as<tree::label>()->name_;
 			else {
-				prologue = utils::label();
+				prologue = unique_label("prologue").get();
 				stmts.insert(stmts.begin(),
 					     new tree::label(prologue));
 			}
@@ -92,7 +92,7 @@ std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
 		// At this point we have a complete basic block.
 		// If the basic block is a single jump, then we can remove it,
 		// because no label => no one can jump to it.
-		std::cout << " Block completed:\n";
+		std::cout << " Block completed\n";
 		if (stmts.size() > 1 && !is_jump(stmts.front()->kind())) {
 			bb block(stmts.begin(), stmts.end());
 			basic_blocks.push_back(block);
