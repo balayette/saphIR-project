@@ -1,7 +1,6 @@
 #include "mach/codegen.hh"
-#include "ir/visitors/default-ir-visitor.hh"
-#include "ir/visitors/ir-pretty-printer.hh"
 #include "utils/assert.hh"
+#include "ir/visitors/ir-pretty-printer.hh"
 
 #include <sstream>
 
@@ -27,24 +26,6 @@ std::string label_to_asm(const utils::label &lbl)
 
 	return ret;
 }
-
-struct generator : public default_ir_visitor {
-	void emit(assem::rinstr i);
-
-	void visit_cnst(tree::cnst &) override;
-	void visit_temp(tree::temp &) override;
-	void visit_binop(tree::binop &) override;
-	void visit_mem(tree::mem &) override;
-	void visit_call(tree::call &n) override;
-	void visit_move(tree::move &) override;
-	void visit_name(tree::name &n) override;
-	void visit_jump(tree::jump &) override;
-	void visit_cjump(tree::cjump &) override;
-	void visit_label(tree::label &) override;
-
-	std::vector<assem::rinstr> instrs_;
-	utils::temp ret_;
-};
 
 std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
 {
