@@ -1,4 +1,5 @@
 #include "ass/instr.hh"
+#include "utils/assert.hh"
 
 namespace assem
 {
@@ -14,8 +15,10 @@ std::string format_repr(std::string repr, std::vector<utils::temp> src,
 			continue;
 		}
 		c = repr[++i];
+		ASSERT(c == 's' || c == 'd', "Wrong register placeholder");
 		bool source = c == 's';
 		c = repr[++i];
+		ASSERT(c >= '0' && c <= '9', "Wrong register number");
 		int idx = c - '0';
 		if (source)
 			ret += src[idx].get();

@@ -147,7 +147,7 @@ void generator::visit_jump(tree::jump &j)
 void generator::visit_move(tree::move &mv)
 {
 	if (auto lmem = mv.lhs().as<tree::mem>()) {
-		if (auto rmem = mv.lhs().as<tree::mem>()) {
+		if (auto rmem = mv.rhs().as<tree::mem>()) {
 			// (move (mem e1) (mem e2))
 			// mov (e2), e2
 			// mov e2, (e1)
@@ -168,7 +168,7 @@ void generator::visit_move(tree::move &mv)
 		mv.rhs()->accept(*this);
 		auto rhs = ret_;
 
-		EMIT(assem::move("mov `s0, `(d0)", {lhs}, {rhs}));
+		EMIT(assem::move("mov `s0, (`d0)", {lhs}, {rhs}));
 		return;
 	}
 
