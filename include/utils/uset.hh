@@ -21,6 +21,8 @@ template <typename T> class uset : public std::unordered_set<T>
 	uset<T> &operator+=(const T &value);
 	uset<T> &operator-=(const T &value);
 
+	uset<T> intersect(const uset<T> &rhs) const;
+
 	std::vector<T> collect() const;
 };
 } // namespace utils

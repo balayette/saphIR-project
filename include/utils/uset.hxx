@@ -70,4 +70,16 @@ template <typename T> std::vector<T> uset<T>::collect() const
 	std::vector<T> ret(this->begin(), this->end());
 	return ret;
 }
+
+template <typename T> uset<T> uset<T>::intersect(const uset<T> &rhs) const
+{
+	uset<T> ret;
+
+	for (auto &v : rhs) {
+		if (this->find(v) != this->end())
+			ret += v;
+	}
+
+	return ret;
+}
 } // namespace utils
