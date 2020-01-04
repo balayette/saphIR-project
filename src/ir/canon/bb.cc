@@ -130,7 +130,7 @@ std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
 
 utils::label done_lbl()
 {
-	static utils::label done(unique_label("done").get());
+	static utils::label done(unique_label("epilogue").get());
 
 	return done;
 }

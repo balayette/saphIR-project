@@ -281,7 +281,7 @@ void translate_visitor::visit_str_lit(str_lit &e)
 
 void translate_visitor::visit_fundec(fundec &s)
 {
-	ret_lbl_.enter(utils::label());
+	ret_lbl_.enter(unique_label("ret").get());
 
 	std::vector<ir::tree::rstm> stms;
 	for (auto *stm : s.body_) {
