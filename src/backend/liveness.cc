@@ -43,11 +43,12 @@ ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
 	for (utils::node_id n = 0; n < cfg.size(); n++) {
 		auto *node = cfg.get(n);
 		if (node->is_move) {
-			ASSERT(node->def.size() == 1, "Multiple defs in move");
+			ASSERT(node->def.size() == 1, "defs in move != 1");
 			ASSERT(node->use.size() <= 1, "Multiple uses in move");
 			auto def = node->def.begin();
 			auto use = node->use.begin();
 			utils::node_id defn = graph_.get_or_insert(*def);
+			tnodes_[*def] = defn;
 			for (auto b : out[n]) {
 				if (use != node->use.end() && *use == b)
 					continue;
@@ -55,6 +56,15 @@ ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
 				utils::node_id outn = graph_.get_or_insert(b);
 
 				graph_.add_edge(defn, outn);
+			}
+
+			if (use != node->use.end()) {
+				worklist_moves_.insert({*def, *use});
+				for (auto &t : node->def + node->use) {
+					auto [it, _] =
+						move_list_.insert({t, {}});
+					it->second += {*def, *use};
+				}
 			}
 		} else {
 			for (auto def : node->def) {
