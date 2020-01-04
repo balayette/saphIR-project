@@ -64,8 +64,7 @@ int main(int argc, char *argv[])
 		canoned->accept(pir);
 		std::cout << "--\n";
 
-		utils::label pro;
-		auto bbs = ir::create_bbs(canoned, pro);
+		auto bbs = ir::create_bbs(canoned, frag.pro_lbl_);
 
 		for (auto [_, v] : bbs) {
 			std::cout << "+++++++++++++++++++++++++++++++++++++\n";
@@ -88,7 +87,7 @@ int main(int argc, char *argv[])
 		frag.frame_.proc_entry_exit_2(instrs);
 		frag.frame_.proc_entry_exit_3(instrs);
 
-		backend::cfg cfg(instrs, pro);
+		backend::cfg cfg(instrs, frag.pro_lbl_);
 		std::ofstream cfg_out(std::string("cfg") + frag.frame_.s_.get()
 				      + std::string(".dot"));
 		cfg.cfg_.dump_dot(cfg_out);

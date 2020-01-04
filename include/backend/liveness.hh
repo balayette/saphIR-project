@@ -21,6 +21,9 @@ class ifence_graph
       public:
 	ifence_graph(utils::graph<cfgnode> &cfg);
 	utils::graph<ifence_node> graph_;
-	std::unordered_map<utils::temp, utils::node_id> tnode_;
+
+	std::unordered_map<utils::temp, utils::node_id> tnodes_;
+	std::unordered_map<utils::temp, utils::temp_pair_set> move_list_;
+	utils::temp_pair_set worklist_moves_;
 };
 } // namespace backend

@@ -11,10 +11,10 @@
 namespace backend
 {
 struct cfgnode {
-	cfgnode(utils::uset<utils::temp> def,
-		utils::uset<utils::temp> use, bool is_move);
-	utils::uset<utils::temp> def;
-	utils::uset<utils::temp> use;
+	cfgnode(utils::temp_set def,
+		utils::temp_set use, bool is_move);
+	utils::temp_set def;
+	utils::temp_set use;
 	bool is_move;
 	std::string debug;
 };

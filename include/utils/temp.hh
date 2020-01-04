@@ -2,7 +2,9 @@
 
 #include <iostream>
 #include <string>
+#include <utility>
 #include "utils/symbol.hh"
+#include "utils/uset.hh"
 
 namespace utils
 {
@@ -36,6 +38,10 @@ inline std::ostream &operator<<(std::ostream &os, const base_temp &t)
 	return os << t.sym_;
 }
 
+using temp_endomap = std::unordered_map<temp, temp>;
+using temp_set = utils::uset<temp>;
+using temp_pair = std::pair<temp, temp>;
+using temp_pair_set = utils::uset<temp_pair>;
 } // namespace utils
 
 namespace std
@@ -50,6 +56,13 @@ template <> struct hash<utils::temp> {
 	std::size_t operator()(const utils::temp &t) const
 	{
 		return std::hash<std::string>{}(t.get());
+	}
+};
+template <> struct hash<utils::temp_pair> {
+	std::size_t operator()(const utils::temp_pair &p) const
+	{
+		return std::hash<utils::temp>{}(p.first)
+		       + std::hash<utils::temp>{}(p.second);
 	}
 };
 } // namespace std

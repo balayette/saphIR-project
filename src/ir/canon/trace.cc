@@ -1,12 +1,12 @@
 #include "ir/canon/trace.hh"
 #include "frontend/ops.hh"
-#include <unordered_set>
+#include "utils/uset.hh"
 
 namespace ir
 {
 std::vector<trace> create_traces(std::unordered_map<utils::label, bb> bbs)
 {
-	std::unordered_set<utils::label> visited;
+	utils::uset<utils::label> visited;
 	std::vector<bb> blocks;
 	std::vector<trace> ret;
 	for (auto [_, b] : bbs)
