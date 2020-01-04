@@ -23,6 +23,14 @@ utils::temp reg_to_temp(regs r) { return reg_temp[r]; }
 
 utils::temp reg_to_str(regs r) { return reg_str[r]; }
 
+std::unordered_map<utils::temp, std::string> temp_map()
+{
+	std::unordered_map<utils::temp, std::string> ret;
+	for (unsigned i = 0; i < reg_temp.size(); i++)
+		ret.insert({reg_temp[i], reg_str[i]});
+	return ret;
+} // namespace mach
+
 utils::temp fp() { return reg_temp[regs::RBP]; }
 
 utils::temp rv() { return reg_temp[regs::RAX]; }

@@ -7,6 +7,7 @@
 #include "ass/instr.hh"
 #include <vector>
 #include <variant>
+#include <unordered_map>
 
 /*
  * x86_64 calling convention:
@@ -52,6 +53,8 @@ utils::temp reg_to_str(regs r);
 utils::temp fp();
 
 utils::temp rv();
+
+std::unordered_map<utils::temp, std::string> temp_map();
 
 std::vector<utils::temp> caller_saved_regs();
 std::vector<utils::temp> callee_saved_regs();
@@ -125,6 +128,7 @@ struct fun_fragment : public fragment {
 	ir::tree::rstm body_;
 	frame frame_;
 	utils::label ret_lbl_;
+	utils::label pro_lbl_;
 };
 
 std::ostream &operator<<(std::ostream &os, const access &a);
