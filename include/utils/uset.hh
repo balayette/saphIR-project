@@ -13,6 +13,15 @@ template <typename T> class uset : public std::unordered_set<T>
 
 	uset<T> operator+(const uset &rhs) const;
 	uset<T> operator-(const uset &rhs) const;
+	uset<T> &operator+=(const uset &rhs);
+	uset<T> &operator-=(const uset &rhs);
+
+	uset<T> operator+(T &value) const;
+	uset<T> operator-(T &value) const;
+	uset<T> &operator+=(const T &value);
+	uset<T> &operator-=(const T &value);
+
+	std::vector<T> collect() const;
 };
 } // namespace utils
 
