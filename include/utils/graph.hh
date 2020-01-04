@@ -27,6 +27,8 @@ template <typename T> class graph
 	void dump_dot(std::ostream &os, bool directed = true);
 	size_t size() const;
 
+	std::vector<T> values();
+
 	std::vector<gnode<T>> nodes_;
 };
 } // namespace utils

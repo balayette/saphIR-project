@@ -70,4 +70,12 @@ template <typename T> void graph<T>::dump_dot(std::ostream &os, bool directed)
 }
 
 template <typename T> size_t graph<T>::size() const { return nodes_.size(); }
+
+template <typename T> std::vector<T> graph<T>::values()
+{
+	std::vector<T> ret;
+	for (auto &n : nodes_)
+		ret.push_back(*n);
+	return ret;
+}
 } // namespace utils
