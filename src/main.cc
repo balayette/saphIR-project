@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 		COMPILATION_ERROR(utils::cfail::PARSING);
 	}
 
-        std::ofstream fout("out.S");
+	std::ofstream fout("out.S");
 
 	frontend::pretty_printer p(std::cout);
 	drv.prog_->accept(p);
@@ -58,6 +58,8 @@ int main(int argc, char *argv[])
 		std::cout << "Function: " << frag.frame_.s_
 			  << " - Return label : " << frag.ret_lbl_ << '\n';
 	}
+
+	std::vector<mach::asm_function> funs;
 
 	for (auto frag : trans.funs_) {
 		auto canoned = ir::canon(frag.body_);
@@ -109,6 +111,16 @@ int main(int argc, char *argv[])
 		auto f = frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_,
 						       frag.epi_lbl_);
 
+		funs.push_back(f);
+	}
+
+	fout << "\t.section .rodata\n";
+	for (auto [lab, s] : trans.str_lits_)
+		fout << mach::asm_string(lab, s.str_);
+        fout << '\n';
+
+	fout << "\t.text\n";
+	for (auto &f : funs) {
 		fout << f.prologue_;
 		for (auto &i : f.instrs_) {
 			if (i->repr_.size() == 0)
@@ -118,6 +130,7 @@ int main(int argc, char *argv[])
 			fout << i->to_string(mach::temp_map()) << '\n';
 		}
 		fout << f.epilogue_;
+		fout << '\n';
 	}
 
 	delete drv.prog_;

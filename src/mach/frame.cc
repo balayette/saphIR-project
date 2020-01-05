@@ -184,6 +184,12 @@ void frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 	instrs.push_back(new assem::oper("", {}, live, {}));
 }
 
+std::string asm_string(utils::label lab, const std::string &str)
+{
+	std::string ret(".L_" + lab.get() + ":\n\t.string \"" + str + "\"\n");
+	return ret;
+}
+
 asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
 				      utils::label pro_lbl,
 				      utils::label epi_lbl)

@@ -101,6 +101,8 @@ struct asm_function {
 	const std::string epilogue_;
 };
 
+std::string asm_string(utils::label lab, const std::string& str);
+
 struct frame {
 	frame(const symbol &s, const std::vector<bool> &args);
 

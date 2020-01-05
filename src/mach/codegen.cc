@@ -48,7 +48,7 @@ void generator::visit_name(tree::name &n)
 {
 	std::string repr("lea ");
 	repr += label_to_asm(n.label_);
-	repr += ", `d0";
+	repr += "(%rip), `d0";
 
 	utils::temp ret;
 	EMIT(assem::move(repr, {ret}, {}));

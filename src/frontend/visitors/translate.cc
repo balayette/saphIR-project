@@ -272,7 +272,7 @@ void translate_visitor::visit_ret(ret &s)
 
 void translate_visitor::visit_str_lit(str_lit &e)
 {
-	utils::label lab;
+	utils::label lab = unique_label("str_lit").get();
 
 	ret_ = new ex(new ir::tree::name(lab));
 
