@@ -141,7 +141,7 @@ void generator::visit_move(tree::move &mv)
 			auto rhs = ret_;
 
 			EMIT(assem::move("mov (`s0), `d0", {rhs}, {rhs}));
-			EMIT(assem::move("mov `s0, (`d0)", {lhs}, {rhs}));
+			EMIT(assem::move("mov `s0, (`d0)", {}, {rhs, lhs}));
 			return;
 		}
 
@@ -152,7 +152,7 @@ void generator::visit_move(tree::move &mv)
 		mv.rhs()->accept(*this);
 		auto rhs = ret_;
 
-		EMIT(assem::move("mov `s0, (`d0)", {lhs}, {rhs}));
+		EMIT(assem::move("mov `s0, (`s1)", {}, {rhs, lhs}));
 		return;
 	}
 
@@ -197,9 +197,9 @@ void generator::visit_binop(tree::binop &b)
 
 	EMIT(assem::move("mov `s0, `d0", {dst}, {rhs}));
 	if (b.op_ == ops::binop::PLUS)
-		EMIT(assem::oper("add `s0, `d0", {dst}, {lhs}, {}));
+		EMIT(assem::oper("add `s0, `d0", {dst}, {lhs, dst}, {}));
 	else if (b.op_ == ops::binop::MINUS)
-		EMIT(assem::oper("sub `s0, `d0", {dst}, {lhs}, {}));
+		EMIT(assem::oper("sub `s0, `d0", {dst}, {lhs, dst}, {}));
 
 	ret_ = dst;
 }

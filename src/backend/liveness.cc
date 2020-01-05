@@ -43,27 +43,34 @@ ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
 	for (utils::node_id n = 0; n < cfg.size(); n++) {
 		auto *node = cfg.get(n);
 		if (node->is_move) {
-			ASSERT(node->def.size() == 1, "defs in move != 1");
-			ASSERT(node->use.size() <= 1, "Multiple uses in move");
-			auto def = node->def.begin();
+			ASSERT(node->def.size() <= 1, "defs in move > 1");
+			ASSERT(node->use.size() <= 2, "Too many uses");
 			auto use = node->use.begin();
-			utils::node_id defn = graph_.get_or_insert(*def);
-			tnodes_[*def] = defn;
-			for (auto b : out[n]) {
-				if (use != node->use.end() && *use == b)
-					continue;
 
-				utils::node_id outn = graph_.get_or_insert(b);
+			for (auto def = node->def.begin();
+			     def != node->def.end(); def++) {
+				utils::node_id defn =
+					graph_.get_or_insert(*def);
+				tnodes_[*def] = defn;
+				for (auto b : out[n]) {
+					if (node->use.find(b)
+					    != node->use.end())
+						continue;
 
-				graph_.add_edge(defn, outn);
-			}
+					utils::node_id outn =
+						graph_.get_or_insert(b);
 
-			if (use != node->use.end()) {
-				worklist_moves_.insert({*def, *use});
-				for (auto &t : node->def + node->use) {
-					auto [it, _] =
-						move_list_.insert({t, {}});
-					it->second += {*def, *use};
+					graph_.add_edge(defn, outn);
+				}
+
+				if (use != node->use.end()) {
+					worklist_moves_.insert({*def, *use});
+					for (auto &t : node->def + node->use) {
+						auto [it, _] =
+							move_list_.insert(
+								{t, {}});
+						it->second += {*def, *use};
+					}
 				}
 			}
 		} else {
