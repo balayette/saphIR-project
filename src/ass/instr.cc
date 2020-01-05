@@ -3,8 +3,8 @@
 
 namespace assem
 {
-std::string format_repr(std::string repr, std::vector<utils::temp> src,
-			std::vector<utils::temp> dst)
+std::string format_repr(std::string repr, std::vector<std::string> src,
+			std::vector<std::string> dst)
 {
 	std::string ret;
 
@@ -21,9 +21,9 @@ std::string format_repr(std::string repr, std::vector<utils::temp> src,
 		ASSERT(c >= '0' && c <= '9', "Wrong register number");
 		int idx = c - '0';
 		if (source)
-			ret += src[idx].get();
+			ret += src[idx];
 		else
-			ret += dst[idx].get();
+			ret += dst[idx];
 	}
 
 	return ret;
@@ -40,7 +40,32 @@ instr::instr(const std::string &repr, std::vector<utils::temp> dst,
 {
 }
 
-std::string instr::to_string() const { return format_repr(repr_, src_, dst_); }
+std::string instr::to_string() const
+{
+	std::vector<std::string> src;
+	std::vector<std::string> dst;
+
+	for (auto &l : src_)
+		src.push_back(l.get());
+	for (auto &d : dst_)
+		dst.push_back(d.get());
+
+	return format_repr(repr_, src, dst);
+}
+
+std::string
+instr::to_string(const std::unordered_map<utils::temp, std::string> &map) const
+{
+	std::vector<std::string> src;
+	std::vector<std::string> dst;
+
+	for (auto &l : src_)
+		src.push_back(map.find(l)->second);
+	for (auto &d : dst_)
+		dst.push_back(map.find(d)->second);
+
+	return format_repr(repr_, src, dst);
+}
 
 oper::oper(const std::string &repr, std::vector<utils::temp> dst,
 	   std::vector<utils::temp> src, std::vector<utils::label> jmps)

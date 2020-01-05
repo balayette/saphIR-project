@@ -14,6 +14,8 @@ struct instr {
 
 	virtual ~instr() = default;
 	virtual std::string to_string() const;
+	virtual std::string to_string(
+		const std::unordered_map<utils::temp, std::string> &map) const;
 
 	std::string repr_;
 	std::vector<utils::temp> dst_;
@@ -21,7 +23,7 @@ struct instr {
 	std::vector<utils::label> jmps_;
 };
 
-std::ostream& operator<<(std::ostream& os, const instr& ins);
+std::ostream &operator<<(std::ostream &os, const instr &ins);
 
 using rinstr = utils::ref<instr>;
 
