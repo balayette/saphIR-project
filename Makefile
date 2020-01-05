@@ -1,4 +1,5 @@
-CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -pedantic -g -MMD
+CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -pedantic -g -MMD -fsanitize=address
+LDFLAGS = -fsanitize=address
 CPPFLAGS = -Iinclude/
 LINK.o = $(LINK.cc)
 
@@ -41,6 +42,8 @@ OBJ = \
       src/mach/codegen.o \
       src/backend/cfg.o \
       src/backend/liveness.o \
+      src/backend/regalloc.o \
+      src/backend/color.o \
       src/frontend/ops.o \
 
 DEP = $(OBJ:.o=.d)
