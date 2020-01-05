@@ -5,7 +5,7 @@
 namespace utils
 {
 template <typename T>
-uset<T>::uset(std::vector<T> &elms)
+uset<T>::uset(const std::vector<T> &elms)
     : std::unordered_set<T>(elms.begin(), elms.end())
 {
 }
@@ -81,5 +81,22 @@ template <typename T> uset<T> uset<T>::intersect(const uset<T> &rhs) const
 	}
 
 	return ret;
+}
+
+template <typename T>
+template <typename It>
+uset<T> uset<T>::operator+(std::pair<It, It> it) const
+{
+	uset<T> ret(*this);
+	ret += it;
+	return ret;
+}
+
+template <typename T>
+template <typename It>
+uset<T> &uset<T>::operator+=(std::pair<It, It> it)
+{
+	this->insert(it.first, it.second);
+	return *this;
 }
 } // namespace utils
