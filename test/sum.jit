@@ -1,0 +1,12 @@
+fun mult(int a, int b) int {
+        int ret = 0;
+        for (int i = 0; i != a; i = i + 1)
+                ret = ret + b;
+        rof
+        return ret;
+}
+
+fun sum(int n) int {
+        mult(n, 2) + 1;
+        return 2;
+}

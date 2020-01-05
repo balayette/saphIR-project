@@ -1,0 +1,7 @@
+fun print_str(string s) void {}
+
+fun main() void {
+        print_str("LOL");
+        string l = "LOL2";
+        print_str(l);
+}

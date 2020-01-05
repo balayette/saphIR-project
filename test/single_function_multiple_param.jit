@@ -3,6 +3,5 @@ fun main(int a, int b, int c, int d) int {
 }
  fun f() int
 {
-        main(1, 2, 3, 4);
-        return 1;
+        return main(1, 2, 3, 4);
 }

@@ -1,19 +1,35 @@
-fun main(int argc, int argv) int {
-	int a = 2;
-	int b = a * 2 + 3;
+This was supposed to be a JIT, but it's just a compiler.
+The only backend is amd64 at the moment, using the System V calling convention.
 
-	for (int i = 0; i != 10; i = i + 1)
-		print("HELLO");
-	rof
+The language itself is still very limited, but shouldn't be too hard to
+extend. The backend (boring) stuff is implemented (CFG building, liveness
+analysis, interfence graph building, register allocation...)
 
-	if (a == 2)
-		return 3;
-	fi
-
-	if (a == 2)
-		return 3;
-	else
-		return 2;
-	fi
-	return a;
+```
+fun print(int z) void {
 }
+
+fun mult(int a, int b) int {
+        int ret = 0;
+        for (int i = 1; i != b + 1; i = i + 1)
+                ret = ret + a;
+        rof
+        return ret;
+}
+
+fun fact(int n) int {
+        int ret = 1;
+        for (int i = 1; i != n + 1; i = i + 1)
+                ret = mult(ret, i);
+        rof
+        return ret;
+}
+
+fun main(int argc) int {
+        for (int i = 0; i != argc; i = i + 1)
+                print(fact(i));
+        rof
+
+        return argc + 42;
+}
+```

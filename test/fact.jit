@@ -4,7 +4,7 @@ fun fact(int n) int {
         fi
         int ret = 1;
         for (int i = 1; i != n; i = i + 1)
-                ret = ret * i;
+                ret = ret + i;
         rof
         return ret;
 }

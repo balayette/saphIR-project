@@ -17,13 +17,13 @@
 
 int usage(char *pname)
 {
-	std::cerr << "usage: " << pname << " file\n";
+	std::cerr << "usage: " << pname << " in.jit out.S\n";
 	return 1;
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2)
+	if (argc != 3)
 		return usage(argv[0]);
 
 	driver drv;
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 		COMPILATION_ERROR(utils::cfail::PARSING);
 	}
 
-	std::ofstream fout("out.S");
+	std::ofstream fout(argv[2]);
 
 	frontend::pretty_printer p(std::cout);
 	drv.prog_->accept(p);
@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
 
 		std::cout << "==========\n";
 		auto instrs = mach::codegen(frag.frame_, trace);
+
 		frag.frame_.proc_entry_exit_2(instrs);
 		frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_,
 					      frag.ret_lbl_);

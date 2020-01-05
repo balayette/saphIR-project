@@ -1,8 +1,9 @@
-fun f(int *a, int **b) int { return *a * **b; }
+fun print(int a) void {}
+fun print_ptr(int* a) void {}
 
-fun main(int *a) void
+fun main() void
 {
-	int b = *a;
-	int *ptr = &b;
-	f(&b, &a);
+        int a = 0;
+        print_ptr(&a);
+        print(a);
 }

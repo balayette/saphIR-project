@@ -1,4 +1,14 @@
-Can't have pointer derefs on the lhs of an assignment, because I hate parsing.
-
-Remove all std::exit(...) calls, split them into compilation errors due to
-malformed programs, and unreachable code / assertion failures.
+frame resident variables are a bit broken (easy)
+*a = *b is broken at the moment (easy)
+Have a standard lib with a printf like function (idk)
+Multiplication, division, modulo (easy)
+Command line options and better output (boring)
+Better codegen of common patterns (fun)
+Peephole optimizations (fun)
+Optimize the CFG and reg allocation (+ SSA?) (hard)
+Instrumentation (fun)
+Type inference à la OCaml (hard)
+structs, arrays (medium)
+heap allocations (medium)
+implement new architectures, and rework mach/frame (medium)
+JIT (hard)
