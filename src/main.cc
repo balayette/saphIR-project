@@ -11,6 +11,7 @@
 #include "ir/canon/trace.hh"
 #include "backend/cfg.hh"
 #include "backend/liveness.hh"
+#include "backend/regalloc.hh"
 #include "mach/codegen.hh"
 #include "utils/assert.hh"
 
@@ -85,7 +86,7 @@ int main(int argc, char *argv[])
 		std::cout << "==========\n";
 		auto instrs = mach::codegen(frag.frame_, trace);
 		frag.frame_.proc_entry_exit_2(instrs);
-		frag.frame_.proc_entry_exit_3(instrs);
+		frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_);
 
 		backend::cfg cfg(instrs, frag.pro_lbl_);
 		std::ofstream cfg_out(std::string("cfg") + frag.frame_.s_.get()
@@ -97,6 +98,23 @@ int main(int argc, char *argv[])
 					 + frag.frame_.s_.get()
 					 + std::string(".dot"));
 		ifence.graph_.dump_dot(ifence_out, false);
+
+		std::cout << "######################\n";
+
+		backend::regalloc::alloc(instrs, frag);
+		auto f = frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_);
+
+                std::ofstream fout("out.S");
+
+		fout << f.prologue_;
+		for (auto &i : f.instrs_) {
+			if (i->repr_.size() == 0)
+				continue;
+			if (!i.as<assem::label>())
+				fout << '\t';
+			fout << i->to_string(mach::temp_map()) << '\n';
+		}
+		fout << f.epilogue_;
 	}
 
 	delete drv.prog_;
