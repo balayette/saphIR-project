@@ -69,17 +69,20 @@ void generator::visit_call(tree::call &c)
 		auto dest = cc[i];
 		src.push_back(arglbl);
 
-		std::string repr("mov `s0, ");
-		repr += dest.get();
+		std::string repr("mov `s0, `d0");
 
 		EMIT(assem::move(repr, {dest}, {arglbl}));
 		i++;
 	}
 
 	std::string repr("call ");
-	repr += name.get();
+	repr += name.get() + "@PLT";
 
-	EMIT(assem::oper(repr, caller_saved_regs(), src, {}));
+	auto clobbered = mach::caller_saved_regs();
+	auto args_regs = mach::args_regs();
+	clobbered.insert(clobbered.end(), args_regs.begin(), args_regs.end());
+
+	EMIT(assem::oper(repr, clobbered, src, {}));
 	utils::temp ret;
 	EMIT(assem::move("mov `s0, `d0", {ret}, {reg_to_temp(regs::RAX)}));
 
