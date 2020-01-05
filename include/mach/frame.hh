@@ -46,6 +46,10 @@ enum regs {
 	R15
 };
 
+unsigned reg_count();
+
+utils::temp_set registers();
+
 utils::temp reg_to_temp(regs r);
 
 utils::temp reg_to_str(regs r);
@@ -88,6 +92,15 @@ struct in_frame : public access {
 	int offt_;
 };
 
+struct asm_function {
+	asm_function(const std::string &prologue,
+		     const std::vector<assem::rinstr> &instrs,
+		     const std::string &epilogue);
+	const std::string prologue_;
+	std::vector<assem::rinstr> instrs_;
+	const std::string epilogue_;
+};
+
 struct frame {
 	frame(const symbol &s, const std::vector<bool> &args);
 
@@ -97,7 +110,8 @@ struct frame {
 					 utils::label ret_lbl);
 
 	void proc_entry_exit_2(std::vector<assem::rinstr> &instrs);
-	void proc_entry_exit_3(std::vector<assem::rinstr> &instrs);
+	asm_function proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
+				       utils::label pro_lbl);
 	const symbol s_;
 	std::vector<utils::ref<access>> formals_;
 	int escaping_count_;
