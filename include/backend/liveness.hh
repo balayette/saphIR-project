@@ -19,6 +19,8 @@ std::ostream &operator<<(std::ostream &os, const ifence_node &n);
 class ifence_graph
 {
       public:
+	using node_type = utils::gnode<ifence_node>;
+
 	ifence_graph(utils::graph<cfgnode> &cfg);
 	utils::graph<ifence_node> graph_;
 
