@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
 		COMPILATION_ERROR(utils::cfail::PARSING);
 	}
 
+        std::ofstream fout("out.S");
+
 	frontend::pretty_printer p(std::cout);
 	drv.prog_->accept(p);
 
@@ -65,7 +67,8 @@ int main(int argc, char *argv[])
 		canoned->accept(pir);
 		std::cout << "--\n";
 
-		auto bbs = ir::create_bbs(canoned, frag.pro_lbl_);
+		auto bbs =
+			ir::create_bbs(canoned, frag.pro_lbl_, frag.epi_lbl_);
 
 		for (auto [_, v] : bbs) {
 			std::cout << "+++++++++++++++++++++++++++++++++++++\n";
@@ -86,7 +89,8 @@ int main(int argc, char *argv[])
 		std::cout << "==========\n";
 		auto instrs = mach::codegen(frag.frame_, trace);
 		frag.frame_.proc_entry_exit_2(instrs);
-		frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_);
+		frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_,
+					      frag.ret_lbl_);
 
 		backend::cfg cfg(instrs, frag.pro_lbl_);
 		std::ofstream cfg_out(std::string("cfg") + frag.frame_.s_.get()
@@ -102,9 +106,8 @@ int main(int argc, char *argv[])
 		std::cout << "######################\n";
 
 		backend::regalloc::alloc(instrs, frag);
-		auto f = frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_);
-
-                std::ofstream fout("out.S");
+		auto f = frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_,
+						       frag.epi_lbl_);
 
 		fout << f.prologue_;
 		for (auto &i : f.instrs_) {

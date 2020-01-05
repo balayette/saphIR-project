@@ -32,8 +32,8 @@ bool is_jump(tree::tree_kind k)
 	return k == tree::tree_kind::cjump || k == tree::tree_kind::jump;
 }
 
-std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
-						utils::label &prologue)
+std::unordered_map<utils::label, bb>
+create_bbs(tree::rnode stm, utils::label &prologue, utils::label epilogue)
 {
 	// stm is a seq, and is the only seq/eseq in the program.
 	auto seq = stm.as<tree::seq>();
@@ -110,8 +110,8 @@ std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
 	if (bb_begin != seq->children_.end()) {
 		std::cout << "Adding the epilogue block\n";
 		bb block(bb_begin, seq->children_.end());
-		block.instrs_.push_back(new tree::jump(
-			new tree::name(done_lbl()), {done_lbl()}));
+		block.instrs_.push_back(
+			new tree::jump(new tree::name(epilogue), {epilogue}));
 
 		basic_blocks.push_back(block);
 	}
@@ -127,12 +127,4 @@ std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
 
 	return ret;
 }
-
-utils::label done_lbl()
-{
-	static utils::label done(unique_label("epilogue").get());
-
-	return done;
-}
-
 } // namespace ir

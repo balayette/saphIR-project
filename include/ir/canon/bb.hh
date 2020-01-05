@@ -5,8 +5,6 @@
 
 namespace ir
 {
-utils::label done_lbl();
-
 struct bb {
 	bb(tree::rnodevec::iterator begin, tree::rnodevec::iterator end);
 
@@ -16,6 +14,6 @@ struct bb {
 	tree::rnodevec instrs_;
 };
 
-std::unordered_map<utils::label, bb> create_bbs(tree::rnode stm,
-						 utils::label &prologue);
+std::unordered_map<utils::label, bb>
+create_bbs(tree::rnode stm, utils::label &prologue, utils::label epilogue);
 } // namespace ir

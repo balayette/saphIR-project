@@ -185,19 +185,22 @@ void frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 }
 
 asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
-				      utils::label pro_lbl)
+				      utils::label pro_lbl,
+				      utils::label epi_lbl)
 {
 	std::string prologue(".global ");
 	prologue += s_.get() + '\n' + s_.get() + ":\n";
 	prologue +=
 		"\tpush %rbp\n"
-		"\tmov %rsp, %rbp\n"
-		"\tsub $";
-	prologue += std::to_string(escaping_count_ * 8);
-	prologue += ", %rsp\n";
+		"\tmov %rsp, %rbp\n";
+	if (escaping_count_ != 0) {
+		prologue += "\tsub $";
+		prologue += std::to_string(escaping_count_ * 8);
+		prologue += ", %rsp\n";
+	}
 	prologue += "\tjmp .L_" + pro_lbl.get() + '\n';
 
-	std::string epilogue(".L_" + ir::done_lbl().get());
+	std::string epilogue(".L_" + epi_lbl.get());
 	epilogue +=
 		":\n"
 		"\tleave\n"

@@ -111,7 +111,8 @@ struct frame {
 
 	void proc_entry_exit_2(std::vector<assem::rinstr> &instrs);
 	asm_function proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
-				       utils::label pro_lbl);
+				       utils::label pro_lbl,
+				       utils::label epi_lbl);
 	const symbol s_;
 	std::vector<utils::ref<access>> formals_;
 	int escaping_count_;
@@ -134,8 +135,9 @@ struct str_fragment : public fragment {
 };
 
 struct fun_fragment : public fragment {
-	fun_fragment(ir::tree::rstm body, frame &frame, utils::label ret_lbl)
-	    : body_(body), frame_(frame), ret_lbl_(ret_lbl)
+	fun_fragment(ir::tree::rstm body, frame &frame, utils::label ret_lbl,
+		     utils::label epi_lbl)
+	    : body_(body), frame_(frame), ret_lbl_(ret_lbl), epi_lbl_(epi_lbl)
 	{
 	}
 
@@ -143,6 +145,7 @@ struct fun_fragment : public fragment {
 	frame frame_;
 	utils::label ret_lbl_;
 	utils::label pro_lbl_;
+	utils::label epi_lbl_;
 };
 
 std::ostream &operator<<(std::ostream &os, const access &a);
