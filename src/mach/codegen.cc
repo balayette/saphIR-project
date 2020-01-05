@@ -100,7 +100,7 @@ void generator::visit_cjump(tree::cjump &cj)
 	EMIT(assem::oper("cmp `s0, `s1", {}, {lhs, rhs}, {}));
 	std::string repr;
 	if (cj.op_ == ops::cmpop::EQ) {
-		repr += "jeq ";
+		repr += "je ";
 		repr += label_to_asm(cj.ltrue_);
 	} else if (cj.op_ == ops::cmpop::NEQ) {
 		repr += "jne ";
