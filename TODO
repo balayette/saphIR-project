@@ -1,5 +1,4 @@
 frame resident variables are a bit broken (easy)
-*a = *b is broken at the moment (easy)
 Have a standard lib with a printf like function (idk)
 Multiplication, division, modulo (easy)
 Command line options and better output (boring)

@@ -80,8 +80,6 @@
 %type <forstmt*> forstmt
 
 %type <exp*> exp
-%type <exp*> lvalue
-%type <exp*> rvalue
 %type <std::vector<exp*>> exps_comma
 %type <std::vector<exp*>> exps_commap
 
@@ -181,19 +179,11 @@ forstmt:
 ;
 
 exp:
-	lvalue { $$ = $1; }
-| 	rvalue { $$ = $1; }
-;
-
-lvalue:
  	ref 			{ $$ = $1; }
 | 	MULT exp 		{ $$ = new deref($2); }
-;	
-
-rvalue:
- 	num 			{ $$ = $1; }
+|	num 			{ $$ = $1; }
 | 	call 			{ $$ = $1; }
-| 	AMPERSAND lvalue 	{ $$ = new addrof($2); }
+| 	AMPERSAND exp           { $$ = new addrof($2); }
 | 	STR_LIT 		{ $$ = new str_lit($1); }
 | 	exp EQ exp 		{ $$ = new cmp(cmpop::EQ, $1, $3); }
 | 	exp NEQ exp 		{ $$ = new cmp(cmpop::NEQ, $1, $3); }
@@ -213,7 +203,7 @@ exps_commap:
 | 	exps_commap "," exp 	{ $1.push_back($3); $$ = $1; }
 ;
 
-ass: lvalue "=" rvalue 		{ $$ = new ass($1, $3); };
+ass: exp "=" exp 		{ $$ = new ass($1, $3); };
 
 num: INT_LIT 	{ $$ = new num($1); };
 
