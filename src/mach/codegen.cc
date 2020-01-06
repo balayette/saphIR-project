@@ -175,11 +175,15 @@ void generator::visit_mem(tree::mem &mm)
 void generator::visit_cnst(tree::cnst &c)
 {
 	utils::temp dst;
-	std::string instr("mov $");
-	instr += std::to_string(c.value_);
-	instr += ", `d0";
+	if (c.value_ == 0) {
+		EMIT(assem::oper("xor `d0, `d0", {dst}, {}, {}));
+	} else {
+		std::string instr("mov $");
+		instr += std::to_string(c.value_);
+		instr += ", `d0";
 
-	EMIT(assem::move(instr, {dst}, {}));
+		EMIT(assem::move(instr, {dst}, {}));
+	}
 
 	ret_ = dst;
 }
