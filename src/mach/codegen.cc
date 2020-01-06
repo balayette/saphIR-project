@@ -141,7 +141,7 @@ void generator::visit_move(tree::move &mv)
 			auto rhs = ret_;
 
 			EMIT(assem::move("mov (`s0), `d0", {rhs}, {rhs}));
-			EMIT(assem::move("mov `s0, (`d0)", {}, {rhs, lhs}));
+			EMIT(assem::move("mov `s0, (`s1)", {}, {rhs, lhs}));
 			return;
 		}
 
