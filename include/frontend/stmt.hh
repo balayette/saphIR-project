@@ -35,6 +35,22 @@ struct dec : public stmt {
 	utils::ref<mach::access> access_;
 };
 
+struct globaldec : public dec {
+	globaldec(types::ty type, symbol name, exp *rhs)
+	    : dec(type, name), rhs_(rhs)
+	{
+	}
+
+	virtual ~globaldec() override { delete rhs_; }
+
+	virtual void accept(visitor &visitor) override
+	{
+		visitor.visit_globaldec(*this);
+	}
+
+	exp *rhs_;
+};
+
 struct vardec : public dec {
 	vardec(types::ty type, symbol name, exp *rhs)
 	    : dec(type, name), rhs_(rhs)
@@ -101,12 +117,12 @@ struct decs : public stmt {
 	{
 		for (auto *f : fundecs_)
 			delete f;
-		for (auto *v : vardecs_)
-			delete v;
+		for (auto *g : vardecs_)
+			delete g;
 	}
 
 	std::vector<fundec *> fundecs_;
-	std::vector<vardec *> vardecs_;
+	std::vector<globaldec *> vardecs_;
 };
 
 

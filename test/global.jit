@@ -1,0 +1,14 @@
+fun print_str(string l) void {}
+
+int a = 2;
+string s = "lol";
+
+fun call(int lol) int {
+        return lol + 3;
+}
+
+fun main() int {
+        a = a + 2;
+        print_str(s);
+        return a;
+}

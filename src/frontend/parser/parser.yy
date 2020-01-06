@@ -74,6 +74,7 @@
 %type <stmt*> stmt_body
 
 %type <vardec*> vardec
+%type <globaldec*> globaldec
 %type <sexp*> sexp
 %type <ret*> ret
 %type <ifstmt*> ifstmt
@@ -102,9 +103,9 @@ start: program
 program: decs 	{ d.prog_ = $1; };
 
 decs:
-	%empty 		{ $$ = new decs(); }
-|   	decs fundec 	{ $$ = $1; $1->fundecs_.push_back($2); }
-| 	decs vardec ";" { $$ = $1; $1->vardecs_.push_back($2); }
+	%empty          { $$ = new decs(); }
+|   	decs fundec     { $$ = $1; $1->fundecs_.push_back($2); }
+| 	decs globaldec ";"      { $$ = $1; $1->vardecs_.push_back($2); }
 ;
 
 fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" { 
@@ -147,6 +148,7 @@ stmt_body:
 ;
 
 vardec: type ID "=" exp { $$ = new vardec($1, $2, $4); };
+globaldec: type ID "=" exp { $$ = new globaldec($1, $2, $4); };
 
 /* TODO: This accepts 1; */
 sexp: exp { $$ = new sexp($1); };
