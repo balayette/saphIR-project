@@ -43,6 +43,8 @@ template <typename K, typename V> class scoped_map
 
 	std::optional<V> get(const K &k);
 
+	size_t size() const;
+
       private:
 	std::stack<map_type> scopes_;
 };

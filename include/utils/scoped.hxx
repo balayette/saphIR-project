@@ -33,4 +33,9 @@ std::optional<V> scoped_map<K, V>::get(const K &k)
 		return std::nullopt;
 	return ret->second;
 }
+
+template <typename K, typename V> size_t scoped_map<K, V>::size() const
+{
+	return scopes_.size();
+}
 } // namespace utils
