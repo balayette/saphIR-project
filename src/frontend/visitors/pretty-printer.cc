@@ -8,13 +8,20 @@ pretty_printer::pretty_printer(std::ostream &os)
 
 void pretty_printer::visit_decs(decs &s)
 {
-	for (auto *f : s.fundecs_)
-		f->accept(*this);
-
 	for (auto *v : s.vardecs_) {
 		v->accept(*this);
 		os_ << '\n';
 	}
+
+	for (auto *f : s.fundecs_)
+		f->accept(*this);
+}
+
+void pretty_printer::visit_globaldec(globaldec &s)
+{
+	indent() << s << " = ";
+	s.rhs_->accept(*this);
+	os_ << ';';
 }
 
 void pretty_printer::visit_vardec(vardec &s)

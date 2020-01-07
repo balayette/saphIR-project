@@ -12,6 +12,7 @@ class pretty_printer : public default_visitor
 	pretty_printer(std::ostream &os);
 
 	virtual void visit_decs(decs &s) override;
+	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_vardec(vardec &s) override;
 	virtual void visit_argdec(argdec &s) override;
 	virtual void visit_fundec(fundec &s) override;
