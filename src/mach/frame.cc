@@ -120,6 +120,17 @@ std::ostream &in_frame::print(std::ostream &os) const
 	return os << ")";
 }
 
+global_acc::global_acc(const symbol &name) : name_(name) {}
+ir::tree::rexp global_acc::exp() const
+{
+	return new ir::tree::mem(new ir::tree::name(name_.get()));
+}
+std::ostream &global_acc::print(std::ostream &os) const
+{
+	return os << "global_acc(" << name_ << ")";
+}
+
+
 frame::frame(const symbol &s, const std::vector<bool> &args)
     : s_(s), escaping_count_(0), reg_count_(0)
 {

@@ -92,6 +92,14 @@ struct in_frame : public access {
 	int offt_;
 };
 
+struct global_acc : public access {
+	global_acc(const symbol &name);
+	ir::tree::rexp exp() const override;
+	std::ostream &print(std::ostream &os) const override;
+
+	symbol name_;
+};
+
 struct asm_function {
 	asm_function(const std::string &prologue,
 		     const std::vector<assem::rinstr> &instrs,
@@ -101,7 +109,7 @@ struct asm_function {
 	const std::string epilogue_;
 };
 
-std::string asm_string(utils::label lab, const std::string& str);
+std::string asm_string(utils::label lab, const std::string &str);
 
 struct frame {
 	frame(const symbol &s, const std::vector<bool> &args);
