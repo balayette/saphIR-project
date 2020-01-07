@@ -73,7 +73,9 @@ class translate_visitor : public default_visitor
 	void visit_forstmt(forstmt &s) override;
 	void visit_ifstmt(ifstmt &s) override;
 	void visit_ass(ass &s) override;
+	void visit_decs(decs &s) override;
 	void visit_vardec(vardec &s) override;
+	void visit_globaldec(globaldec &s) override;
 	void visit_ret(ret &s) override;
 	void visit_str_lit(str_lit &e) override;
 	void visit_fundec(fundec &s) override;
@@ -84,6 +86,8 @@ class translate_visitor : public default_visitor
 	utils::scoped_var<utils::label> ret_lbl_;
 	std::unordered_map<utils::label, str_lit> str_lits_;
 	std::vector<mach::fun_fragment> funs_;
+	std::vector<ir::tree::rstm> init_funs_;
+	utils::ref<mach::fun_fragment> init_fun_;
 };
 
 } // namespace frontend::translate

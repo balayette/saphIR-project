@@ -279,6 +279,25 @@ void translate_visitor::visit_str_lit(str_lit &e)
 	str_lits_.emplace(lab, e);
 }
 
+void translate_visitor::visit_decs(decs &s)
+{
+	default_visitor::visit_decs(s);
+
+	auto body = new ir::tree::seq(init_funs_);
+	utils::label ret_lbl = unique_label("init_vars_ret").get();
+	mach::frame frame(unique_label("init_vars").get(), {});
+	init_fun_ = new mach::fun_fragment(
+		frame.proc_entry_exit_1(body, ret_lbl), frame, ret_lbl,
+		unique_label("init_vars_epi").get());
+}
+
+void translate_visitor::visit_globaldec(globaldec &s)
+{
+	s.rhs_->accept(*this);
+	init_funs_.push_back(
+		new ir::tree::move(s.access_->exp(), ret_->un_ex()));
+}
+
 void translate_visitor::visit_fundec(fundec &s)
 {
 	ret_lbl_.enter(unique_label("ret").get());
