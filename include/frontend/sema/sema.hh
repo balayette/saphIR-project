@@ -11,6 +11,7 @@ class binding_visitor : public default_visitor
 {
       public:
 	virtual void visit_decs(decs &s) override;
+	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_vardec(vardec &s) override;
 	virtual void visit_argdec(argdec &s) override;
 	virtual void visit_fundec(fundec &s) override;
@@ -45,6 +46,7 @@ class frame_visitor : public default_visitor
 {
       public:
 	virtual void visit_fundec(fundec &s) override;
+	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_vardec(vardec &s) override;
 
       private:

@@ -5,8 +5,8 @@ namespace frontend::sema
 {
 void binding_visitor::visit_decs(decs &s)
 {
-	for (auto *v : s.vardecs_)
-		v->accept(*this);
+	for (auto *gv : s.vardecs_)
+		gv->accept(*this);
 	for (auto *f : s.fundecs_) {
 		f->accept(*this);
 		if (!fmap_.add(f->name_, f)) {
@@ -14,6 +14,21 @@ void binding_visitor::visit_decs(decs &s)
 				  << "' already declared\n";
 			COMPILATION_ERROR(utils::cfail::SEMA);
 		}
+	}
+}
+
+void binding_visitor::visit_globaldec(globaldec &s)
+{
+	default_visitor::visit_globaldec(s);
+	if (!vmap_.add(s.name_, &s)) {
+		std::cerr << "var '" << s.name_ << "' already declared.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	if (!s.rhs_->ty_.compatible(s.type_)) {
+		std::cerr << "TypeError: rhs of declaration of variable '"
+			  << s.name_ << "'\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -262,6 +277,13 @@ void frame_visitor::visit_fundec(fundec &s)
 	}
 	default_visitor::visit_fundec(s);
 	cframe_ = nullptr;
+}
+
+void frame_visitor::visit_globaldec(globaldec &s)
+{
+	s.access_ = new mach::global_acc(s.name_);
+	std::cout << "global var: '" << s.name_ << "' " << s.access_ << '\n';
+	default_visitor::visit_globaldec(s);
 }
 
 void frame_visitor::visit_vardec(vardec &s)
