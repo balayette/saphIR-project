@@ -39,14 +39,14 @@ int main(int argc, char *argv[])
 	frontend::sema::binding_visitor b;
 	drv.prog_->accept(b);
 
+	frontend::transforms::unique_ids_visitor u;
+	drv.prog_->accept(u);
+
 	frontend::sema::escapes_visitor e;
 	drv.prog_->accept(e);
 
 	frontend::sema::frame_visitor f;
 	drv.prog_->accept(f);
-
-	frontend::transforms::unique_ids_visitor u;
-	drv.prog_->accept(u);
 
 	drv.prog_->accept(p);
 
@@ -54,14 +54,20 @@ int main(int argc, char *argv[])
 	drv.prog_->accept(trans);
 
 	ir::ir_pretty_printer pir(std::cout);
+
+	std::vector<mach::fun_fragment> frags;
 	for (auto &frag : trans.funs_) {
 		std::cout << "Function: " << frag.frame_.s_
 			  << " - Return label : " << frag.ret_lbl_ << '\n';
+		frags.push_back(frag);
 	}
+
+        if (trans.init_fun_)
+                frags.push_back(*trans.init_fun_);
 
 	std::vector<mach::asm_function> funs;
 
-	for (auto frag : trans.funs_) {
+	for (auto &frag : frags) {
 		auto canoned = ir::canon(frag.body_);
 		std::cout << "Precannon:\n";
 		frag.body_->accept(pir);
@@ -118,7 +124,17 @@ int main(int argc, char *argv[])
 	fout << "\t.section .rodata\n";
 	for (auto [lab, s] : trans.str_lits_)
 		fout << mach::asm_string(lab, s.str_);
-        fout << '\n';
+	fout << '\n';
+
+	for (auto *glob : drv.prog_->vardecs_)
+		fout << "\t.lcomm .L_" << glob->name_ << ", 8\n";
+	fout << "\n";
+
+	if (trans.init_fun_) {
+		fout << "\t.section .init_array\n";
+		fout << "\t.quad " << trans.init_fun_->frame_.s_ << "\n";
+		fout << "\n";
+	}
 
 	fout << "\t.text\n";
 	for (auto &f : funs) {
