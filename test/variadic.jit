@@ -1,0 +1,6 @@
+fun printf(string format) void variadic;
+
+fun main(int argc) int {
+        printf("0x%x", argc);
+        return 1;
+}

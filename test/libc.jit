@@ -1,0 +1,2 @@
+fun printf(string fmt) int variadic;
+fun scanf(string fmt) int variadic;

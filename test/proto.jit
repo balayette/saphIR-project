@@ -1,0 +1,4 @@
+fun main() int {
+        print("lol");
+        return 1;
+}

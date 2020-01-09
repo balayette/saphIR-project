@@ -1,0 +1,6 @@
+#include "libc.jit"
+
+fun main(int argc) int {
+        printf("0x%x\n", argc);
+        return 1;
+}
