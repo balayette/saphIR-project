@@ -54,15 +54,6 @@ void binding_visitor::visit_vardec(vardec &s)
 	}
 }
 
-void binding_visitor::visit_argdec(argdec &s)
-{
-	default_visitor::visit_argdec(s);
-	if (!vmap_.add(s.name_, &s)) {
-		std::cerr << "arg '" << s.name_ << "' already declared.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-}
-
 void binding_visitor::visit_fundec(fundec &s)
 {
 	new_scope();
@@ -151,11 +142,23 @@ void binding_visitor::visit_call(call &e)
 	}
 	std::cout << "call: " << e.name_ << " bound to function " << *f << '\n';
 
-	if (e.args_.size() != (*f)->args_.size()) {
-		std::cerr << "call: Wrong number of arguments for fun '"
-			  << e.name_ << "', expected " << (*f)->args_.size()
-			  << ", got " << e.args_.size() << '\n';
-		COMPILATION_ERROR(utils::cfail::SEMA);
+	if (!(*f)->variadic_) {
+		if (e.args_.size() != (*f)->args_.size()) {
+			std::cerr << "call: Wrong number of arguments for fun '"
+				  << e.name_ << "', expected "
+				  << (*f)->args_.size() << ", got "
+				  << e.args_.size() << '\n';
+			COMPILATION_ERROR(utils::cfail::SEMA);
+		}
+	} else {
+		if (e.args_.size() < (*f)->args_.size()) {
+			std::cerr
+				<< "call: Wrong number of arguments for variadic fun '"
+				<< e.name_
+				<< "', expected >=" << (*f)->args_.size()
+				<< ", got " << e.args_.size() << '\n';
+			COMPILATION_ERROR(utils::cfail::SEMA);
+		}
 	}
 
 	e.ty_ = (*f)->ret_ty_;
@@ -163,7 +166,7 @@ void binding_visitor::visit_call(call &e)
 
 	default_visitor::visit_call(e);
 
-	for (size_t i = 0; i < e.args_.size(); i++) {
+	for (size_t i = 0; i < (*f)->args_.size(); i++) {
 		if (e.args_[i]->ty_.compatible((*f)->args_[i]->type_))
 			continue;
 		std::cerr << "TypeError: Wrong type for argument '"
@@ -300,6 +303,9 @@ void frame_visitor::visit_globaldec(globaldec &s)
 
 void frame_visitor::visit_vardec(vardec &s)
 {
+        if (s.access_) // Already set by visit_fundec for args
+                return;
+
 	s.access_ = cframe_->alloc_local(s.escapes_);
 	std::cout << "frame: var '" << s.name_ << "' " << s.access_ << '\n';
 	default_visitor::visit_vardec(s);

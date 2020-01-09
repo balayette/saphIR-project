@@ -133,8 +133,8 @@ struct decs : public stmt {
 
 	virtual ~decs() override
 	{
-                for (auto *p : funprotodecs_)
-                        delete p;
+		for (auto *p : funprotodecs_)
+			delete p;
 		for (auto *f : fundecs_)
 			delete f;
 		for (auto *g : vardecs_)
