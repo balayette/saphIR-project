@@ -112,8 +112,9 @@ void translate_visitor::visit_call(call &e)
 		args.emplace_back(ret_->un_ex());
 	}
 
-	auto *call = new ir::tree::call(
-		new ir::tree::name(e.fdec_->name_.get()), args);
+	auto *call =
+		new ir::tree::call(new ir::tree::name(e.fdec_->name_.get()),
+				   args, e.fdec_->variadic_);
 
 	ret_ = new ex(call);
 }
@@ -248,8 +249,8 @@ void translate_visitor::visit_ass(ass &s)
 
 void translate_visitor::visit_vardec(vardec &s)
 {
-        if (!s.rhs_)
-                return;
+	if (!s.rhs_)
+		return;
 
 	s.rhs_->accept(*this);
 	auto rhs = ret_;

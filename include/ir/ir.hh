@@ -106,7 +106,8 @@ struct mem : public exp {
 };
 
 struct call : public exp {
-	call(const rexp &name, const std::vector<rexp> &args)
+	call(const rexp &name, const std::vector<rexp> &args, bool variadic)
+	    : variadic_(variadic)
 	{
 		children_.emplace_back(name);
 		children_.insert(children_.end(), args.begin(), args.end());
@@ -123,6 +124,8 @@ struct call : public exp {
 			args.emplace_back(it->as<exp>());
 		return args;
 	}
+
+	bool variadic_;
 };
 
 struct eseq : public exp {

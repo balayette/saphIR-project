@@ -75,6 +75,11 @@ void generator::visit_call(tree::call &c)
 		i++;
 	}
 
+	// XXX: This assumes no floating point parameters
+	if (c.variadic_)
+		EMIT(assem::oper("xor `d0, `d0", {reg_to_temp(regs::RAX)}, {},
+				 {}));
+
 	std::string repr("call ");
 	repr += name.get() + "@PLT";
 
