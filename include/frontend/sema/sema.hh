@@ -13,7 +13,6 @@ class binding_visitor : public default_visitor
 	virtual void visit_decs(decs &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_vardec(vardec &s) override;
-	virtual void visit_argdec(argdec &s) override;
 	virtual void visit_fundec(fundec &s) override;
 	virtual void visit_ret(ret &s) override;
 	virtual void visit_ifstmt(ifstmt &s) override;

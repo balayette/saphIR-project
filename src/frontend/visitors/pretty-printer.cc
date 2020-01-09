@@ -36,8 +36,6 @@ void pretty_printer::visit_vardec(vardec &s)
 	os_ << ';';
 }
 
-void pretty_printer::visit_argdec(argdec &s) { os_ << s; }
-
 void pretty_printer::visit_funprotodec(funprotodec &s)
 {
 	os_ << "fun " << s.name_ << '(';

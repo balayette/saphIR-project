@@ -66,12 +66,6 @@ struct vardec : public dec {
 	exp *rhs_;
 };
 
-struct argdec : public dec {
-	argdec(types::ty type, symbol name) : dec(type, name) {}
-
-	ACCEPT(argdec)
-};
-
 std::ostream &operator<<(std::ostream &os, const dec &dec);
 
 struct funprotodec : public stmt {

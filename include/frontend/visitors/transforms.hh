@@ -12,7 +12,6 @@ class unique_ids_visitor : public default_visitor
 	 * debugging what they refer to easier to understand.
 	 * */
       public:
-	virtual void visit_argdec(argdec &s) override;
 	virtual void visit_vardec(vardec &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
 };

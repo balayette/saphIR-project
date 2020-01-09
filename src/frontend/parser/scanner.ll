@@ -60,7 +60,6 @@ strlit \"[^"]*\"
 {id} 		return TOKEN_VAL(ID, symbol(yytext));
 {strlit} 	{return TOKEN_VAL(STR_LIT, /* Remove quotes */
 			std::string(yytext + 1, strlen(yytext + 1) - 1)); }
-
 . 		{
 	std::cerr << "invalid character: " << yytext << '\n';
         COMPILATION_ERROR(utils::cfail::LEXING);

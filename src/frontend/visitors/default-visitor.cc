@@ -19,8 +19,6 @@ void default_visitor::visit_vardec(vardec &s)
 		s.rhs_->accept(*this);
 }
 
-void default_visitor::visit_argdec(argdec &) {}
-
 void default_visitor::visit_funprotodec(funprotodec &s)
 {
 	for (auto *arg : s.args_)

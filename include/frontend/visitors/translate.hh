@@ -78,6 +78,7 @@ class translate_visitor : public default_visitor
 	void visit_globaldec(globaldec &s) override;
 	void visit_ret(ret &s) override;
 	void visit_str_lit(str_lit &e) override;
+	void visit_funprotodec(funprotodec &s) override;
 	void visit_fundec(fundec &s) override;
 	void visit_deref(deref &e) override;
 	void visit_addrof(addrof &e) override;
