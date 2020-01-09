@@ -301,6 +301,11 @@ void translate_visitor::visit_globaldec(globaldec &s)
 		new ir::tree::move(s.access_->exp(), ret_->un_ex()));
 }
 
+void translate_visitor::visit_funprotodec(funprotodec &)
+{
+	// Ignore prototypes.
+}
+
 void translate_visitor::visit_fundec(fundec &s)
 {
 	ret_lbl_.enter(unique_label("ret").get());
