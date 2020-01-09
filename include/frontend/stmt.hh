@@ -75,8 +75,9 @@ struct argdec : public dec {
 std::ostream &operator<<(std::ostream &os, const dec &dec);
 
 struct funprotodec : public stmt {
-	funprotodec(types::ty ret_ty, symbol name, std::vector<vardec *> args)
-	    : ret_ty_(ret_ty), name_(name), args_(args)
+	funprotodec(types::ty ret_ty, symbol name, std::vector<vardec *> args,
+		    bool variadic = false)
+	    : ret_ty_(ret_ty), name_(name), args_(args), variadic_(variadic)
 	{
 	}
 
@@ -94,6 +95,7 @@ struct funprotodec : public stmt {
 	types::ty ret_ty_;
 	symbol name_;
 	std::vector<vardec *> args_;
+	bool variadic_;
 };
 
 struct fundec : public funprotodec {

@@ -54,6 +54,7 @@
 	INT "int"
 	VOID "void"
 	STRING "string"
+        VARIADIC "variadic"
 	EOF 0 "eof"
 
 %token <symbol> ID "id"
@@ -110,9 +111,10 @@ decs:
 |       decs funprotodec ";" { $$ = $1; $1->funprotodecs_.push_back($2); }
 ;
 
-funprotodec: "fun" ID "(" argdecs ")" type {
-      $$ = new funprotodec($6, $2, $4);
-};
+funprotodec: 
+        "fun" ID "(" argdecs ")" type { $$ = new funprotodec($6, $2, $4); }
+|       "fun" ID "(" argdecs ")" type "variadic" { $$ = new funprotodec($6, $2, $4, true); }
+;
 
 fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" {
       $$ = new fundec($6, $2, $4, $8);

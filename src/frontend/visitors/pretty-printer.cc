@@ -48,7 +48,11 @@ void pretty_printer::visit_funprotodec(funprotodec &s)
 			os_ << ", ";
 	}
 
-	os_ << ") " << s.ret_ty_.to_string() << ";\n";
+	os_ << ") " << s.ret_ty_.to_string();
+
+	if (s.variadic_)
+		os_ << " variadic";
+	os_ << ";\n";
 }
 
 void pretty_printer::visit_fundec(fundec &s)
