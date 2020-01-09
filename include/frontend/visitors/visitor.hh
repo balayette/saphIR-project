@@ -9,6 +9,7 @@ struct decs;
 struct globaldec;
 struct vardec;
 struct argdec;
+struct funprotodec;
 struct fundec;
 struct sexp;
 struct ret;
@@ -41,6 +42,7 @@ class visitor
 	virtual void visit_globaldec(globaldec &s) = 0;
 	virtual void visit_vardec(vardec &s) = 0;
 	virtual void visit_argdec(argdec &s) = 0;
+	virtual void visit_funprotodec(funprotodec &s) = 0;
 	virtual void visit_fundec(fundec &s) = 0;
 	virtual void visit_sexp(sexp &s) = 0;
 	virtual void visit_ret(ret &s) = 0;

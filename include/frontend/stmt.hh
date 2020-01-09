@@ -74,18 +74,37 @@ struct argdec : public dec {
 
 std::ostream &operator<<(std::ostream &os, const dec &dec);
 
-struct fundec : public stmt {
-	fundec(types::ty ret_ty, symbol name, std::vector<argdec *> args,
+struct funprotodec : public stmt {
+	funprotodec(types::ty ret_ty, symbol name, std::vector<vardec *> args)
+	    : ret_ty_(ret_ty), name_(name), args_(args)
+	{
+	}
+
+	virtual ~funprotodec() override
+	{
+		for (auto *arg : args_)
+			delete arg;
+	}
+
+	virtual void accept(visitor &visitor) override
+	{
+		visitor.visit_funprotodec(*this);
+	}
+
+	types::ty ret_ty_;
+	symbol name_;
+	std::vector<vardec *> args_;
+};
+
+struct fundec : public funprotodec {
+	fundec(types::ty ret_ty, symbol name, std::vector<vardec *> args,
 	       std::vector<stmt *> body)
-	    : ret_ty_(ret_ty), name_(name), args_(args), body_(body),
-	      has_return_(false)
+	    : funprotodec(ret_ty, name, args), body_(body), has_return_(false)
 	{
 	}
 
 	virtual ~fundec() override
 	{
-		for (auto *arg : args_)
-			delete arg;
 		for (auto *s : body_)
 			delete s;
 		delete frame_;
@@ -96,9 +115,6 @@ struct fundec : public stmt {
 		visitor.visit_fundec(*this);
 	}
 
-	types::ty ret_ty_;
-	symbol name_;
-	std::vector<argdec *> args_;
 	std::vector<stmt *> body_;
 	mach::frame *frame_;
 	bool has_return_;
@@ -115,12 +131,15 @@ struct decs : public stmt {
 
 	virtual ~decs() override
 	{
+                for (auto *p : funprotodecs_)
+                        delete p;
 		for (auto *f : fundecs_)
 			delete f;
 		for (auto *g : vardecs_)
 			delete g;
 	}
 
+	std::vector<funprotodec *> funprotodecs_;
 	std::vector<fundec *> fundecs_;
 	std::vector<globaldec *> vardecs_;
 };

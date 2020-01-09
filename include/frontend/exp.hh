@@ -117,7 +117,7 @@ struct call : public exp {
 	symbol name_;
 	std::vector<exp *> args_;
 
-	fundec *fdec_;
+	funprotodec *fdec_;
 };
 
 struct str_lit : public exp {

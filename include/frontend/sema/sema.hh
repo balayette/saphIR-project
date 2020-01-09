@@ -31,7 +31,7 @@ class binding_visitor : public default_visitor
 	void new_scope();
 	void end_scope();
 
-	utils::scoped_map<symbol, fundec *> fmap_;
+	utils::scoped_map<symbol, funprotodec *> fmap_;
 	utils::scoped_map<symbol, dec *> vmap_;
 	utils::scoped_ptr<fundec *> cfunc_;
 };
@@ -45,6 +45,7 @@ class escapes_visitor : public default_visitor
 class frame_visitor : public default_visitor
 {
       public:
+	virtual void visit_funprotodec(funprotodec &s) override;
 	virtual void visit_fundec(fundec &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_vardec(vardec &s) override;

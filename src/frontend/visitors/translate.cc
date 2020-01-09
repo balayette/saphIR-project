@@ -248,6 +248,9 @@ void translate_visitor::visit_ass(ass &s)
 
 void translate_visitor::visit_vardec(vardec &s)
 {
+        if (!s.rhs_)
+                return;
+
 	s.rhs_->accept(*this);
 	auto rhs = ret_;
 

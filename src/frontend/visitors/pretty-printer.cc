@@ -8,11 +8,14 @@ pretty_printer::pretty_printer(std::ostream &os)
 
 void pretty_printer::visit_decs(decs &s)
 {
+	for (auto *p : s.funprotodecs_) {
+		p->accept(*this);
+		os_ << '\n';
+	}
 	for (auto *v : s.vardecs_) {
 		v->accept(*this);
 		os_ << '\n';
 	}
-
 	for (auto *f : s.fundecs_)
 		f->accept(*this);
 }
@@ -34,6 +37,19 @@ void pretty_printer::visit_vardec(vardec &s)
 }
 
 void pretty_printer::visit_argdec(argdec &s) { os_ << s; }
+
+void pretty_printer::visit_funprotodec(funprotodec &s)
+{
+	os_ << "fun " << s.name_ << '(';
+
+	for (auto it = s.args_.begin(); it != s.args_.end(); it++) {
+		os_ << **it;
+		if (it != s.args_.end() - 1)
+			os_ << ", ";
+	}
+
+	os_ << ") " << s.ret_ty_.to_string() << ";\n";
+}
 
 void pretty_printer::visit_fundec(fundec &s)
 {

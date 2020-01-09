@@ -5,6 +5,13 @@ namespace frontend::sema
 {
 void binding_visitor::visit_decs(decs &s)
 {
+	for (auto *p : s.funprotodecs_) {
+		if (!fmap_.add(p->name_, p)) {
+			std::cerr << "fun '" << p->name_
+				  << "' already declared\n";
+			COMPILATION_ERROR(utils::cfail::SEMA);
+		}
+	}
 	for (auto *gv : s.vardecs_)
 		gv->accept(*this);
 	for (auto *f : s.fundecs_) {
@@ -40,7 +47,7 @@ void binding_visitor::visit_vardec(vardec &s)
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
-	if (!s.rhs_->ty_.compatible(s.type_)) {
+	if (s.rhs_ && !s.rhs_->ty_.compatible(s.type_)) {
 		std::cerr << "TypeError: rhs of declaration of variable '"
 			  << s.name_ << "'\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
@@ -256,6 +263,11 @@ void escapes_visitor::visit_addrof(addrof &e)
 				  << "' escapes\n";
 		d->dec_->escapes_ = true;
 	}
+}
+
+void frame_visitor::visit_funprotodec(funprotodec &)
+{
+	// Don't recurse, we don't care about prototypes.
 }
 
 void frame_visitor::visit_fundec(fundec &s)

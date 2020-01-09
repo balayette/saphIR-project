@@ -63,10 +63,11 @@
 %type <decs*> decs
 
 %type <fundec*> fundec
+%type <funprotodec*> funprotodec
 
-%type <std::vector<argdec*>> argdecs
-%type <std::vector<argdec*>> argdecsp
-%type <argdec*> argdec
+%type <std::vector<vardec*>> argdecs
+%type <std::vector<vardec*>> argdecsp
+%type <vardec*> argdec
 
 %type <std::vector<stmt*>> stmts
 %type <std::vector<stmt*>> stmtsp
@@ -106,23 +107,28 @@ decs:
 	%empty          { $$ = new decs(); }
 |   	decs fundec     { $$ = $1; $1->fundecs_.push_back($2); }
 | 	decs globaldec ";"      { $$ = $1; $1->vardecs_.push_back($2); }
+|       decs funprotodec ";" { $$ = $1; $1->funprotodecs_.push_back($2); }
 ;
 
-fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" { 
-      $$ = new fundec($6, $2, $4, $8); 
+funprotodec: "fun" ID "(" argdecs ")" type {
+      $$ = new funprotodec($6, $2, $4);
+};
+
+fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" {
+      $$ = new fundec($6, $2, $4, $8);
 };
 
 argdecs:
-       	%empty 			{ $$ = std::vector<argdec*>(); }
+       	%empty 			{ $$ = std::vector<vardec*>(); }
 | 	argdecsp
 ;
 
 argdecsp:
-	argdec 			{ $$ = std::vector<argdec*>(); $$.push_back($1); }
+	argdec 			{ $$ = std::vector<vardec*>(); $$.push_back($1); }
 | 	argdecsp "," argdec	{ $1.push_back($3); $$ = $1; }
 ;
 
-argdec: type ID 	{ $$ = new argdec($1, $2); };
+argdec: type ID 	{ $$ = new vardec($1, $2, nullptr); };
 
 stmts:
      	%empty 		{ $$ = std::vector<stmt*>(); }
