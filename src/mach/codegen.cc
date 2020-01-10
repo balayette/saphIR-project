@@ -212,7 +212,22 @@ void generator::visit_binop(tree::binop &b)
 		EMIT(assem::oper("sub `s0, `d0", {dst}, {lhs, dst}, {}));
 	else if (b.op_ == ops::binop::MULT)
 		EMIT(assem::oper("imulq `s0, `d0", {dst}, {lhs}, {}));
-	else
+	else if (b.op_ == ops::binop::DIV) {
+		EMIT(assem::move("mov `s0, `d0", {reg_to_temp(regs::RAX)},
+				 {lhs}));
+		EMIT(assem::oper(
+			"cqto",
+			{reg_to_temp(regs::RAX), reg_to_temp(regs::RDX)},
+			{reg_to_temp(regs::RAX)}, {}));
+		// quotient in %rax, remainder in %rdx
+		EMIT(assem::oper(
+			"idivq `s0",
+			{reg_to_temp(regs::RAX), reg_to_temp(regs::RDX)},
+			{dst, reg_to_temp(regs::RAX), reg_to_temp(regs::RAX)},
+			{}));
+		EMIT(assem::move("mov `s0, `d0", {dst},
+				 {reg_to_temp(regs::RAX)}));
+	} else
 		UNREACHABLE("Unimplemented binop");
 
 	ret_ = dst;
