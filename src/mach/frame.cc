@@ -4,6 +4,8 @@
 
 #include <array>
 
+#define ROUND_UP(x, m) (((x) + (m)-1) & ~((m)-1))
+
 namespace mach
 {
 std::array<utils::temp, 16> reg_temp{
@@ -212,7 +214,7 @@ asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
 		"\tmov %rsp, %rbp\n";
 	if (escaping_count_ != 0) {
 		prologue += "\tsub $";
-		prologue += std::to_string(escaping_count_ * 8);
+		prologue += std::to_string(ROUND_UP(escaping_count_ * 8, 16));
 		prologue += ", %rsp\n";
 	}
 	prologue += "\tjmp .L_" + pro_lbl.get() + '\n';
