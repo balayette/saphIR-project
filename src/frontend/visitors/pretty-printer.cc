@@ -8,16 +8,10 @@ pretty_printer::pretty_printer(std::ostream &os)
 
 void pretty_printer::visit_decs(decs &s)
 {
-	for (auto *p : s.funprotodecs_) {
-		p->accept(*this);
+	for (auto *d : s.decs_) {
+		d->accept(*this);
 		os_ << '\n';
 	}
-	for (auto *v : s.vardecs_) {
-		v->accept(*this);
-		os_ << '\n';
-	}
-	for (auto *f : s.fundecs_)
-		f->accept(*this);
 }
 
 void pretty_printer::visit_globaldec(globaldec &s)

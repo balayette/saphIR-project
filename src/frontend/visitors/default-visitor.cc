@@ -3,12 +3,8 @@ namespace frontend
 {
 void default_visitor::visit_decs(decs &s)
 {
-	for (auto *p : s.funprotodecs_)
-		p->accept(*this);
-	for (auto *v : s.vardecs_)
-		v->accept(*this);
-	for (auto *f : s.fundecs_)
-		f->accept(*this);
+	for (auto *d : s.decs_)
+		d->accept(*this);
 }
 
 void default_visitor::visit_globaldec(globaldec &s) { s.rhs_->accept(*this); }

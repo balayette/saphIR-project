@@ -62,8 +62,8 @@ int main(int argc, char *argv[])
 		frags.push_back(frag);
 	}
 
-        if (trans.init_fun_)
-                frags.push_back(*trans.init_fun_);
+	if (trans.init_fun_)
+		frags.push_back(*trans.init_fun_);
 
 	std::vector<mach::asm_function> funs;
 
@@ -126,8 +126,10 @@ int main(int argc, char *argv[])
 		fout << mach::asm_string(lab, s.str_);
 	fout << '\n';
 
-	for (auto *glob : drv.prog_->vardecs_)
-		fout << "\t.lcomm .L_" << glob->name_ << ", 8\n";
+	for (auto *glob : drv.prog_->decs_) {
+		if (dynamic_cast<dec *>(glob))
+			fout << "\t.lcomm .L_" << glob->name_ << ", 8\n";
+	}
 	fout << "\n";
 
 	if (trans.init_fun_) {

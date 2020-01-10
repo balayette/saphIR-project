@@ -68,10 +68,11 @@ struct vardec : public dec {
 
 std::ostream &operator<<(std::ostream &os, const dec &dec);
 
-struct funprotodec : public stmt {
+struct funprotodec : public dec {
 	funprotodec(types::ty ret_ty, symbol name, std::vector<vardec *> args,
 		    bool variadic = false)
-	    : ret_ty_(ret_ty), name_(name), args_(args), variadic_(variadic)
+	    : dec(ret_ty, name), ret_ty_(ret_ty), args_(args),
+	      variadic_(variadic)
 	{
 	}
 
@@ -87,7 +88,6 @@ struct funprotodec : public stmt {
 	}
 
 	types::ty ret_ty_;
-	symbol name_;
 	std::vector<vardec *> args_;
 	bool variadic_;
 };
@@ -127,17 +127,11 @@ struct decs : public stmt {
 
 	virtual ~decs() override
 	{
-		for (auto *p : funprotodecs_)
-			delete p;
-		for (auto *f : fundecs_)
-			delete f;
-		for (auto *g : vardecs_)
-			delete g;
+		for (auto *d : decs_)
+			delete d;
 	}
 
-	std::vector<funprotodec *> funprotodecs_;
-	std::vector<fundec *> fundecs_;
-	std::vector<globaldec *> vardecs_;
+	std::vector<dec *> decs_;
 };
 
 

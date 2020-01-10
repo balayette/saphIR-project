@@ -10,3 +10,6 @@ TAGS
 jit
 src/main
 parser.output
+vgcore*
+*.dot
+*.S

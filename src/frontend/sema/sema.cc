@@ -5,22 +5,16 @@ namespace frontend::sema
 {
 void binding_visitor::visit_decs(decs &s)
 {
-	for (auto *p : s.funprotodecs_) {
-		if (!fmap_.add(p->name_, p)) {
-			std::cerr << "fun '" << p->name_
-				  << "' already declared\n";
-			COMPILATION_ERROR(utils::cfail::SEMA);
-		}
+	for (auto *d : s.decs_) {
+		d->accept(*this);
 	}
-	for (auto *gv : s.vardecs_)
-		gv->accept(*this);
-	for (auto *f : s.fundecs_) {
-		f->accept(*this);
-		if (!fmap_.add(f->name_, f)) {
-			std::cerr << "fun '" << f->name_
-				  << "' already declared\n";
-			COMPILATION_ERROR(utils::cfail::SEMA);
-		}
+}
+
+void binding_visitor::visit_funprotodec(funprotodec &s)
+{
+	if (!fmap_.add(s.name_, &s)) {
+		std::cerr << "fun '" << s.name_ << "' already declared\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
 
@@ -56,6 +50,11 @@ void binding_visitor::visit_vardec(vardec &s)
 
 void binding_visitor::visit_fundec(fundec &s)
 {
+	if (!fmap_.add(s.name_, &s)) {
+		std::cerr << "fun '" << s.name_ << "' already declared\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
 	new_scope();
 	cfunc_.enter(&s);
 
@@ -303,8 +302,8 @@ void frame_visitor::visit_globaldec(globaldec &s)
 
 void frame_visitor::visit_vardec(vardec &s)
 {
-        if (s.access_) // Already set by visit_fundec for args
-                return;
+	if (s.access_) // Already set by visit_fundec for args
+		return;
 
 	s.access_ = cframe_->alloc_local(s.escapes_);
 	std::cout << "frame: var '" << s.name_ << "' " << s.access_ << '\n';

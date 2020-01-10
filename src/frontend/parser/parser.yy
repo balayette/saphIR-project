@@ -106,9 +106,9 @@ program: decs 	{ d.prog_ = $1; };
 
 decs:
 	%empty          { $$ = new decs(); }
-|   	decs fundec     { $$ = $1; $1->fundecs_.push_back($2); }
-| 	decs globaldec ";"      { $$ = $1; $1->vardecs_.push_back($2); }
-|       decs funprotodec ";" { $$ = $1; $1->funprotodecs_.push_back($2); }
+|   	decs fundec     { $$ = $1; $1->decs_.push_back($2); }
+| 	decs globaldec ";"      { $$ = $1; $1->decs_.push_back($2); }
+|       decs funprotodec ";" { $$ = $1; $1->decs_.push_back($2); }
 ;
 
 funprotodec: 
