@@ -205,10 +205,15 @@ void generator::visit_binop(tree::binop &b)
 	utils::temp dst;
 
 	EMIT(assem::move("mov `s0, `d0", {dst}, {rhs}));
+
 	if (b.op_ == ops::binop::PLUS)
 		EMIT(assem::oper("add `s0, `d0", {dst}, {lhs, dst}, {}));
 	else if (b.op_ == ops::binop::MINUS)
 		EMIT(assem::oper("sub `s0, `d0", {dst}, {lhs, dst}, {}));
+	else if (b.op_ == ops::binop::MULT)
+		EMIT(assem::oper("imulq `s0, `d0", {dst}, {lhs}, {}));
+	else
+		UNREACHABLE("Unimplemented binop");
 
 	ret_ = dst;
 }
