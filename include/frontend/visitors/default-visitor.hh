@@ -9,7 +9,7 @@ class default_visitor : public visitor
       public:
 	virtual void visit_decs(decs &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
-	virtual void visit_vardec(vardec &s) override;
+	virtual void visit_locdec(locdec &s) override;
 	virtual void visit_funprotodec(funprotodec &s) override;
 	virtual void visit_fundec(fundec &s) override;
 	virtual void visit_sexp(sexp &s) override;

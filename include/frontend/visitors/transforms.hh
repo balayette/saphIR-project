@@ -12,7 +12,7 @@ class unique_ids_visitor : public default_visitor
 	 * debugging what they refer to easier to understand.
 	 * */
       public:
-	virtual void visit_vardec(vardec &s) override;
+	virtual void visit_locdec(locdec &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
 };
 } // namespace frontend::transforms

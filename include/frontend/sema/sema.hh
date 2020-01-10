@@ -12,7 +12,7 @@ class binding_visitor : public default_visitor
       public:
 	virtual void visit_decs(decs &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
-	virtual void visit_vardec(vardec &s) override;
+	virtual void visit_locdec(locdec &s) override;
 	virtual void visit_funprotodec(funprotodec &s) override;
 	virtual void visit_fundec(fundec &s) override;
 	virtual void visit_ret(ret &s) override;
@@ -32,7 +32,7 @@ class binding_visitor : public default_visitor
 	void end_scope();
 
 	utils::scoped_map<symbol, funprotodec *> fmap_;
-	utils::scoped_map<symbol, dec *> vmap_;
+	utils::scoped_map<symbol, vardec *> vmap_;
 	utils::scoped_ptr<fundec *> cfunc_;
 };
 
@@ -48,7 +48,7 @@ class frame_visitor : public default_visitor
 	virtual void visit_funprotodec(funprotodec &s) override;
 	virtual void visit_fundec(fundec &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
-	virtual void visit_vardec(vardec &s) override;
+	virtual void visit_locdec(locdec &s) override;
 
       private:
 	mach::frame *cframe_;

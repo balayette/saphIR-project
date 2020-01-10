@@ -247,7 +247,7 @@ void translate_visitor::visit_ass(ass &s)
 	ret_ = new nx(new ir::tree::move(lhs->un_ex(), rhs->un_ex()));
 }
 
-void translate_visitor::visit_vardec(vardec &s)
+void translate_visitor::visit_locdec(locdec &s)
 {
 	if (!s.rhs_)
 		return;

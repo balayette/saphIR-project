@@ -66,16 +66,16 @@
 %type <fundec*> fundec
 %type <funprotodec*> funprotodec
 
-%type <std::vector<vardec*>> argdecs
-%type <std::vector<vardec*>> argdecsp
-%type <vardec*> argdec
+%type <std::vector<locdec*>> argdecs
+%type <std::vector<locdec*>> argdecsp
+%type <locdec*> argdec
 
 %type <std::vector<stmt*>> stmts
 %type <std::vector<stmt*>> stmtsp
 %type <stmt*> stmt
 %type <stmt*> stmt_body
 
-%type <vardec*> vardec
+%type <locdec*> locdec
 %type <globaldec*> globaldec
 %type <sexp*> sexp
 %type <ret*> ret
@@ -121,16 +121,16 @@ fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" {
 };
 
 argdecs:
-       	%empty 			{ $$ = std::vector<vardec*>(); }
+       	%empty 			{ $$ = std::vector<locdec*>(); }
 | 	argdecsp
 ;
 
 argdecsp:
-	argdec 			{ $$ = std::vector<vardec*>(); $$.push_back($1); }
+	argdec 			{ $$ = std::vector<locdec*>(); $$.push_back($1); }
 | 	argdecsp "," argdec	{ $1.push_back($3); $$ = $1; }
 ;
 
-argdec: type ID 	{ $$ = new vardec($1, $2, nullptr); };
+argdec: type ID 	{ $$ = new locdec($1, $2, nullptr); };
 
 stmts:
      	%empty 		{ $$ = std::vector<stmt*>(); }
@@ -149,13 +149,13 @@ stmt:
 ;
 
 stmt_body: 
-	vardec 	{ $$ = $1; }
+	locdec 	{ $$ = $1; }
 | 	sexp 	{ $$ = $1; }
 | 	ret 	{ $$ = $1; }
 | 	ass 	{ $$ = $1; }
 ;
 
-vardec: type ID "=" exp { $$ = new vardec($1, $2, $4); };
+locdec: type ID "=" exp { $$ = new locdec($1, $2, $4); };
 globaldec: type ID "=" exp { $$ = new globaldec($1, $2, $4); };
 
 /* TODO: This accepts 1; */

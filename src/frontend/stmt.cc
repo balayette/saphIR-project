@@ -2,7 +2,7 @@
 
 namespace frontend
 {
-std::ostream &operator<<(std::ostream &os, const dec &dec)
+std::ostream &operator<<(std::ostream &os, const vardec &dec)
 {
 	os << dec.type_.to_string() << ' ' << dec.name_;
 	if (dec.escapes_)

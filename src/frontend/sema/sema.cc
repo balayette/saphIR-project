@@ -33,9 +33,9 @@ void binding_visitor::visit_globaldec(globaldec &s)
 	}
 }
 
-void binding_visitor::visit_vardec(vardec &s)
+void binding_visitor::visit_locdec(locdec &s)
 {
-	default_visitor::visit_vardec(s);
+	default_visitor::visit_locdec(s);
 	if (!vmap_.add(s.name_, &s)) {
 		std::cerr << "var '" << s.name_ << "' already declared.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
@@ -63,7 +63,7 @@ void binding_visitor::visit_fundec(fundec &s)
 	for (auto *b : s.body_)
 		b->accept(*this);
 
-	if (!s.has_return_ && s.ret_ty_ != types::type::VOID) {
+	if (!s.has_return_ && s.type_ != types::type::VOID) {
 		std::cerr << "TypeError: Missing return stmt in fun '"
 			  << s.name_ << "' with return type != void\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
@@ -160,7 +160,7 @@ void binding_visitor::visit_call(call &e)
 		}
 	}
 
-	e.ty_ = (*f)->ret_ty_;
+	e.ty_ = (*f)->type_;
 	e.fdec_ = *f;
 
 	default_visitor::visit_call(e);
@@ -206,11 +206,11 @@ void binding_visitor::visit_ret(ret &s)
 	s.fdec_ = cfunc_.get();
 
 	/* return; in void function */
-	if (s.e_ == nullptr && cfunc_->ret_ty_ == types::type::VOID)
+	if (s.e_ == nullptr && cfunc_->type_ == types::type::VOID)
 		return;
 
 	if (s.e_ == nullptr /* return; in non void function */
-	    || !s.e_->ty_.compatible(cfunc_->ret_ty_)) {
+	    || !s.e_->ty_.compatible(cfunc_->type_)) {
 		std::cerr << "TypeError: Incompatible return type in fun "
 			  << cfunc_->name_ << '\n';
 		COMPILATION_ERROR(utils::cfail::SEMA);
@@ -267,10 +267,7 @@ void escapes_visitor::visit_addrof(addrof &e)
 	}
 }
 
-void frame_visitor::visit_funprotodec(funprotodec &)
-{
-	// Don't recurse, we don't care about prototypes.
-}
+void frame_visitor::visit_funprotodec(funprotodec &) {}
 
 void frame_visitor::visit_fundec(fundec &s)
 {
@@ -300,13 +297,13 @@ void frame_visitor::visit_globaldec(globaldec &s)
 	default_visitor::visit_globaldec(s);
 }
 
-void frame_visitor::visit_vardec(vardec &s)
+void frame_visitor::visit_locdec(locdec &s)
 {
 	if (s.access_) // Already set by visit_fundec for args
 		return;
 
 	s.access_ = cframe_->alloc_local(s.escapes_);
 	std::cout << "frame: var '" << s.name_ << "' " << s.access_ << '\n';
-	default_visitor::visit_vardec(s);
+	default_visitor::visit_locdec(s);
 }
 } // namespace frontend::sema

@@ -7,7 +7,7 @@ namespace frontend
 struct stmt;
 struct decs;
 struct globaldec;
-struct vardec;
+struct locdec;
 struct funprotodec;
 struct fundec;
 struct sexp;
@@ -39,7 +39,7 @@ class visitor
 	/* statements */
 	virtual void visit_decs(decs &s) = 0;
 	virtual void visit_globaldec(globaldec &s) = 0;
-	virtual void visit_vardec(vardec &s) = 0;
+	virtual void visit_locdec(locdec &s) = 0;
 	virtual void visit_funprotodec(funprotodec &s) = 0;
 	virtual void visit_fundec(fundec &s) = 0;
 	virtual void visit_sexp(sexp &s) = 0;

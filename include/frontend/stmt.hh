@@ -22,22 +22,26 @@ struct stmt {
 };
 
 struct dec : public stmt {
-	dec(types::ty type, symbol name)
-	    : type_(type), name_(name), escapes_(false)
-	{
-	}
+	dec(types::ty type, symbol name) : type_(type), name_(name) {}
 
 	virtual void accept(visitor &visitor) = 0;
 
 	types::ty type_;
 	symbol name_;
-	bool escapes_;
 	utils::ref<mach::access> access_;
 };
 
-struct globaldec : public dec {
+struct vardec : public dec {
+	vardec(types::ty type, symbol name) : dec(type, name), escapes_(false)
+	{
+	}
+
+	bool escapes_;
+};
+
+struct globaldec : public vardec {
 	globaldec(types::ty type, symbol name, exp *rhs)
-	    : dec(type, name), rhs_(rhs)
+	    : vardec(type, name), rhs_(rhs)
 	{
 	}
 
@@ -51,28 +55,27 @@ struct globaldec : public dec {
 	exp *rhs_;
 };
 
-struct vardec : public dec {
-	vardec(types::ty type, symbol name, exp *rhs)
-	    : dec(type, name), rhs_(rhs)
+struct locdec : public vardec {
+	locdec(types::ty type, symbol name, exp *rhs)
+	    : vardec(type, name), rhs_(rhs)
 	{
 	}
-	virtual ~vardec() override { delete rhs_; }
+	virtual ~locdec() override { delete rhs_; }
 
 	virtual void accept(visitor &visitor) override
 	{
-		visitor.visit_vardec(*this);
+		visitor.visit_locdec(*this);
 	}
 
 	exp *rhs_;
 };
 
-std::ostream &operator<<(std::ostream &os, const dec &dec);
+std::ostream &operator<<(std::ostream &os, const vardec &dec);
 
 struct funprotodec : public dec {
-	funprotodec(types::ty ret_ty, symbol name, std::vector<vardec *> args,
+	funprotodec(types::ty ret_ty, symbol name, std::vector<locdec *> args,
 		    bool variadic = false)
-	    : dec(ret_ty, name), ret_ty_(ret_ty), args_(args),
-	      variadic_(variadic)
+	    : dec(ret_ty, name), args_(args), variadic_(variadic)
 	{
 	}
 
@@ -87,13 +90,12 @@ struct funprotodec : public dec {
 		visitor.visit_funprotodec(*this);
 	}
 
-	types::ty ret_ty_;
-	std::vector<vardec *> args_;
+	std::vector<locdec *> args_;
 	bool variadic_;
 };
 
 struct fundec : public funprotodec {
-	fundec(types::ty ret_ty, symbol name, std::vector<vardec *> args,
+	fundec(types::ty ret_ty, symbol name, std::vector<locdec *> args,
 	       std::vector<stmt *> body)
 	    : funprotodec(ret_ty, name, args), body_(body), has_return_(false)
 	{

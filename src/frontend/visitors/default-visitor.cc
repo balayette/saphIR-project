@@ -9,7 +9,7 @@ void default_visitor::visit_decs(decs &s)
 
 void default_visitor::visit_globaldec(globaldec &s) { s.rhs_->accept(*this); }
 
-void default_visitor::visit_vardec(vardec &s)
+void default_visitor::visit_locdec(locdec &s)
 {
 	if (s.rhs_)
 		s.rhs_->accept(*this);

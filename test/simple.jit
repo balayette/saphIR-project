@@ -1,5 +1,4 @@
-fun print(int z) void {
-}
+#include "libc.jit"
 
 fun mult(int a, int b) int {
         int ret = 0;
@@ -19,7 +18,7 @@ fun fact(int n) int {
 
 fun main(int a) int {
         for (int i = 0; i != a; i = i + 1)
-                print(fact(i));
+                printf("%d\n", fact(i));
         rof
 
         return a;

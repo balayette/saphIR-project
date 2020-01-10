@@ -9,7 +9,7 @@
 namespace frontend
 {
 struct fundec;
-struct dec;
+struct vardec;
 
 struct exp {
       protected:
@@ -77,7 +77,7 @@ struct ref : public exp {
 
 	symbol name_;
 
-	dec *dec_;
+	vardec *dec_;
 };
 
 struct deref : public exp {

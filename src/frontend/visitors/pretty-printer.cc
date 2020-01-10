@@ -21,7 +21,7 @@ void pretty_printer::visit_globaldec(globaldec &s)
 	os_ << ';';
 }
 
-void pretty_printer::visit_vardec(vardec &s)
+void pretty_printer::visit_locdec(locdec &s)
 {
 	indent() << s << " = ";
 
@@ -40,7 +40,7 @@ void pretty_printer::visit_funprotodec(funprotodec &s)
 			os_ << ", ";
 	}
 
-	os_ << ") " << s.ret_ty_.to_string();
+	os_ << ") " << s.type_.to_string();
 
 	if (s.variadic_)
 		os_ << " variadic";
@@ -57,7 +57,7 @@ void pretty_printer::visit_fundec(fundec &s)
 			os_ << ", ";
 	}
 
-	os_ << ") " << s.ret_ty_.to_string() << " {\n";
+	os_ << ") " << s.type_.to_string() << " {\n";
 
 	lvl_++;
 	for (auto *b : s.body_) {
