@@ -6,8 +6,7 @@ extend. The backend (boring) stuff is implemented (CFG building, liveness
 analysis, interfence graph building, register allocation...)
 
 ```
-fun print(int z) void {
-}
+fun printf(string fmt) int variadic;
 
 fun mult(int a, int b) int {
         int ret = 0;
@@ -27,7 +26,7 @@ fun fact(int n) int {
 
 fun main(int argc) int {
         for (int i = 0; i != argc; i = i + 1)
-                print(fact(i));
+                printf("%lld\n", fact(i));
         rof
 
         return argc + 42;
