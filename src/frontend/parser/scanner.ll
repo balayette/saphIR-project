@@ -37,6 +37,7 @@ strlit \"[^"]*\"
 "+"	    	return TOKEN(PLUS);
 "*"	    	return TOKEN(MULT);
 "/"	    	return TOKEN(DIV);
+"%"	    	return TOKEN(MOD);
 "&" 		return TOKEN(AMPERSAND);
 "("	    	return TOKEN(LPAREN);
 ")"	    	return TOKEN(RPAREN);

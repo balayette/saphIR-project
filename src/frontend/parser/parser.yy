@@ -35,6 +35,7 @@
 	NEQ "!="
 	MINUS "-"
 	PLUS "+"
+	MOD "%"
 	MULT "*"
 	DIV "/"
 	AMPERSAND "&"
@@ -95,7 +96,7 @@
 
 %nonassoc EQ NEQ ASSIGN
 %left AMPERSAND
-%left PLUS MINUS
+%left PLUS MINUS MOD
 %left MULT DIV
 
 %%
@@ -199,6 +200,7 @@ exp:
 | 	exp NEQ exp 		{ $$ = new cmp(cmpop::NEQ, $1, $3); }
 | 	exp MULT exp 		{ $$ = new bin(binop::MULT, $1, $3); }
 | 	exp DIV exp 		{ $$ = new bin(binop::DIV, $1, $3); }
+| 	exp MOD exp 		{ $$ = new bin(binop::MOD, $1, $3); }
 | 	exp PLUS exp 		{ $$ = new bin(binop::PLUS, $1, $3); }
 | 	exp MINUS exp 		{ $$ = new bin(binop::MINUS, $1, $3); }
 ;

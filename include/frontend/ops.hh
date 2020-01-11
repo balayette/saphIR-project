@@ -4,7 +4,7 @@
 
 namespace ops
 {
-enum class binop { MINUS, PLUS, MULT, DIV };
+enum class binop { MINUS, PLUS, MULT, DIV, MOD };
 enum class cmpop { EQ, NEQ };
 
 cmpop invert_cmpop(cmpop op);
