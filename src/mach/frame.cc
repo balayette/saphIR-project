@@ -160,7 +160,6 @@ utils::ref<access> frame::alloc_local(bool escapes)
 ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, utils::label ret_lbl)
 {
 	auto in_regs = args_regs();
-	ASSERT(formals_.size() <= in_regs.size(), "Too many params");
 	auto *seq = new ir::tree::seq({});
 
 	auto callee_saved = callee_saved_regs();
@@ -170,7 +169,7 @@ ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, utils::label ret_lbl)
 			new ir::tree::temp(callee_saved_temps[i]),
 			new ir::tree::temp(callee_saved[i])));
 
-	for (size_t i = 0; i < formals_.size(); i++) {
+	for (size_t i = 0; i < formals_.size() && i < in_regs.size(); i++) {
 		seq->children_.push_back(new ir::tree::move(
 			formals_[i]->exp(), new ir::tree::temp(in_regs[i])));
 	}

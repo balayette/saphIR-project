@@ -62,16 +62,16 @@ void generator::visit_call(tree::call &c)
 	unsigned i = 0;
 	std::vector<utils::temp> src;
 	auto cc = args_regs();
-	ASSERT(c.args().size() <= cc.size(), "Too many function parameters.");
 	for (auto arg : c.args()) {
 		arg->accept(*this);
 		auto arglbl = ret_;
-		auto dest = cc[i];
 		src.push_back(arglbl);
 
-		std::string repr("mov `s0, `d0");
+		if (i < cc.size())
+			EMIT(assem::move("mov `s0, `d0", {cc[i]}, {arglbl}));
+		else
+			EMIT(assem::oper("push `s0", {}, {arglbl}, {}));
 
-		EMIT(assem::move(repr, {dest}, {arglbl}));
 		i++;
 	}
 
