@@ -1,10 +1,9 @@
 #include "mach/frame.hh"
 #include "utils/assert.hh"
 #include "ir/canon/bb.hh"
+#include "utils/misc.hh"
 
 #include <array>
-
-#define ROUND_UP(x, m) (((x) + (m)-1) & ~((m)-1))
 
 namespace mach
 {
