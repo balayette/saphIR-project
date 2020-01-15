@@ -133,7 +133,7 @@ std::ostream &global_acc::print(std::ostream &os) const
 
 
 frame::frame(const symbol &s, const std::vector<bool> &args)
-    : s_(s), escaping_count_(0), reg_count_(0)
+    : s_(s), escaping_count_(0), reg_count_(0), canary_(alloc_local(true))
 {
 	/*
 	 * This struct contains a view of where the args should be when
@@ -215,11 +215,18 @@ asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
 		prologue += std::to_string(ROUND_UP(escaping_count_ * 8, 16));
 		prologue += ", %rsp\n";
 	}
+	prologue += "\tmovq %fs:40, %r11\n";
+	prologue += "\tmovq %r11, -8(%rbp)\n";
+	prologue += "\txor %r11, %r11\n";
 	prologue += "\tjmp .L_" + pro_lbl.get() + '\n';
 
-	std::string epilogue(".L_" + epi_lbl.get());
+	std::string epilogue(".L_" + epi_lbl.get() + ":\n");
+	epilogue += "\tmovq -8(%rbp), %r11\n";
+	epilogue += "\txorq %fs:40, %r11\n";
+	epilogue += "\tje .L_ok_" + epi_lbl.get() + "\n";
+	epilogue += "\tcall __stack_chk_fail@PLT\n";
+	epilogue += ".L_ok_" + epi_lbl.get() + ":\n";
 	epilogue +=
-		":\n"
 		"\tleave\n"
 		"\tret\n";
 

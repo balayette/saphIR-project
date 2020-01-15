@@ -128,6 +128,7 @@ struct frame {
 	int escaping_count_;
 	size_t reg_count_;
 	utils::label body_begin_;
+	utils::ref<access> canary_;
 };
 
 struct fragment {
