@@ -202,7 +202,7 @@ std::string asm_string(utils::label lab, const std::string &str)
 }
 
 asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
-				      utils::label pro_lbl,
+				      utils::label body_lbl,
 				      utils::label epi_lbl)
 {
 	std::string prologue(".global ");
@@ -218,7 +218,7 @@ asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
 	prologue += "\tmovq %fs:40, %r11\n";
 	prologue += "\tmovq %r11, -8(%rbp)\n";
 	prologue += "\txor %r11, %r11\n";
-	prologue += "\tjmp .L_" + pro_lbl.get() + '\n';
+	prologue += "\tjmp .L_" + body_lbl.get() + '\n';
 
 	std::string epilogue(".L_" + epi_lbl.get() + ":\n");
 	epilogue += "\tmovq -8(%rbp), %r11\n";

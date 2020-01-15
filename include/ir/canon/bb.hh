@@ -15,5 +15,5 @@ struct bb {
 };
 
 std::unordered_map<utils::label, bb>
-create_bbs(tree::rnode stm, utils::label &prologue, utils::label epilogue);
+create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue);
 } // namespace ir

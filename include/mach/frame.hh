@@ -155,7 +155,7 @@ struct fun_fragment : public fragment {
 	ir::tree::rstm body_;
 	frame frame_;
 	utils::label ret_lbl_;
-	utils::label pro_lbl_;
+	utils::label body_lbl_;
 	utils::label epi_lbl_;
 };
 

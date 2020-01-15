@@ -103,7 +103,7 @@ void replace_allocation(std::vector<assem::rinstr> &instrs,
 void allocate(std::vector<assem::rinstr> &instrs, utils::temp_set initial,
 	      mach::fun_fragment &f)
 {
-	backend::cfg cfg(instrs, f.pro_lbl_);
+	backend::cfg cfg(instrs, f.body_lbl_);
 	backend::ifence_graph ifence(cfg.cfg_);
 
 	coloring_out co = color(ifence, initial);

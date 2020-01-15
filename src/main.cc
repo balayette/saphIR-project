@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 		std::cout << "--\n";
 
 		auto bbs =
-			ir::create_bbs(canoned, frag.pro_lbl_, frag.epi_lbl_);
+			ir::create_bbs(canoned, frag.body_lbl_, frag.epi_lbl_);
 
 		for (auto [_, v] : bbs) {
 			std::cout << "+++++++++++++++++++++++++++++++++++++\n";
@@ -98,10 +98,10 @@ int main(int argc, char *argv[])
 		auto instrs = mach::codegen(frag.frame_, trace);
 
 		frag.frame_.proc_entry_exit_2(instrs);
-		frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_,
+		frag.frame_.proc_entry_exit_3(instrs, frag.body_lbl_,
 					      frag.ret_lbl_);
 
-		backend::cfg cfg(instrs, frag.pro_lbl_);
+		backend::cfg cfg(instrs, frag.body_lbl_);
 		std::ofstream cfg_out(std::string("cfg") + frag.frame_.s_.get()
 				      + std::string(".dot"));
 		cfg.cfg_.dump_dot(cfg_out);
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 		std::cout << "######################\n";
 
 		backend::regalloc::alloc(instrs, frag);
-		auto f = frag.frame_.proc_entry_exit_3(instrs, frag.pro_lbl_,
+		auto f = frag.frame_.proc_entry_exit_3(instrs, frag.body_lbl_,
 						       frag.epi_lbl_);
 
 		funs.push_back(f);

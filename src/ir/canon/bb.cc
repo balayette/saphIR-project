@@ -33,7 +33,7 @@ bool is_jump(tree::tree_kind k)
 }
 
 std::unordered_map<utils::label, bb>
-create_bbs(tree::rnode stm, utils::label &prologue, utils::label epilogue)
+create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 {
 	// stm is a seq, and is the only seq/eseq in the program.
 	auto seq = stm.as<tree::seq>();
@@ -62,14 +62,14 @@ create_bbs(tree::rnode stm, utils::label &prologue, utils::label epilogue)
 			std::cout << " The block is the first block\n";
 			if (stmts.size() > 0
 			    && stmts.front()->kind() == tree::tree_kind::label)
-				prologue =
+				body =
 					stmts.front().as<tree::label>()->name_;
 			else {
-				prologue = unique_label("prologue").get();
+				body = unique_label("body").get();
 				stmts.insert(stmts.begin(),
-					     new tree::label(prologue));
+					     new tree::label(body));
 			}
-			std::cout << " Prologue label: " << prologue << '\n';
+			std::cout << " Body label: " << body << '\n';
 		}
 
 		auto child = *ichild;
