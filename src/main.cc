@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 	fout << '\n';
 
 	for (auto *glob : drv.prog_->decs_) {
-		if (dynamic_cast<dec *>(glob))
+		if (dynamic_cast<globaldec *>(glob))
 			fout << "\t.lcomm .L_" << glob->name_ << ", 8\n";
 	}
 	fout << "\n";
