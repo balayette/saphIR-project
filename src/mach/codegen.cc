@@ -24,7 +24,7 @@ namespace mach
 std::string label_to_asm(const utils::label &lbl)
 {
 	std::string ret(".L_");
-	ret += lbl.get();
+	ret += lbl;
 
 	return ret;
 }

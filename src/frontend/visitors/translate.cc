@@ -113,7 +113,7 @@ void translate_visitor::visit_call(call &e)
 	}
 
 	auto *call =
-		new ir::tree::call(new ir::tree::name(e.fdec_->name_.get()),
+		new ir::tree::call(new ir::tree::name(e.fdec_->name_),
 				   args, e.fdec_->variadic_);
 
 	ret_ = new ex(call);
@@ -276,7 +276,7 @@ void translate_visitor::visit_ret(ret &s)
 
 void translate_visitor::visit_str_lit(str_lit &e)
 {
-	utils::label lab = unique_label("str_lit").get();
+	utils::label lab = unique_label("str_lit");
 
 	ret_ = new ex(new ir::tree::name(lab));
 
@@ -291,11 +291,11 @@ void translate_visitor::visit_decs(decs &s)
 		return;
 
 	auto body = new ir::tree::seq(init_funs_);
-	utils::label ret_lbl = unique_label("init_vars_ret").get();
-	mach::frame frame(unique_label("init_vars").get(), {});
+	utils::label ret_lbl = unique_label("init_vars_ret");
+	mach::frame frame(unique_label("init_vars"), {});
 	init_fun_ = new mach::fun_fragment(
 		frame.proc_entry_exit_1(body, ret_lbl), frame, ret_lbl,
-		unique_label("init_vars_epi").get());
+		unique_label("init_vars_epi"));
 }
 
 void translate_visitor::visit_globaldec(globaldec &s)
@@ -312,7 +312,7 @@ void translate_visitor::visit_funprotodec(funprotodec &)
 
 void translate_visitor::visit_fundec(fundec &s)
 {
-	ret_lbl_.enter(unique_label("ret").get());
+	ret_lbl_.enter(unique_label("ret"));
 
 	std::vector<ir::tree::rstm> stms;
 	for (auto *stm : s.body_) {
@@ -323,7 +323,7 @@ void translate_visitor::visit_fundec(fundec &s)
 
 	funs_.emplace_back(s.frame_->proc_entry_exit_1(body, ret_lbl_),
 			   *s.frame_, ret_lbl_,
-			   unique_label(s.name_.get() + "_epi").get());
+			   unique_label(s.name_.get() + "_epi"));
 
 	ret_lbl_.leave();
 }

@@ -65,7 +65,7 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 				body =
 					stmts.front().as<tree::label>()->name_;
 			else {
-				body = unique_label("body").get();
+				body = unique_label("body");
 				stmts.insert(stmts.begin(),
 					     new tree::label(body));
 			}

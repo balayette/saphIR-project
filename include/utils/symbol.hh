@@ -21,6 +21,7 @@ class symbol
 	friend std::ostream &operator<<(std::ostream &ostr, const symbol &the);
 
 	const std::string &get() const;
+	operator const std::string &() const { return this->get(); }
 
       private:
 	std::set<std::string> &get_set();

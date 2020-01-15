@@ -8,14 +8,14 @@
 namespace mach
 {
 std::array<utils::temp, 16> reg_temp{
-	make_unique("rax").get(), make_unique("rbx").get(),
-	make_unique("rcx").get(), make_unique("rdx").get(),
-	make_unique("rsi").get(), make_unique("rdi").get(),
-	make_unique("rsp").get(), make_unique("rbp").get(),
-	make_unique("r8").get(),  make_unique("r9").get(),
-	make_unique("r10").get(), make_unique("r11").get(),
-	make_unique("r12").get(), make_unique("r13").get(),
-	make_unique("r14").get(), make_unique("r15").get(),
+	make_unique("rax"), make_unique("rbx"),
+	make_unique("rcx"), make_unique("rdx"),
+	make_unique("rsi"), make_unique("rdi"),
+	make_unique("rsp"), make_unique("rbp"),
+	make_unique("r8"),  make_unique("r9"),
+	make_unique("r10"), make_unique("r11"),
+	make_unique("r12"), make_unique("r13"),
+	make_unique("r14"), make_unique("r15"),
 };
 
 std::array<std::string, 16> reg_str{
@@ -124,7 +124,7 @@ std::ostream &in_frame::print(std::ostream &os) const
 global_acc::global_acc(const symbol &name) : name_(name) {}
 ir::tree::rexp global_acc::exp() const
 {
-	return new ir::tree::mem(new ir::tree::name(name_.get()));
+	return new ir::tree::mem(new ir::tree::name(name_));
 }
 std::ostream &global_acc::print(std::ostream &os) const
 {

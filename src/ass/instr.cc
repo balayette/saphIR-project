@@ -46,9 +46,9 @@ std::string instr::to_string() const
 	std::vector<std::string> dst;
 
 	for (auto &l : src_)
-		src.push_back(l.get());
+		src.push_back(l);
 	for (auto &d : dst_)
-		dst.push_back(d.get());
+		dst.push_back(d);
 
 	return format_repr(repr_, src, dst);
 }

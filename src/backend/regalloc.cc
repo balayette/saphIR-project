@@ -44,7 +44,7 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 			    == spills.end())
 				continue;
 
-			auto vi = utils::temp(unique_temp().get());
+			auto vi = utils::temp(unique_temp());
 			ir::tree::rstm mv =
 				new ir::tree::move(temp_to_acc[dst]->exp(),
 						   new ir::tree::temp(vi));
