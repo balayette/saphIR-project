@@ -1,7 +1,9 @@
 #include "mach/codegen.hh"
 #include "utils/assert.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
+#include "utils/misc.hh"
 
+#include <algorithm>
 #include <sstream>
 
 using namespace ir;
@@ -59,20 +61,34 @@ void generator::visit_name(tree::name &n)
 void generator::visit_call(tree::call &c)
 {
 	auto name = c.name().as<tree::name>()->label_;
-	unsigned i = 0;
 	std::vector<utils::temp> src;
 	auto cc = args_regs();
-	for (auto arg : c.args()) {
-		arg->accept(*this);
-		auto arglbl = ret_;
-		src.push_back(arglbl);
+	auto args = c.args();
 
-		if (i < cc.size())
-			EMIT(assem::move("mov `s0, `d0", {cc[i]}, {arglbl}));
-		else
-			EMIT(assem::oper("push `s0", {}, {arglbl}, {}));
+	size_t reg_args_count = std::min(args.size(), cc.size());
+	size_t stack_args_count =
+		args.size() > cc.size() ? args.size() - cc.size() : 0;
+	size_t stack_space = stack_args_count * 8;
+	// The stack must be 16 bytes aligned.
+	size_t alignment_bonus = ROUND_UP(stack_space, 16) - stack_space;
+	size_t total_stack_change = stack_space + alignment_bonus;
 
-		i++;
+	if (alignment_bonus)
+		EMIT(assem::oper("subq $" + std::to_string(alignment_bonus)
+					 + ", %rsp",
+				 {}, {}, {}));
+
+	// Push stack parameters RTL
+	for (size_t i = 0; i < stack_args_count; i++) {
+		args[args.size() - 1 - i]->accept(*this);
+		src.push_back(ret_);
+		EMIT(assem::oper("push `s0", {}, {ret_}, {}));
+	}
+	// Move registers params to the correct registers.
+	for (size_t i = 0; i < reg_args_count; i++) {
+		args[i]->accept(*this);
+		src.push_back(ret_);
+		EMIT(assem::move("mov `s0, `d0", {cc[i]}, {ret_}));
 	}
 
 	// XXX: This assumes no floating point parameters
@@ -88,6 +104,11 @@ void generator::visit_call(tree::call &c)
 	clobbered.insert(clobbered.end(), args_regs.begin(), args_regs.end());
 
 	EMIT(assem::oper(repr, clobbered, src, {}));
+	if (total_stack_change)
+		EMIT(assem::oper("addq $" + std::to_string(total_stack_change)
+					 + ", %rsp",
+				 {}, {}, {}));
+
 	utils::temp ret;
 	EMIT(assem::move("mov `s0, `d0", {ret}, {reg_to_temp(regs::RAX)}));
 
