@@ -287,6 +287,9 @@ void translate_visitor::visit_decs(decs &s)
 {
 	default_visitor::visit_decs(s);
 
+	if (init_funs_.size() == 0)
+		return;
+
 	auto body = new ir::tree::seq(init_funs_);
 	utils::label ret_lbl = unique_label("init_vars_ret").get();
 	mach::frame frame(unique_label("init_vars").get(), {});
