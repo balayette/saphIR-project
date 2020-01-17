@@ -129,6 +129,8 @@ struct frame {
 	size_t reg_count_;
 	utils::label body_begin_;
 	utils::ref<access> canary_;
+	// Defaults to true, overidden by frontend::sema::frame_visitor
+	bool leaf_;
 };
 
 struct fragment {

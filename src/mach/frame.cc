@@ -133,7 +133,8 @@ std::ostream &global_acc::print(std::ostream &os) const
 
 
 frame::frame(const symbol &s, const std::vector<bool> &args)
-    : s_(s), escaping_count_(0), reg_count_(0), canary_(alloc_local(true))
+    : s_(s), escaping_count_(0), reg_count_(0), canary_(alloc_local(true)),
+      leaf_(true)
 {
 	/*
 	 * This struct contains a view of where the args should be when
@@ -210,9 +211,15 @@ asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
 	prologue +=
 		"\tpush %rbp\n"
 		"\tmov %rsp, %rbp\n";
-	if (escaping_count_ != 0) {
+
+	size_t stack_space = ROUND_UP(escaping_count_ * 8, 16);
+	// There is no need to update %rsp if we're a leaf function
+	// and we need <= 128 bytes of stack space. (System V red zone)
+	// Stack accesses could also use %rsp instead of %rbp, and we could
+	// remove the prologue.
+	if (stack_space > 128 || (stack_space > 0 && !leaf_)) {
 		prologue += "\tsub $";
-		prologue += std::to_string(ROUND_UP(escaping_count_ * 8, 16));
+		prologue += std::to_string(stack_space);
 		prologue += ", %rsp\n";
 	}
 	prologue += "\tmovq %fs:40, %r11\n";

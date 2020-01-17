@@ -49,6 +49,7 @@ class frame_visitor : public default_visitor
 	virtual void visit_fundec(fundec &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_locdec(locdec &s) override;
+	virtual void visit_call(call& s) override;
 
       private:
 	mach::frame *cframe_;

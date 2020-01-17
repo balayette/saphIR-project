@@ -306,4 +306,6 @@ void frame_visitor::visit_locdec(locdec &s)
 	std::cout << "frame: var '" << s.name_ << "' " << s.access_ << '\n';
 	default_visitor::visit_locdec(s);
 }
+
+void frame_visitor::visit_call(call &) { cframe_->leaf_ = false; }
 } // namespace frontend::sema
