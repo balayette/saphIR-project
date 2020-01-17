@@ -8,14 +8,12 @@
 namespace mach
 {
 std::array<utils::temp, 16> reg_temp{
-	make_unique("rax"), make_unique("rbx"),
-	make_unique("rcx"), make_unique("rdx"),
-	make_unique("rsi"), make_unique("rdi"),
-	make_unique("rsp"), make_unique("rbp"),
-	make_unique("r8"),  make_unique("r9"),
-	make_unique("r10"), make_unique("r11"),
-	make_unique("r12"), make_unique("r13"),
-	make_unique("r14"), make_unique("r15"),
+	make_unique("rax"), make_unique("rbx"), make_unique("rcx"),
+	make_unique("rdx"), make_unique("rsi"), make_unique("rdi"),
+	make_unique("rsp"), make_unique("rbp"), make_unique("r8"),
+	make_unique("r9"),  make_unique("r10"), make_unique("r11"),
+	make_unique("r12"), make_unique("r13"), make_unique("r14"),
+	make_unique("r15"),
 };
 
 std::array<std::string, 16> reg_str{
@@ -39,7 +37,7 @@ std::unordered_map<utils::temp, std::string> temp_map()
 	for (unsigned i = 0; i < reg_temp.size(); i++)
 		ret.insert({reg_temp[i], reg_str[i]});
 	return ret;
-} // namespace mach
+}
 
 utils::temp fp() { return reg_temp[regs::RBP]; }
 
@@ -61,7 +59,7 @@ std::vector<utils::temp> callee_saved_regs()
 	return {
 		reg_to_temp(regs::RBX), reg_to_temp(regs::R12),
 		reg_to_temp(regs::R13), reg_to_temp(regs::R14),
-		reg_to_temp(regs::R15), reg_to_temp(regs::RBP),
+		reg_to_temp(regs::R15),
 	};
 }
 
@@ -78,6 +76,7 @@ std::vector<utils::temp> special_regs()
 {
 	return {
 		reg_to_temp(regs::RSP),
+		reg_to_temp(regs::RBP),
 	};
 }
 
@@ -193,7 +192,10 @@ void frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 	std::vector<utils::temp> live(special_regs());
 	for (auto &r : callee_saved_regs())
 		live.push_back(r);
-	instrs.push_back(new assem::oper("", {}, live, {}));
+	std::string repr("# sink:");
+	for (auto& r : live)
+		repr += " " + r.get();
+	instrs.push_back(new assem::oper(repr, {}, live, {}));
 }
 
 std::string asm_string(utils::label lab, const std::string &str)
