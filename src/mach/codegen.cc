@@ -192,8 +192,26 @@ void generator::visit_move(tree::move &mv)
 
 void generator::visit_mem(tree::mem &mm)
 {
-	mm.e()->accept(*this);
 	utils::temp dst;
+
+	if (auto binop = mm.e().as<tree::binop>()) {
+		if (auto reg = binop->lhs().as<tree::temp>()) {
+			if (mach::temp_map().count(reg->temp_)) {
+				if (auto n = binop->rhs().as<tree::cnst>()) {
+					std::string repr("mov ");
+					repr += std::to_string(n->value_);
+					repr += "(`s0), `d0";
+
+					EMIT(assem::oper(repr, {dst},
+							 {reg->temp_}, {}));
+					ret_ = dst;
+					return;
+				}
+			}
+		}
+	}
+
+	mm.e()->accept(*this);
 	EMIT(assem::move("mov (`s0), `d0", {dst}, {ret_}));
 	ret_ = dst;
 }
