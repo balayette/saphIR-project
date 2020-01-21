@@ -64,7 +64,6 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 
 // At this point, all temps are mapped to registers, so we just replace
 // them in src_ and dst_
-// XXX: Remove moves reg to reg moves with src == dst
 void replace_allocation(std::vector<assem::rinstr> &instrs,
 			utils::temp_endomap &allocation)
 {
