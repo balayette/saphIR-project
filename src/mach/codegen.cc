@@ -123,18 +123,24 @@ void generator::visit_cjump(tree::cjump &cj)
 	cj.rhs()->accept(*this);
 	auto rhs = ret_;
 
-	EMIT(assem::oper("cmp `s0, `s1", {}, {lhs, rhs}, {}));
+	EMIT(assem::oper("cmp `s0, `s1", {}, {rhs, lhs}, {}));
 	std::string repr;
-	if (cj.op_ == ops::cmpop::EQ) {
+	if (cj.op_ == ops::cmpop::EQ)
 		repr += "je ";
-		repr += label_to_asm(cj.ltrue_);
-	} else if (cj.op_ == ops::cmpop::NEQ) {
+	else if (cj.op_ == ops::cmpop::NEQ)
 		repr += "jne ";
-		repr += label_to_asm(cj.ltrue_);
-
-	} else
+	else if (cj.op_ == ops::cmpop::SMLR)
+		repr += "jl ";
+        else if (cj.op_ == ops::cmpop::GRTR)
+                repr += "jg ";
+        else if (cj.op_ == ops::cmpop::SMLR_EQ)
+                repr += "jle ";
+        else if (cj.op_ == ops::cmpop::GRTR_EQ)
+                repr += "jge ";
+	else
 		UNREACHABLE("Impossible cmpop");
 
+	repr += label_to_asm(cj.ltrue_);
 	EMIT(assem::oper(repr, {}, {}, {cj.ltrue_, cj.lfalse_}));
 }
 
