@@ -32,6 +32,10 @@ strlit \"[^"]*\"
 
 "=" 		return TOKEN(ASSIGN);
 "==" 		return TOKEN(EQ);
+"<" 		return TOKEN(SMLR);
+">" 		return TOKEN(GRTR);
+"<=" 		return TOKEN(SMLR_EQ);
+">=" 		return TOKEN(GRTR_EQ);
 "!=" 		return TOKEN(NEQ);
 "-"	    	return TOKEN(MINUS);
 "+"	    	return TOKEN(PLUS);
