@@ -1,0 +1,27 @@
+#include "libc.jit"
+
+fun main(int argc) void {
+        if (argc < 2)
+                printf("usage: ./cmp value...\n");
+        else
+                printf("not usage\n");
+        fi
+
+        if (argc <= 3)
+                printf("lol\n");
+        else
+                printf("not lol\n");
+        fi
+
+        if (argc >= 4)
+                printf("okok\n");
+        else
+                printf("not okok\n");
+        fi
+
+        if (argc >= 5)
+                printf("same\n");
+        else
+                printf("not same\n");
+        fi
+}
