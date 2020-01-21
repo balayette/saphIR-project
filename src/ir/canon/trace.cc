@@ -1,6 +1,7 @@
 #include "ir/canon/trace.hh"
 #include "frontend/ops.hh"
 #include "utils/uset.hh"
+#include "utils/assert.hh"
 
 namespace ir
 {
@@ -69,10 +70,13 @@ void optimize_trace(tree::rnodevec &instrs)
 				// The next element has to be a label, we check
 				// if it is the false label.
 				auto lbl = instrs[i + 1].as<tree::label>();
+				ASSERT(lbl->name_ == cj->lfalse_
+					       || lbl->name_ == cj->ltrue_,
+				       "cjump followed by wrong label");
 				if (lbl->name_ == cj->lfalse_)
 					continue;
 
-				// The cjump is followed by its false label,
+				// The cjump is followed by its true label,
 				// we swap the labels and the condition.
 				std::swap(cj->ltrue_, cj->lfalse_);
 				cj->op_ = ops::invert_cmpop(cj->op_);
