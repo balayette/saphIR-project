@@ -32,6 +32,10 @@
 
 %token  ASSIGN "="
 	EQ "=="
+	SMLR "<"
+	GRTR ">"
+	SMLR_EQ "<="
+	GRTR_EQ ">="
 	NEQ "!="
 	MINUS "-"
 	PLUS "+"
@@ -94,7 +98,7 @@
 
 %type <types::ty> type
 
-%nonassoc EQ NEQ ASSIGN
+%nonassoc EQ NEQ SMLR GRTR SMLR_EQ GRTR_EQ ASSIGN
 %left AMPERSAND
 %left PLUS MINUS MOD
 %left MULT DIV
@@ -198,6 +202,10 @@ exp:
 | 	STR_LIT 		{ $$ = new str_lit($1); }
 | 	exp EQ exp 		{ $$ = new cmp(cmpop::EQ, $1, $3); }
 | 	exp NEQ exp 		{ $$ = new cmp(cmpop::NEQ, $1, $3); }
+|	exp SMLR exp	{$$ = new cmp(cmpop::SMLR, $1, $3); }
+|	exp GRTR exp	{$$ = new cmp(cmpop::GRTR, $1, $3); }
+|	exp SMLR_EQ exp	{$$ = new cmp(cmpop::SMLR_EQ, $1, $3); }
+|	exp GRTR_EQ exp	{$$ = new cmp(cmpop::GRTR_EQ, $1, $3); }
 | 	exp MULT exp 		{ $$ = new bin(binop::MULT, $1, $3); }
 | 	exp DIV exp 		{ $$ = new bin(binop::DIV, $1, $3); }
 | 	exp MOD exp 		{ $$ = new bin(binop::MOD, $1, $3); }
