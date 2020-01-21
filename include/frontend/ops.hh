@@ -5,7 +5,10 @@
 namespace ops
 {
 enum class binop { MINUS, PLUS, MULT, DIV, MOD };
-enum class cmpop { EQ, NEQ };
+
+// The order of the cmpops matters, they must be ordered "symmetrically".
+// See invert_cmpop
+enum class cmpop { EQ, SMLR, GRTR, SMLR_EQ, GRTR_EQ, NEQ };
 
 cmpop invert_cmpop(cmpop op);
 
