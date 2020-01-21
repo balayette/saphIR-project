@@ -229,8 +229,7 @@ asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
 	prologue += "\txor %r11, %r11\n";
 	prologue += "\tjmp .L_" + body_lbl.get() + '\n';
 
-	std::string epilogue(".L_" + epi_lbl.get() + ":\n");
-	epilogue += "\tmovq -8(%rbp), %r11\n";
+	std::string epilogue("\tmovq -8(%rbp), %r11\n");
 	epilogue += "\txorq %fs:40, %r11\n";
 	epilogue += "\tje .L_ok_" + epi_lbl.get() + "\n";
 	epilogue += "\tcall __stack_chk_fail@PLT\n";

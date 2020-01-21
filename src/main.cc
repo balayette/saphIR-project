@@ -88,6 +88,8 @@ int main(int argc, char *argv[])
 
 		auto traces = ir::create_traces(bbs);
 		auto trace = ir::optimize_traces(traces);
+		trace.push_back(new ir::tree::label(frag.epi_lbl_));
+
 		std::cout << "Trace:\n";
 		std::cout << "-------------------------------------\n";
 		for (auto s : trace)
