@@ -68,9 +68,9 @@ int main(int argc, char *argv[])
 	std::vector<mach::asm_function> funs;
 
 	for (auto &frag : frags) {
-		auto canoned = ir::canon(frag.body_);
 		std::cout << "Precannon:\n";
 		frag.body_->accept(pir);
+		auto canoned = ir::canon(frag.body_);
 		std::cout << "\nCannoned:\n";
 		canoned->accept(pir);
 		std::cout << "--\n";

@@ -112,9 +112,8 @@ void translate_visitor::visit_call(call &e)
 		args.emplace_back(ret_->un_ex());
 	}
 
-	auto *call =
-		new ir::tree::call(new ir::tree::name(e.fdec_->name_),
-				   args, e.fdec_->variadic_);
+	auto *call = new ir::tree::call(new ir::tree::name(e.fdec_->name_),
+					args, e.fdec_->variadic_);
 
 	ret_ = new ex(call);
 }
@@ -344,10 +343,7 @@ void translate_visitor::visit_addrof(addrof &e)
 	// There are no pointes in Tiger, but I think that this is how they
 	// work.
 	auto r = ret_->un_ex().as<ir::tree::mem>();
-	if (!r) {
-		std::cout << "Taking the address of a non escaping variable?";
-		std::exit(6);
-	}
+	ASSERT(r, "Taking the address of a non escaping variable.");
 
 	ret_ = new ex(r->e());
 }
