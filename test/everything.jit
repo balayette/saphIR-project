@@ -1,24 +1,18 @@
-fun print_ptr(int *a) int {
-        return 1;
-}
-
-fun print(int a) void {
-        return;
-}
+#include "libc.jit"
 
 fun main(int argc, int argv) int {
-        print_ptr(&argc);
-        print(argv);
+        printf("%p\n", &argc);
+        printf("%d\n", argv);
 
         for (int i = 0; i != 10; i = i + 1)
                 for (int lol = 0; lol == 10; lol = lol * 2)
-                        print(lol);
+                        printf("%d\n", lol);
                 rof
-                print_ptr(&i);
+                printf("%p\n", &i);
                 if (&i == &argc)
-                        print(42);
+                        printf("%d\n", 42);
                 else
-                        print(44);
+                        printf("%d\n", 44);
                 fi
         rof
 

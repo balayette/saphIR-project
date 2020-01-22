@@ -131,12 +131,12 @@ void generator::visit_cjump(tree::cjump &cj)
 		repr += "jne ";
 	else if (cj.op_ == ops::cmpop::SMLR)
 		repr += "jl ";
-        else if (cj.op_ == ops::cmpop::GRTR)
-                repr += "jg ";
-        else if (cj.op_ == ops::cmpop::SMLR_EQ)
-                repr += "jle ";
-        else if (cj.op_ == ops::cmpop::GRTR_EQ)
-                repr += "jge ";
+	else if (cj.op_ == ops::cmpop::GRTR)
+		repr += "jg ";
+	else if (cj.op_ == ops::cmpop::SMLR_EQ)
+		repr += "jle ";
+	else if (cj.op_ == ops::cmpop::GRTR_EQ)
+		repr += "jge ";
 	else
 		UNREACHABLE("Impossible cmpop");
 
@@ -174,6 +174,31 @@ void generator::visit_move(tree::move &mv)
 
 			EMIT(assem::move("mov (`s0), `d0", {rhs}, {rhs}));
 			EMIT(assem::move("mov `s0, (`s1)", {}, {rhs, lhs}));
+			return;
+		}
+		if (auto binop = lmem->e().as<tree::binop>()) {
+			/*
+			 * Canon guarantees that
+			 * (mem (binop + a 1) (temp t)) is translated into
+			 * (move (temp t2) (binop + a 1))
+			 * (mem (t2) (temp t))
+			 * Peephole reintroduces it in the case we're checking
+			 * here.
+			 * XXX: This might be a hack, and should maybe be in a
+			 * mach dependant peephole opti, and not in the IR
+			 * peephole... Leaving it here for the moment,
+			 * because I don't have mach dependant peepholes yet,
+			 * and it makes assembly output much more readable.
+			 * */
+			ASSERT(binop->op_ == ops::binop::PLUS, "Wrong binop");
+			std::string repr("mov `s1, ");
+			repr += std::to_string(
+				binop->rhs().as<tree::cnst>()->value_);
+			repr += "(`s0)";
+			EMIT(assem::oper(repr, {},
+					 {binop->lhs().as<tree::temp>()->temp_,
+					  mv.rhs().as<tree::temp>()->temp_},
+					 {}));
 			return;
 		}
 
@@ -225,15 +250,11 @@ void generator::visit_mem(tree::mem &mm)
 void generator::visit_cnst(tree::cnst &c)
 {
 	utils::temp dst;
-	if (c.value_ == 0) {
-		EMIT(assem::oper("xor `d0, `d0", {dst}, {}, {}));
-	} else {
-		std::string instr("mov $");
-		instr += std::to_string(c.value_);
-		instr += ", `d0";
+	std::string instr("mov $");
+	instr += std::to_string(c.value_);
+	instr += ", `d0";
 
-		EMIT(assem::move(instr, {dst}, {}));
-	}
+	EMIT(assem::move(instr, {dst}, {}));
 
 	ret_ = dst;
 }

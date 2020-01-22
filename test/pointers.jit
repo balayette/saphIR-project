@@ -1,9 +1,9 @@
 fun print(int a) void {}
 fun print_ptr(int* a) void {}
 
-fun main() void
+fun main(int argc) void
 {
-        int a = 0;
+        int a = argc;
         print_ptr(&a);
         print(a);
 }
