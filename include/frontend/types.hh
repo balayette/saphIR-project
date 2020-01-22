@@ -1,31 +1,65 @@
 #pragma once
 
 #include <string>
+#include "utils/symbol.hh"
 
 namespace types
 {
 enum class type { INT, STRING, VOID, INVALID };
 
 struct ty {
-	ty() : ty_(type::INVALID), ptr_(0) {}
-	ty(type t) : ty_(t), ptr_(0) {}
-	ty(type t, unsigned ptr) : ty_(t), ptr_(ptr) {}
+	ty(size_t size = 0, unsigned ptr = 0);
+	virtual ~ty() = default;
 
-	std::string to_string() const;
+	virtual std::string to_string() const = 0;
 
-	bool operator==(const type &t) const { return !ptr_ && t == ty_; }
+	virtual bool compatible(const type &t) const = 0;
+	virtual bool compatible(const ty *t) const = 0;
 
-	bool operator!=(const type &t) const { return !(*this == t); }
+	virtual ty *clone() const = 0;
 
-	bool compatible(const ty &rhs) const
-	{
-		return ptr_ == rhs.ptr_ && ty_ == rhs.ty_;
-	}
-
-	bool compatible(const type t) const { return !ptr_ && ty_ == t; }
-
-	type ty_;
+	size_t size_;
 	unsigned ptr_;
 };
 
+bool operator==(const ty *ty, const type &t);
+bool operator!=(const ty *ty, const type &t);
+
+struct builtin_ty : public ty {
+	builtin_ty();
+	builtin_ty(type t, size_t size = 0, unsigned ptr = 0);
+
+	std::string to_string() const override;
+
+	bool compatible(const type &t) const override;
+	bool compatible(const ty *t) const override;
+
+	virtual builtin_ty *clone() const override
+	{
+		return new builtin_ty(ty_, size_, ptr_);
+	}
+
+      private:
+	type ty_;
+};
+
+/*
+ * The parser outputs named_ty everywhere a type is used, and they are replaced
+ * by pointers to actual types during semantic analysis.
+ * This is necessary because of type declarations that the parser doesn't track.
+ */
+struct named_ty : public ty {
+	named_ty(const symbol &name, unsigned ptr = 0);
+	std::string to_string() const override;
+
+	bool compatible(const type &t) const override;
+	bool compatible(const ty *t) const override;
+
+	virtual named_ty *clone() const override
+	{
+		return new named_ty(name_, ptr_);
+	}
+
+	symbol name_;
+};
 } // namespace types

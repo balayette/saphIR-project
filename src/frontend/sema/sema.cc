@@ -16,6 +16,11 @@ void binding_visitor::visit_funprotodec(funprotodec &s)
 		std::cerr << "fun '" << s.name_ << "' already declared\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
+
+	for (auto *arg : s.args_)
+		arg->type_ = get_type(arg->type_);
+
+	s.type_ = get_type(s.type_);
 }
 
 void binding_visitor::visit_globaldec(globaldec &s)
@@ -26,11 +31,7 @@ void binding_visitor::visit_globaldec(globaldec &s)
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
-	if (!s.rhs_->ty_.compatible(s.type_)) {
-		std::cerr << "TypeError: rhs of declaration of variable '"
-			  << s.name_ << "'\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
+	s.type_ = get_type(s.type_);
 }
 
 void binding_visitor::visit_locdec(locdec &s)
@@ -41,11 +42,7 @@ void binding_visitor::visit_locdec(locdec &s)
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
-	if (s.rhs_ && !s.rhs_->ty_.compatible(s.type_)) {
-		std::cerr << "TypeError: rhs of declaration of variable '"
-			  << s.name_ << "'\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
+	s.type_ = get_type(s.type_);
 }
 
 void binding_visitor::visit_fundec(fundec &s)
@@ -54,20 +51,17 @@ void binding_visitor::visit_fundec(fundec &s)
 		std::cerr << "fun '" << s.name_ << "' already declared\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
+	s.type_ = get_type(s.type_);
 
 	new_scope();
 	cfunc_.enter(&s);
 
-	for (auto *arg : s.args_)
+	for (auto *arg : s.args_) {
+		arg->type_ = get_type(arg->type_);
 		arg->accept(*this);
+	}
 	for (auto *b : s.body_)
 		b->accept(*this);
-
-	if (!s.has_return_ && s.type_ != types::type::VOID) {
-		std::cerr << "TypeError: Missing return stmt in fun '"
-			  << s.name_ << "' with return type != void\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
 
 	cfunc_.leave();
 	end_scope();
@@ -76,11 +70,6 @@ void binding_visitor::visit_fundec(fundec &s)
 void binding_visitor::visit_ifstmt(ifstmt &s)
 {
 	s.cond_->accept(*this);
-
-	if (!s.cond_->ty_.compatible(types::type::INT)) {
-		std::cerr << "TypeError: Wrong type for comparison in if\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
 
 	new_scope();
 	for (auto *i : s.ibody_)
@@ -97,21 +86,6 @@ void binding_visitor::visit_forstmt(forstmt &s)
 	new_scope();
 	default_visitor::visit_forstmt(s);
 	end_scope();
-
-	if (!s.cond_->ty_.compatible(types::type::INT)) {
-		std::cerr << "TypeError: Wrong type for cond in for\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-}
-
-void binding_visitor::visit_ass(ass &s)
-{
-	default_visitor::visit_ass(s);
-
-	if (!s.lhs_->ty_.compatible(s.rhs_->ty_)) {
-		std::cerr << "TypeError: Wrong type for rhs of ass.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
 }
 
 void binding_visitor::visit_ref(ref &e)
@@ -164,37 +138,13 @@ void binding_visitor::visit_call(call &e)
 	e.fdec_ = *f;
 
 	default_visitor::visit_call(e);
-
-	for (size_t i = 0; i < (*f)->args_.size(); i++) {
-		if (e.args_[i]->ty_.compatible((*f)->args_[i]->type_))
-			continue;
-		std::cerr << "TypeError: Wrong type for argument '"
-			  << (*f)->args_[i]->name_ << "' of call to '"
-			  << e.name_ << "'\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-}
-
-void binding_visitor::visit_cmp(cmp &e)
-{
-	default_visitor::visit_cmp(e);
-
-	if (!e.lhs_->ty_.compatible(e.rhs_->ty_)) {
-		std::cerr << "TypeError: Incompatible types in cmp\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
 }
 
 void binding_visitor::visit_bin(bin &e)
 {
 	default_visitor::visit_bin(e);
 
-	if (!e.lhs_->ty_.compatible(e.rhs_->ty_)) {
-		std::cerr << "TypeError: Incompatible types in bin\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	/* TODO: This only works in the basic case */
+	/* TODO: This only works in the basic case, move it to tycheck? */
 	e.ty_ = e.lhs_->ty_;
 }
 
@@ -204,55 +154,63 @@ void binding_visitor::visit_ret(ret &s)
 
 	cfunc_->has_return_ = true;
 	s.fdec_ = cfunc_.get();
-
-	/* return; in void function */
-	if (s.e_ == nullptr && cfunc_->type_ == types::type::VOID)
-		return;
-
-	if (s.e_ == nullptr /* return; in non void function */
-	    || !s.e_->ty_.compatible(cfunc_->type_)) {
-		std::cerr << "TypeError: Incompatible return type in fun "
-			  << cfunc_->name_ << '\n';
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
 }
 
 void binding_visitor::visit_addrof(addrof &e)
 {
 	default_visitor::visit_addrof(e);
 
-	if (e.ty_ == types::type::VOID) {
-		std::cerr << "Pointer to void are not supported.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
 	e.ty_ = e.e_->ty_;
-	e.ty_.ptr_++;
+	e.ty_->ptr_++;
 }
 
 void binding_visitor::visit_deref(deref &e)
 {
 	default_visitor::visit_deref(e);
 
-	if (!e.e_->ty_.ptr_) {
-		std::cerr << "Can't derefence non pointer type.\n";
+	e.ty_ = e.e_->ty_;
+	e.ty_->ptr_--;
+}
+
+// get_type must be used everytime there can be a refernce to a type.
+// This includes function return values, function arguments declarations,
+// local and global variables declarations, struct members declarations...
+utils::ref<types::ty> binding_visitor::get_type(utils::ref<types::ty> t)
+{
+	utils::ref<types::named_ty> nt = t.as<types::named_ty>();
+	if (!nt)
+		return t;
+
+	auto type = tmap_.get(nt->name_);
+	if (type == std::nullopt) {
+		std::cerr << "Type '" << nt->name_ << "' doesn't exist.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
-	e.ty_ = e.e_->ty_;
-	e.ty_.ptr_--;
+	utils::ref<types::ty> ret = (*type)->clone();
+	ret->ptr_ = nt->ptr_;
+	return ret;
 }
 
 void binding_visitor::new_scope()
 {
 	fmap_.new_scope();
 	vmap_.new_scope();
+	tmap_.new_scope();
 }
 
 void binding_visitor::end_scope()
 {
 	fmap_.end_scope();
 	vmap_.end_scope();
+	tmap_.end_scope();
+}
+
+binding_visitor::binding_visitor()
+{
+	tmap_.add("int", new types::builtin_ty(types::type::INT, 8, 0));
+	tmap_.add("string", new types::builtin_ty(types::type::STRING, 8, 0));
+	tmap_.add("void", new types::builtin_ty(types::type::VOID, 0, 0));
 }
 
 void escapes_visitor::visit_addrof(addrof &e)
@@ -267,7 +225,10 @@ void escapes_visitor::visit_addrof(addrof &e)
 	}
 }
 
-void frame_visitor::visit_funprotodec(funprotodec &) {}
+void frame_visitor::visit_funprotodec(funprotodec &)
+{
+	// Don't recurse.
+}
 
 void frame_visitor::visit_fundec(fundec &s)
 {

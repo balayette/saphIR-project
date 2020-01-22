@@ -18,8 +18,10 @@ template <typename T> class ref : public std::shared_ptr<T>
 	bool operator==(const T *rhs);
 	bool operator!=(const T *rhs);
 
-        bool operator==(std::nullptr_t rhs);
-        bool operator!=(std::nullptr_t rhs);
+	bool operator==(std::nullptr_t rhs);
+	bool operator!=(std::nullptr_t rhs);
+
+	T *operator&() const;
 
 	template <typename U> ref<U> as();
 };

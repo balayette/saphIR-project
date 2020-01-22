@@ -27,6 +27,7 @@ OBJ = \
       src/frontend/types.o \
       src/frontend/stmt.o \
       src/frontend/sema/sema.o \
+      src/frontend/sema/tycheck.o \
       src/frontend/visitors/pretty-printer.o \
       src/frontend/visitors/transforms.o \
       src/frontend/visitors/translate.o \

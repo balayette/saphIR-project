@@ -56,9 +56,7 @@
 	ELSE "else"
 	FI "fi"
 	RETURN "return"
-	INT "int"
-	VOID "void"
-	STRING "string"
+        LET "let"
         VARIADIC "variadic"
 	EOF 0 "eof"
 
@@ -96,7 +94,7 @@
 %type <ref*> ref
 %type <call*> call
 
-%type <types::ty> type
+%type <types::ty*> type
 
 %nonassoc EQ NEQ SMLR GRTR SMLR_EQ GRTR_EQ ASSIGN
 %left AMPERSAND
@@ -160,8 +158,8 @@ stmt_body:
 | 	ass 	{ $$ = $1; }
 ;
 
-locdec: type ID "=" exp { $$ = new locdec($1, $2, $4); };
-globaldec: type ID "=" exp { $$ = new globaldec($1, $2, $4); };
+locdec: "let" type ID "=" exp { $$ = new locdec($2, $3, $5); };
+globaldec: "let" type ID "=" exp { $$ = new globaldec($2, $3, $5); };
 
 /* TODO: This accepts 1; */
 sexp: exp { $$ = new sexp($1); };
@@ -232,10 +230,8 @@ ref: ID 	{ $$ = new ref($1); };
 call: ID "(" exps_comma ")" 	{ $$ = new call($1, $3); };
 
 type:
-    	INT	{ $$ = types::type::INT; }
-| 	STRING 	{ $$ = types::type::STRING; }
-| 	VOID 	{ $$ = types::type::VOID; }
-| 	type MULT { $$ = $1; $$.ptr_++; }
+	ID { $$ = new types::named_ty($1); }
+| 	type "*" { $$ = $1; $$->ptr_++; }
 ;
 
 %%

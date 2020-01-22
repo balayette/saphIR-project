@@ -22,17 +22,17 @@ struct stmt {
 };
 
 struct dec : public stmt {
-	dec(types::ty type, symbol name) : type_(type), name_(name) {}
+	dec(types::ty *type, symbol name) : type_(type), name_(name) {}
 
 	virtual void accept(visitor &visitor) = 0;
 
-	types::ty type_;
+	utils::ref<types::ty> type_;
 	symbol name_;
 	utils::ref<mach::access> access_;
 };
 
 struct vardec : public dec {
-	vardec(types::ty type, symbol name) : dec(type, name), escapes_(false)
+	vardec(types::ty *type, symbol name) : dec(type, name), escapes_(false)
 	{
 	}
 
@@ -40,7 +40,7 @@ struct vardec : public dec {
 };
 
 struct globaldec : public vardec {
-	globaldec(types::ty type, symbol name, exp *rhs)
+	globaldec(types::ty *type, symbol name, exp *rhs)
 	    : vardec(type, name), rhs_(rhs)
 	{
 	}
@@ -56,7 +56,7 @@ struct globaldec : public vardec {
 };
 
 struct locdec : public vardec {
-	locdec(types::ty type, symbol name, exp *rhs)
+	locdec(types::ty *type, symbol name, exp *rhs)
 	    : vardec(type, name), rhs_(rhs)
 	{
 	}
@@ -73,7 +73,7 @@ struct locdec : public vardec {
 std::ostream &operator<<(std::ostream &os, const vardec &dec);
 
 struct funprotodec : public dec {
-	funprotodec(types::ty ret_ty, symbol name, std::vector<locdec *> args,
+	funprotodec(types::ty *ret_ty, symbol name, std::vector<locdec *> args,
 		    bool variadic = false)
 	    : dec(ret_ty, name), args_(args), variadic_(variadic)
 	{
@@ -95,7 +95,7 @@ struct funprotodec : public dec {
 };
 
 struct fundec : public funprotodec {
-	fundec(types::ty ret_ty, symbol name, std::vector<locdec *> args,
+	fundec(types::ty *ret_ty, symbol name, std::vector<locdec *> args,
 	       std::vector<stmt *> body)
 	    : funprotodec(ret_ty, name, args), body_(body), has_return_(false)
 	{

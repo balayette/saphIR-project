@@ -4,6 +4,7 @@
 #include "frontend/visitors/pretty-printer.hh"
 #include "frontend/visitors/transforms.hh"
 #include "frontend/sema/sema.hh"
+#include "frontend/sema/tycheck.hh"
 #include "frontend/visitors/translate.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
 #include "ir/canon/linearize.hh"
@@ -39,6 +40,9 @@ int main(int argc, char *argv[])
 
 	frontend::sema::binding_visitor b;
 	drv.prog_->accept(b);
+
+        frontend::sema::tycheck_visitor tc;
+        drv.prog_->accept(tc);
 
 	frontend::transforms::unique_ids_visitor u;
 	drv.prog_->accept(u);

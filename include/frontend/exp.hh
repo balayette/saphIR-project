@@ -4,6 +4,7 @@
 #include "utils/symbol.hh"
 #include "types.hh"
 #include "frontend/ops.hh"
+#include "utils/ref.hh"
 #include <vector>
 
 namespace frontend
@@ -13,7 +14,7 @@ struct vardec;
 
 struct exp {
       protected:
-	exp() : ty_(types::type::INVALID) {}
+	exp() : ty_(new types::builtin_ty(types::type::INVALID)) {}
 	exp(const exp &rhs) = default;
 	exp &operator=(const exp &rhs) = default;
 
@@ -21,7 +22,7 @@ struct exp {
 	virtual ~exp() = default;
 	virtual void accept(visitor &visitor) = 0;
 
-	types::ty ty_;
+	utils::ref<types::ty> ty_;
 };
 
 struct bin : public exp {
@@ -46,7 +47,7 @@ struct bin : public exp {
 struct cmp : public exp {
 	cmp(ops::cmpop op, exp *lhs, exp *rhs) : op_(op), lhs_(lhs), rhs_(rhs)
 	{
-		ty_ = types::type::INT;
+		ty_ = new types::builtin_ty(types::type::INT);
 	}
 
 	virtual ~cmp() override
@@ -63,7 +64,10 @@ struct cmp : public exp {
 };
 
 struct num : public exp {
-	num(int value) : value_(value) { ty_ = types::type::INT; }
+	num(int value) : value_(value)
+	{
+		ty_ = new types::builtin_ty(types::type::INT);
+	}
 
 	ACCEPT(num)
 
@@ -123,7 +127,7 @@ struct call : public exp {
 struct str_lit : public exp {
 	str_lit(const std::string &str) : str_(str)
 	{
-		ty_ = types::type::STRING;
+		ty_ = new types::builtin_ty(types::type::STRING);
 	}
 
 	ACCEPT(str_lit)

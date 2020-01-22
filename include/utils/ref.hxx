@@ -26,6 +26,8 @@ template <typename T> bool ref<T>::operator!=(std::nullptr_t rhs)
 	return !(*this == rhs);
 }
 
+template <typename T> T *ref<T>::operator&() const { return this->get(); }
+
 template <typename T>
 inline std::ostream &operator<<(std::ostream &os, const ref<T> &p)
 {

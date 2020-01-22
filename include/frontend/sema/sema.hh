@@ -10,6 +10,7 @@ namespace frontend::sema
 class binding_visitor : public default_visitor
 {
       public:
+	binding_visitor();
 	virtual void visit_decs(decs &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_locdec(locdec &s) override;
@@ -18,10 +19,8 @@ class binding_visitor : public default_visitor
 	virtual void visit_ret(ret &s) override;
 	virtual void visit_ifstmt(ifstmt &s) override;
 	virtual void visit_forstmt(forstmt &s) override;
-	virtual void visit_ass(ass &s) override;
 
 	virtual void visit_bin(bin &e) override;
-	virtual void visit_cmp(cmp &e) override;
 	virtual void visit_ref(ref &e) override;
 	virtual void visit_deref(deref &e) override;
 	virtual void visit_addrof(addrof &e) override;
@@ -30,9 +29,11 @@ class binding_visitor : public default_visitor
       private:
 	void new_scope();
 	void end_scope();
+	utils::ref<types::ty> get_type(utils::ref<types::ty> t);
 
 	utils::scoped_map<symbol, funprotodec *> fmap_;
 	utils::scoped_map<symbol, vardec *> vmap_;
+	utils::scoped_map<symbol, utils::ref<types::ty>> tmap_;
 	utils::scoped_ptr<fundec *> cfunc_;
 };
 
@@ -49,7 +50,7 @@ class frame_visitor : public default_visitor
 	virtual void visit_fundec(fundec &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_locdec(locdec &s) override;
-	virtual void visit_call(call& s) override;
+	virtual void visit_call(call &s) override;
 
       private:
 	mach::frame *cframe_;

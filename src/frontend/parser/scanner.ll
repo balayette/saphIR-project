@@ -56,9 +56,7 @@ strlit \"[^"]*\"
 "else"	    	return TOKEN(ELSE);
 "fi"	    	return TOKEN(FI);
 "return"	return TOKEN(RETURN);
-"int"	    	return TOKEN(INT);
-"void"	    	return TOKEN(VOID);
-"string"	return TOKEN(STRING);
+"let"           return TOKEN(LET);
 "variadic"      return TOKEN(VARIADIC);
 
 {int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
