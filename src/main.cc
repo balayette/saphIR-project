@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 		}
 		std::cout << "+++++++++++++++++++++++++++++++++++++\n";
 
-		auto traces = ir::create_traces(bbs);
+		auto traces = ir::create_traces(bbs, frag.body_lbl_);
 		auto trace = ir::optimize_traces(traces);
 		trace.push_back(new ir::tree::label(frag.epi_lbl_));
 

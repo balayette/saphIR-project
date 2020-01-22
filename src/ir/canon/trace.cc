@@ -5,13 +5,18 @@
 
 namespace ir
 {
-std::vector<trace> create_traces(std::unordered_map<utils::label, bb> bbs)
+std::vector<trace> create_traces(std::unordered_map<utils::label, bb> bbs,
+				 utils::label prologue)
 {
 	utils::uset<utils::label> visited;
 	std::vector<bb> blocks;
 	std::vector<trace> ret;
-	for (auto [_, b] : bbs)
-		blocks.push_back(b);
+
+	for (auto [l, b] : bbs) {
+		if (l != prologue)
+			blocks.push_back(b);
+	}
+	blocks.push_back(bbs.find(prologue)->second);
 
 	while (blocks.size() > 0) {
 		trace t;
