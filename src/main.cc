@@ -41,8 +41,8 @@ int main(int argc, char *argv[])
 	frontend::sema::binding_visitor b;
 	drv.prog_->accept(b);
 
-        frontend::sema::tycheck_visitor tc;
-        drv.prog_->accept(tc);
+	frontend::sema::tycheck_visitor tc;
+	drv.prog_->accept(tc);
 
 	frontend::transforms::unique_ids_visitor u;
 	drv.prog_->accept(u);
@@ -59,6 +59,8 @@ int main(int argc, char *argv[])
 	drv.prog_->accept(trans);
 
 	ir::ir_pretty_printer pir(std::cout);
+
+	return 0;
 
 	std::vector<mach::fun_fragment> frags;
 	for (auto &frag : trans.funs_) {

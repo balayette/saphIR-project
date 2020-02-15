@@ -23,6 +23,23 @@ void binding_visitor::visit_funprotodec(funprotodec &s)
 	s.type_ = get_type(s.type_);
 }
 
+void binding_visitor::visit_memberdec(memberdec &s)
+{
+	s.type_ = get_type(s.type_);
+}
+
+void binding_visitor::visit_structdec(structdec &s)
+{
+	default_visitor::visit_structdec(s);
+
+	std::vector<utils::ref<types::ty>> types;
+	for (auto *mem : s.members_)
+		types.push_back(mem->type_);
+
+	s.type_ = new types::struct_ty(s.name_, types);
+	tmap_.add(s.name_, s.type_);
+}
+
 void binding_visitor::visit_globaldec(globaldec &s)
 {
 	default_visitor::visit_globaldec(s);
@@ -156,11 +173,22 @@ void binding_visitor::visit_ret(ret &s)
 	s.fdec_ = cfunc_.get();
 }
 
+void binding_visitor::visit_braceinit(braceinit& e)
+{
+        default_visitor::visit_braceinit(e);
+
+        std::vector<utils::ref<types::ty>> types;
+        for (auto* e : e.exps_)
+                types.push_back(e->ty_);
+
+        e.ty_ = new types::braceinit_ty(types);
+}
+
 void binding_visitor::visit_addrof(addrof &e)
 {
 	default_visitor::visit_addrof(e);
 
-	e.ty_ = e.e_->ty_;
+	e.ty_ = e.e_->ty_->clone();
 	e.ty_->ptr_++;
 }
 
@@ -168,7 +196,7 @@ void binding_visitor::visit_deref(deref &e)
 {
 	default_visitor::visit_deref(e);
 
-	e.ty_ = e.e_->ty_;
+	e.ty_ = e.e_->ty_->clone();
 	e.ty_->ptr_--;
 }
 
@@ -188,6 +216,7 @@ utils::ref<types::ty> binding_visitor::get_type(utils::ref<types::ty> t)
 	}
 
 	utils::ref<types::ty> ret = (*type)->clone();
+
 	ret->ptr_ = nt->ptr_;
 	return ret;
 }

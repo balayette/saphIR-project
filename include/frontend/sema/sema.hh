@@ -11,7 +11,10 @@ class binding_visitor : public default_visitor
 {
       public:
 	binding_visitor();
+
 	virtual void visit_decs(decs &s) override;
+	virtual void visit_memberdec(memberdec &s) override;
+	virtual void visit_structdec(structdec &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_locdec(locdec &s) override;
 	virtual void visit_funprotodec(funprotodec &s) override;
@@ -20,6 +23,7 @@ class binding_visitor : public default_visitor
 	virtual void visit_ifstmt(ifstmt &s) override;
 	virtual void visit_forstmt(forstmt &s) override;
 
+	virtual void visit_braceinit(braceinit &e) override;
 	virtual void visit_bin(bin &e) override;
 	virtual void visit_ref(ref &e) override;
 	virtual void visit_deref(deref &e) override;

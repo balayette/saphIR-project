@@ -1,7 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include "utils/symbol.hh"
+#include "utils/ref.hh"
 
 namespace types
 {
@@ -41,6 +43,40 @@ struct builtin_ty : public ty {
 
       private:
 	type ty_;
+};
+
+struct braceinit_ty : public ty {
+	braceinit_ty(const std::vector<utils::ref<types::ty>> &types);
+
+	std::string to_string() const override;
+
+	bool compatible(const type &t) const override;
+	bool compatible(const ty *t) const override;
+
+	virtual braceinit_ty *clone() const override
+	{
+		return new braceinit_ty(types_);
+	}
+
+	std::vector<utils::ref<types::ty>> types_;
+};
+
+struct struct_ty : public braceinit_ty {
+	struct_ty(const symbol &name,
+		  const std::vector<utils::ref<types::ty>> &types,
+		  unsigned ptr = 0);
+
+	std::string to_string() const override;
+
+	bool compatible(const type &t) const override;
+	bool compatible(const ty *t) const override;
+
+	virtual struct_ty *clone() const override
+	{
+		return new struct_ty(name_, types_, ptr_);
+	}
+
+	symbol name_;
 };
 
 /*

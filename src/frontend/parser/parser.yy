@@ -85,6 +85,7 @@
 %type <stmt*> stmt
 %type <stmt*> stmt_body
 
+%type <braceinit*> braceinit
 %type <locdec*> locdec
 %type <globaldec*> globaldec
 %type <sexp*> sexp
@@ -144,6 +145,8 @@ memberdecsp:
 ;
 
 memberdec: type ID { $$ = new memberdec($1, $2); };
+
+braceinit: "{" exps_comma "}" { $$ = new braceinit($2); };
 
 argdecs:
        	%empty 			{ $$ = std::vector<locdec*>(); }
@@ -218,6 +221,7 @@ exp:
 | 	MULT exp 		{ $$ = new deref($2); }
 |	num 			{ $$ = $1; }
 | 	call 			{ $$ = $1; }
+|       braceinit               { $$ = $1; }
 | 	AMPERSAND exp           { $$ = new addrof($2); }
 | 	STR_LIT 		{ $$ = new str_lit($1); }
 | 	exp EQ exp 		{ $$ = new cmp(cmpop::EQ, $1, $3); }

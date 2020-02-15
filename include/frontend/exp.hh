@@ -25,6 +25,23 @@ struct exp {
 	utils::ref<types::ty> ty_;
 };
 
+struct braceinit : public exp {
+	braceinit(std::vector<exp *> exps) : exp(), exps_(exps) {}
+
+	~braceinit() override
+	{
+		for (auto *e : exps_)
+			delete e;
+	}
+
+	void accept(visitor &visitor) override
+	{
+		visitor.visit_braceinit(*this);
+	}
+
+	std::vector<exp *> exps_;
+};
+
 struct bin : public exp {
 	bin(ops::binop op, exp *lhs, exp *rhs)
 	    : exp(), op_(op), lhs_(lhs), rhs_(rhs)

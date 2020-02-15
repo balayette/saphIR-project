@@ -18,6 +18,7 @@ struct ifstmt;
 struct forstmt;
 
 /* expressions */
+struct braceinit;
 struct bin;
 struct ass;
 struct cmp;
@@ -53,6 +54,7 @@ class visitor
 	virtual void visit_ass(ass &s) = 0;
 
 	/* expressions */
+        virtual void visit_braceinit(braceinit& e)  = 0;
 	virtual void visit_bin(bin &e) = 0;
 	virtual void visit_cmp(cmp &e) = 0;
 	virtual void visit_num(num &e) = 0;

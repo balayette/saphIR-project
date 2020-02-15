@@ -70,6 +70,12 @@ void default_visitor::visit_ass(ass &s)
 	s.rhs_->accept(*this);
 }
 
+void default_visitor::visit_braceinit(braceinit &e)
+{
+	for (auto *e : e.exps_)
+		e->accept(*this);
+}
+
 void default_visitor::visit_bin(bin &e)
 {
 	e.lhs_->accept(*this);

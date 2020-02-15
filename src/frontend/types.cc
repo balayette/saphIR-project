@@ -32,8 +32,87 @@ bool builtin_ty::compatible(const ty *t) const
 	return false;
 }
 
-named_ty::named_ty(const symbol &name, unsigned ptr)
-    : ty(0, ptr), name_(name)
+braceinit_ty::braceinit_ty(const std::vector<utils::ref<types::ty>> &types)
+    : ty(0, 0), types_(types)
+{
+	for (auto t : types_)
+		size_ += t->size_;
+}
+
+std::string braceinit_ty::to_string() const
+{
+	std::string ret("{");
+	for (auto t : types_)
+		ret += " " + t->to_string();
+	ret += "}";
+
+	return ret;
+}
+
+// no brace init of scalars
+bool braceinit_ty::compatible(const type &) const { return false; }
+
+bool braceinit_ty::compatible(const ty *t) const
+{
+	if (auto *st = dynamic_cast<const struct_ty *>(t)) {
+		if (st->types_.size() != types_.size())
+			return false;
+
+		for (size_t i = 0; i < types_.size(); i++) {
+			if (!types_[i]->compatible(&st->types_[i]))
+				return false;
+		}
+
+		return true;
+	}
+	return false;
+}
+
+struct_ty::struct_ty(const symbol &name,
+		     const std::vector<utils::ref<types::ty>> &types,
+		     unsigned ptr)
+    : braceinit_ty(types), name_(name)
+{
+	ptr_ = ptr;
+        if (ptr_)
+                size_ = 8;
+        // else, size_ was set by braceinit_ty's constructor
+}
+
+std::string struct_ty::to_string() const
+{
+	std::string ret("struct ");
+	ret += name_;
+
+	for (unsigned i = 0; i < ptr_; i++)
+		ret += '*';
+
+	return ret;
+}
+
+bool struct_ty::compatible(const type &) const { return false; }
+
+bool struct_ty::compatible(const ty *t) const
+{
+	// struct names are unique in a scope, so this should be enough
+	if (auto *st = dynamic_cast<const struct_ty *>(t))
+		return st->name_ == name_;
+
+	if (auto *bi = dynamic_cast<const braceinit_ty *>(t)) {
+		if (ptr_)
+			return false;
+		if (bi->types_.size() != types_.size())
+			return false;
+		for (size_t i = 0; i < types_.size(); i++) {
+			if (!types_[i]->compatible(&bi->types_[i]))
+				return false;
+		}
+		return true;
+	}
+	return false;
+}
+
+named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)
 {
 }
 
@@ -42,4 +121,5 @@ std::string named_ty::to_string() const { return name_; }
 bool named_ty::compatible(const type &) const { return false; }
 
 bool named_ty::compatible(const ty *) const { return false; }
+
 } // namespace types

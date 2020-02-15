@@ -28,7 +28,7 @@ void tycheck_visitor::visit_locdec(locdec &s)
 void tycheck_visitor::visit_fundec(fundec &s)
 {
 	default_visitor::visit_fundec(s);
-	if (!s.has_return_ && s.type_->compatible(types::type::VOID)) {
+	if (!s.has_return_ && !s.type_->compatible(types::type::VOID)) {
 		std::cerr << "TypeError: Missing return stmt in fun '"
 			  << s.name_ << "' with return type != void\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);

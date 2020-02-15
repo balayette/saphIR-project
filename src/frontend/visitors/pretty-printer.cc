@@ -23,7 +23,7 @@ void pretty_printer::visit_structdec(structdec &s)
 	indent() << "struct " << s.name_ << " {\n";
 	lvl_++;
 	for (auto *mem : s.members_) {
-                new_line_ = true;
+		new_line_ = true;
 		mem->accept(*this);
 		os_ << '\n';
 	}
@@ -165,6 +165,18 @@ void pretty_printer::visit_ass(ass &s)
 }
 
 /* expressions */
+void pretty_printer::visit_braceinit(braceinit &e)
+{
+	os_ << "{ ";
+	for (auto it = e.exps_.begin(); it != e.exps_.end(); ++it) {
+		(*it)->accept(*this);
+		if (it != e.exps_.end() - 1)
+			os_ << ",";
+		os_ << " ";
+	}
+	os_ << "}";
+}
+
 void pretty_printer::visit_bin(bin &e)
 {
 	e.lhs_->accept(*this);

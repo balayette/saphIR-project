@@ -1,5 +1,13 @@
-struct abc { int a, int b };
+struct pair { int a, int b };
 
-fun main() void {
-        return;
+fun test(int a) int {
+        return a * 2;
+}
+
+fun main(pair* z) void {
+        let pair p = {1, test(5)};
+        let pair p2 = {1, 2};
+        let pair* p3 = &p2;
+
+        *z = p;
 }
