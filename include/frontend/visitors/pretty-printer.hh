@@ -41,5 +41,8 @@ class pretty_printer : public default_visitor
 	std::ostream &os_;
 	unsigned lvl_;
 	bool new_line_;
+
+        // don't print a trailing ; on the last assignment in a for.
+        bool in_for_;
 };
 } // namespace frontend

@@ -2,7 +2,7 @@
 namespace frontend
 {
 pretty_printer::pretty_printer(std::ostream &os)
-    : os_(os), lvl_(0), new_line_(true)
+    : os_(os), lvl_(0), new_line_(true), in_for_(false)
 {
 }
 
@@ -141,7 +141,9 @@ void pretty_printer::visit_forstmt(forstmt &s)
 	os_ << " ";
 	s.cond_->accept(*this);
 	os_ << "; ";
+	in_for_ = true;
 	s.action_->accept(*this);
+	in_for_ = false;
 	os_ << ")\n";
 
 	lvl_++;
@@ -162,6 +164,8 @@ void pretty_printer::visit_ass(ass &s)
 	s.lhs_->accept(*this);
 	os_ << " = ";
 	s.rhs_->accept(*this);
+	if (!in_for_)
+		os_ << ";";
 }
 
 /* expressions */
