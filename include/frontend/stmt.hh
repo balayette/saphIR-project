@@ -31,6 +31,44 @@ struct dec : public stmt {
 	utils::ref<mach::access> access_;
 };
 
+struct tydec : public dec {
+	tydec(symbol name)
+	    : dec(new types::builtin_ty(types::type::INVALID), name)
+	{
+	}
+
+	virtual void accept(visitor &visitor) = 0;
+};
+
+struct memberdec : public dec {
+	memberdec(types::ty *type, symbol name) : dec(type, name) {}
+
+	virtual void accept(visitor &visitor) override
+	{
+		visitor.visit_memberdec(*this);
+	}
+};
+
+struct structdec : public tydec {
+	structdec(symbol name, std::vector<memberdec *> members)
+	    : tydec(name), members_(members)
+	{
+	}
+
+	virtual void accept(visitor &visitor)
+	{
+		visitor.visit_structdec(*this);
+	}
+
+	virtual ~structdec()
+	{
+		for (auto *mem : members_)
+			delete mem;
+	}
+
+	std::vector<memberdec *> members_;
+};
+
 struct vardec : public dec {
 	vardec(types::ty *type, symbol name) : dec(type, name), escapes_(false)
 	{

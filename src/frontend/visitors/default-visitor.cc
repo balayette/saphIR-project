@@ -7,6 +7,14 @@ void default_visitor::visit_decs(decs &s)
 		d->accept(*this);
 }
 
+void default_visitor::visit_memberdec(memberdec &) {}
+
+void default_visitor::visit_structdec(structdec &s)
+{
+	for (auto *mem : s.members_)
+		mem->accept(*this);
+}
+
 void default_visitor::visit_globaldec(globaldec &s) { s.rhs_->accept(*this); }
 
 void default_visitor::visit_locdec(locdec &s)

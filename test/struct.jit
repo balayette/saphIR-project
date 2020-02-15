@@ -1,0 +1,5 @@
+struct abc { int a, int b };
+
+fun main() void {
+        return;
+}

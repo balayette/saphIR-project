@@ -58,6 +58,7 @@ strlit \"[^"]*\"
 "return"	return TOKEN(RETURN);
 "let"           return TOKEN(LET);
 "variadic"      return TOKEN(VARIADIC);
+"struct"        return TOKEN(STRUCT);
 
 {int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
 {id} 		return TOKEN_VAL(ID, symbol(yytext));

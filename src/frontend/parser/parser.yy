@@ -58,6 +58,7 @@
 	RETURN "return"
         LET "let"
         VARIADIC "variadic"
+        STRUCT "struct"
 	EOF 0 "eof"
 
 %token <symbol> ID "id"
@@ -68,6 +69,12 @@
 
 %type <fundec*> fundec
 %type <funprotodec*> funprotodec
+
+%type <std::vector<memberdec*>> memberdecs
+%type <std::vector<memberdec*>> memberdecsp
+%type <memberdec*> memberdec
+
+%type <structdec*> structdec
 
 %type <std::vector<locdec*>> argdecs
 %type <std::vector<locdec*>> argdecsp
@@ -112,6 +119,7 @@ decs:
 |   	decs fundec     { $$ = $1; $1->decs_.push_back($2); }
 | 	decs globaldec ";"      { $$ = $1; $1->decs_.push_back($2); }
 |       decs funprotodec ";" { $$ = $1; $1->decs_.push_back($2); }
+|       decs structdec ";" { $$ = $1; $1->decs_.push_back($2); }
 ;
 
 funprotodec: 
@@ -122,6 +130,20 @@ funprotodec:
 fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" {
       $$ = new fundec($6, $2, $4, $8);
 };
+
+structdec: "struct" ID "{" memberdecs "}" { $$ = new structdec($2, $4); };
+
+memberdecs:
+          %empty        { $$ = std::vector<memberdec*>(); }
+|         memberdecsp 
+;
+
+memberdecsp:
+           memberdec   { $$ = std::vector<memberdec*>(); $$.push_back($1); }
+|          memberdecsp "," memberdec { $1.push_back($3); $$ = $1; }
+;
+
+memberdec: type ID { $$ = new memberdec($1, $2); };
 
 argdecs:
        	%empty 			{ $$ = std::vector<locdec*>(); }

@@ -37,7 +37,7 @@ named_ty::named_ty(const symbol &name, unsigned ptr)
 {
 }
 
-std::string named_ty::to_string() const { return "named"; }
+std::string named_ty::to_string() const { return name_; }
 
 bool named_ty::compatible(const type &) const { return false; }
 

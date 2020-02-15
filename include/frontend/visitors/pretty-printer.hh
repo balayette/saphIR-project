@@ -13,6 +13,8 @@ class pretty_printer : public default_visitor
 
 	virtual void visit_decs(decs &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
+	virtual void visit_structdec(structdec &s) override;
+	virtual void visit_memberdec(memberdec &s) override;
 	virtual void visit_locdec(locdec &s) override;
 	virtual void visit_funprotodec(funprotodec &s) override;
 	virtual void visit_fundec(fundec &s) override;

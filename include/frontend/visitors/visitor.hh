@@ -7,6 +7,8 @@ namespace frontend
 struct stmt;
 struct decs;
 struct globaldec;
+struct structdec;
+struct memberdec;
 struct locdec;
 struct funprotodec;
 struct fundec;
@@ -38,6 +40,8 @@ class visitor
       public:
 	/* statements */
 	virtual void visit_decs(decs &s) = 0;
+	virtual void visit_structdec(structdec &s) = 0;
+	virtual void visit_memberdec(memberdec &s) = 0;
 	virtual void visit_globaldec(globaldec &s) = 0;
 	virtual void visit_locdec(locdec &s) = 0;
 	virtual void visit_funprotodec(funprotodec &s) = 0;

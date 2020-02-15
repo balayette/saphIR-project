@@ -13,6 +13,23 @@ void pretty_printer::visit_decs(decs &s)
 		os_ << '\n';
 	}
 }
+void pretty_printer::visit_memberdec(memberdec &s)
+{
+	indent() << s.type_->to_string() << ' ' << s.name_ << ";";
+}
+
+void pretty_printer::visit_structdec(structdec &s)
+{
+	indent() << "struct " << s.name_ << " {\n";
+	lvl_++;
+	for (auto *mem : s.members_) {
+                new_line_ = true;
+		mem->accept(*this);
+		os_ << '\n';
+	}
+	lvl_--;
+	indent() << "}\n";
+}
 
 void pretty_printer::visit_globaldec(globaldec &s)
 {
