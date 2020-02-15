@@ -34,6 +34,7 @@ class pretty_printer : public default_visitor
 	virtual void visit_addrof(addrof &e) override;
 	virtual void visit_call(call &e) override;
 	virtual void visit_str_lit(str_lit &e) override;
+	virtual void visit_memberaccess(memberaccess &e) override;
 
       private:
 	std::ostream &indent();

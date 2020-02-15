@@ -62,7 +62,7 @@ struct braceinit_ty : public ty {
 };
 
 struct struct_ty : public braceinit_ty {
-	struct_ty(const symbol &name,
+	struct_ty(const symbol &name, const std::vector<symbol> &names,
 		  const std::vector<utils::ref<types::ty>> &types,
 		  unsigned ptr = 0);
 
@@ -73,10 +73,15 @@ struct struct_ty : public braceinit_ty {
 
 	virtual struct_ty *clone() const override
 	{
-		return new struct_ty(name_, types_, ptr_);
+		return new struct_ty(name_, names_, types_, ptr_);
 	}
 
+	std::optional<size_t> member_index(const symbol &name);
+	size_t member_offset(const symbol &name);
+	utils::ref<ty> member_ty(const symbol &name);
+
 	symbol name_;
+	std::vector<symbol> names_;
 };
 
 /*

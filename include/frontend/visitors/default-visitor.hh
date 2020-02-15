@@ -19,7 +19,7 @@ class default_visitor : public visitor
 	virtual void visit_ifstmt(ifstmt &s) override;
 	virtual void visit_forstmt(forstmt &s) override;
 	virtual void visit_ass(ass &s) override;
-        virtual void visit_braceinit(braceinit& e) override;
+	virtual void visit_braceinit(braceinit &e) override;
 	virtual void visit_bin(bin &e) override;
 	virtual void visit_cmp(cmp &e) override;
 	virtual void visit_num(num &) override;
@@ -28,5 +28,6 @@ class default_visitor : public visitor
 	virtual void visit_addrof(addrof &e) override;
 	virtual void visit_call(call &e) override;
 	virtual void visit_str_lit(str_lit &) override;
+	virtual void visit_memberaccess(memberaccess &e) override;
 };
 } // namespace frontend

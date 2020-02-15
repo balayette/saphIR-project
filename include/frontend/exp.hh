@@ -151,4 +151,18 @@ struct str_lit : public exp {
 
 	std::string str_;
 };
+
+struct memberaccess : public exp {
+	memberaccess(exp *e, const symbol &member)
+	    : e_(e), member_(member)
+	{
+	}
+
+	ACCEPT(memberaccess)
+
+	virtual ~memberaccess() override { delete e_; }
+
+	exp *e_;
+	symbol member_;
+};
 } // namespace frontend

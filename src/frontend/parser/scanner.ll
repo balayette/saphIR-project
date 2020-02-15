@@ -49,6 +49,7 @@ strlit \"[^"]*\"
 "}"	    	return TOKEN(RBRACE);
 ";"	    	return TOKEN(SEMI);
 ","	    	return TOKEN(COLON);
+"."             return TOKEN(DOT);
 "fun" 		return TOKEN(FUN);
 "for"	    	return TOKEN(FOR);
 "rof"	    	return TOKEN(ROF);

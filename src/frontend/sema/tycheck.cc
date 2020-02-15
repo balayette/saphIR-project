@@ -141,4 +141,14 @@ void tycheck_visitor::visit_call(call &e)
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
+
+void tycheck_visitor::visit_memberaccess(memberaccess &e)
+{
+	default_visitor::visit_memberaccess(e);
+
+	if (e.e_->ty_->ptr_) {
+		std::cerr << "TypeError: Operator '.' on pointer.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+}
 } // namespace frontend::sema

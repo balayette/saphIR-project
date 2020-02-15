@@ -49,6 +49,7 @@
 	RBRACE "}"
 	SEMI ";"
 	COLON ","
+        DOT "."
 	FUN "fun"
 	FOR "for"
 	ROF "rof"
@@ -101,11 +102,12 @@
 %type <num*> num
 %type <ref*> ref
 %type <call*> call
+%type <memberaccess*> memberaccess
 
 %type <types::ty*> type
 
 %nonassoc EQ NEQ SMLR GRTR SMLR_EQ GRTR_EQ ASSIGN
-%left AMPERSAND
+%left AMPERSAND DOT
 %left PLUS MINUS MOD
 %left MULT DIV
 
@@ -222,6 +224,7 @@ exp:
 |	num 			{ $$ = $1; }
 | 	call 			{ $$ = $1; }
 |       braceinit               { $$ = $1; }
+|       memberaccess            { $$ = $1; }
 | 	AMPERSAND exp           { $$ = new addrof($2); }
 | 	STR_LIT 		{ $$ = new str_lit($1); }
 | 	exp EQ exp 		{ $$ = new cmp(cmpop::EQ, $1, $3); }
@@ -254,6 +257,8 @@ num: INT_LIT 	{ $$ = new num($1); };
 ref: ID 	{ $$ = new ref($1); };
 
 call: ID "(" exps_comma ")" 	{ $$ = new call($1, $3); };
+
+memberaccess: exp "." ID { $$ = new memberaccess($1, $3); };
 
 type:
 	ID { $$ = new types::named_ty($1); }

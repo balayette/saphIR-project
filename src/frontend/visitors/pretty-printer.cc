@@ -246,4 +246,10 @@ std::ostream &pretty_printer::indent()
 }
 
 void pretty_printer::visit_str_lit(str_lit &e) { os_ << '"' << e.str_ << '"'; }
+
+void pretty_printer::visit_memberaccess(memberaccess &e)
+{
+	e.e_->accept(*this);
+	os_ << "." << e.member_;
+}
 } // namespace frontend

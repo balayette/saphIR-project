@@ -33,10 +33,13 @@ void binding_visitor::visit_structdec(structdec &s)
 	default_visitor::visit_structdec(s);
 
 	std::vector<utils::ref<types::ty>> types;
-	for (auto *mem : s.members_)
+	std::vector<symbol> names;
+	for (auto *mem : s.members_) {
 		types.push_back(mem->type_);
+		names.push_back(mem->name_);
+	}
 
-	s.type_ = new types::struct_ty(s.name_, types);
+	s.type_ = new types::struct_ty(s.name_, names, types);
 	tmap_.add(s.name_, s.type_);
 }
 
@@ -173,15 +176,15 @@ void binding_visitor::visit_ret(ret &s)
 	s.fdec_ = cfunc_.get();
 }
 
-void binding_visitor::visit_braceinit(braceinit& e)
+void binding_visitor::visit_braceinit(braceinit &e)
 {
-        default_visitor::visit_braceinit(e);
+	default_visitor::visit_braceinit(e);
 
-        std::vector<utils::ref<types::ty>> types;
-        for (auto* e : e.exps_)
-                types.push_back(e->ty_);
+	std::vector<utils::ref<types::ty>> types;
+	for (auto *e : e.exps_)
+		types.push_back(e->ty_);
 
-        e.ty_ = new types::braceinit_ty(types);
+	e.ty_ = new types::braceinit_ty(types);
 }
 
 void binding_visitor::visit_addrof(addrof &e)
@@ -198,6 +201,26 @@ void binding_visitor::visit_deref(deref &e)
 
 	e.ty_ = e.e_->ty_->clone();
 	e.ty_->ptr_--;
+}
+
+void binding_visitor::visit_memberaccess(memberaccess &e)
+{
+	default_visitor::visit_memberaccess(e);
+
+	auto st = e.e_->ty_.as<types::struct_ty>();
+	if (!st) {
+		std::cerr << "Accessing member '" << e.member_
+			  << "' on non struct.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	auto idx = st->member_index(e.member_);
+	if (idx == std::nullopt) {
+		std::cerr << "Member '" << e.member_ << "' doesn't exist.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	e.ty_ = st->types_[*idx];
 }
 
 // get_type must be used everytime there can be a refernce to a type.
@@ -237,6 +260,7 @@ void binding_visitor::end_scope()
 
 binding_visitor::binding_visitor()
 {
+	;
 	tmap_.add("int", new types::builtin_ty(types::type::INT, 8, 0));
 	tmap_.add("string", new types::builtin_ty(types::type::STRING, 8, 0));
 	tmap_.add("void", new types::builtin_ty(types::type::VOID, 0, 0));

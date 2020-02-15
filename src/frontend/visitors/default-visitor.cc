@@ -103,4 +103,9 @@ void default_visitor::visit_call(call &e)
 }
 
 void default_visitor::visit_str_lit(str_lit &) {}
+
+void default_visitor::visit_memberaccess(memberaccess &e)
+{
+	e.e_->accept(*this);
+}
 } // namespace frontend

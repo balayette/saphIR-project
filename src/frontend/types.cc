@@ -68,15 +68,15 @@ bool braceinit_ty::compatible(const ty *t) const
 	return false;
 }
 
-struct_ty::struct_ty(const symbol &name,
+struct_ty::struct_ty(const symbol &name, const std::vector<symbol> &names,
 		     const std::vector<utils::ref<types::ty>> &types,
 		     unsigned ptr)
-    : braceinit_ty(types), name_(name)
+    : braceinit_ty(types), name_(name), names_(names)
 {
 	ptr_ = ptr;
-        if (ptr_)
-                size_ = 8;
-        // else, size_ was set by braceinit_ty's constructor
+	if (ptr_)
+		size_ = 8;
+	// else, size_ was set by braceinit_ty's constructor
 }
 
 std::string struct_ty::to_string() const
@@ -110,6 +110,26 @@ bool struct_ty::compatible(const ty *t) const
 		return true;
 	}
 	return false;
+}
+
+std::optional<size_t> struct_ty::member_index(const symbol &name)
+{
+	for (size_t i = 0; i < types_.size(); i++) {
+		if (names_[i] == name)
+			return i;
+	}
+
+        return std::nullopt;
+}
+
+size_t struct_ty::member_offset(const symbol &name)
+{
+	size_t offt = 0;
+	for (size_t i = 0; i < types_.size() && names_[i] != name; i++) {
+		offt += types_[i]->size_;
+	}
+
+        return offt;
 }
 
 named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)
