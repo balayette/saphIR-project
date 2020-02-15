@@ -3,8 +3,7 @@
 
 namespace backend
 {
-cfgnode::cfgnode(utils::temp_set def,
-		 utils::temp_set use, bool is_move)
+cfgnode::cfgnode(utils::temp_set def, utils::temp_set use, bool is_move)
     : def(def), use(use), is_move(is_move)
 {
 }

@@ -62,8 +62,7 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 			std::cout << " The block is the first block\n";
 			if (stmts.size() > 0
 			    && stmts.front()->kind() == tree::tree_kind::label)
-				body =
-					stmts.front().as<tree::label>()->name_;
+				body = stmts.front().as<tree::label>()->name_;
 			else {
 				body = unique_label("body");
 				stmts.insert(stmts.begin(),

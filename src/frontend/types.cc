@@ -119,7 +119,7 @@ std::optional<size_t> struct_ty::member_index(const symbol &name)
 			return i;
 	}
 
-        return std::nullopt;
+	return std::nullopt;
 }
 
 size_t struct_ty::member_offset(const symbol &name)
@@ -129,7 +129,7 @@ size_t struct_ty::member_offset(const symbol &name)
 		offt += types_[i]->size_;
 	}
 
-        return offt;
+	return offt;
 }
 
 named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)

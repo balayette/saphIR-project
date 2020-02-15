@@ -60,8 +60,6 @@ int main(int argc, char *argv[])
 
 	ir::ir_pretty_printer pir(std::cout);
 
-	return 0;
-
 	std::vector<mach::fun_fragment> frags;
 	for (auto &frag : trans.funs_) {
 		std::cout << "Function: " << frag.frame_.s_

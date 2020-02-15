@@ -193,7 +193,7 @@ void frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 	for (auto &r : callee_saved_regs())
 		live.push_back(r);
 	std::string repr("# sink:");
-	for (auto& r : live)
+	for (auto &r : live)
 		repr += " " + r.get();
 	instrs.push_back(new assem::oper(repr, {}, live, {}));
 }
