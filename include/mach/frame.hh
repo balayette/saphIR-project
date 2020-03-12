@@ -68,7 +68,15 @@ std::vector<utils::temp> special_regs();
 struct access {
 	access(utils::ref<types::ty> &ty);
 	virtual ~access() = default;
-	virtual ir::tree::rexp exp() const = 0;
+
+	// Expression that returns the value/address of the variable represented
+	// by the access, plus an offset (useful in the case of structs, to get
+	// the value/address of members).
+	// The offset must be zero when the access is not stored in memory, and
+	// it is impossible to take the address of a register.
+	virtual ir::tree::rexp exp(size_t offt = 0) const = 0;
+	virtual ir::tree::rexp addr(size_t offt = 0) const = 0;
+
 	virtual std::ostream &print(std::ostream &os) const = 0;
 
 	utils::ref<types::ty> ty_;
@@ -77,7 +85,8 @@ struct access {
 struct in_reg : public access {
 	in_reg(utils::temp reg, utils::ref<types::ty> &ty);
 
-	ir::tree::rexp exp() const override;
+	ir::tree::rexp exp(size_t offt = 0) const override;
+	ir::tree::rexp addr(size_t offt = 0) const override;
 
 	std::ostream &print(std::ostream &os) const override;
 
@@ -87,7 +96,8 @@ struct in_reg : public access {
 struct in_frame : public access {
 	in_frame(int offt, utils::ref<types::ty> &ty);
 
-	ir::tree::rexp exp() const override;
+	ir::tree::rexp exp(size_t offt = 0) const override;
+	ir::tree::rexp addr(size_t offt = 0) const override;
 
 	std::ostream &print(std::ostream &os) const override;
 
@@ -96,7 +106,10 @@ struct in_frame : public access {
 
 struct global_acc : public access {
 	global_acc(const symbol &name, utils::ref<types::ty> &ty);
-	ir::tree::rexp exp() const override;
+
+	ir::tree::rexp exp(size_t offt = 0) const override;
+	ir::tree::rexp addr(size_t offt = 0) const override;
+
 	std::ostream &print(std::ostream &os) const override;
 
 	symbol name_;

@@ -101,9 +101,15 @@ in_reg::in_reg(utils::temp reg, utils::ref<types::ty> &ty)
 {
 }
 
-ir::tree::rexp in_reg::exp() const
+ir::tree::rexp in_reg::exp(size_t offt) const
 {
+	ASSERT(offt == 0, "offt must be zero for registers.\n");
 	return new ir::tree::temp(reg_, gpr_type());
+}
+
+ir::tree::rexp in_reg::addr(size_t) const
+{
+	UNREACHABLE("Can't take address of value in register.\n");
 }
 
 std::ostream &in_reg::print(std::ostream &os) const
@@ -116,11 +122,16 @@ in_frame::in_frame(int offt, utils::ref<types::ty> &ty)
 {
 }
 
-ir::tree::rexp in_frame::exp() const
+ir::tree::rexp in_frame::exp(size_t offt) const
 {
-	return new ir::tree::mem(new ir::tree::binop(
-		ops::binop::PLUS, new ir::tree::temp(fp(), gpr_type()),
-		new ir::tree::cnst(offt_)));
+	return new ir::tree::mem(addr(offt));
+}
+
+ir::tree::rexp in_frame::addr(size_t offt) const
+{
+	return new ir::tree::binop(ops::binop::PLUS,
+				   new ir::tree::temp(fp(), gpr_type()),
+				   new ir::tree::cnst(offt_ + offt));
 }
 
 std::ostream &in_frame::print(std::ostream &os) const
@@ -133,12 +144,26 @@ std::ostream &in_frame::print(std::ostream &os) const
 	return os << ")";
 }
 
-global_acc::global_acc(const symbol &name, utils::ref<types::ty>& ty) : access(ty), name_(name) {}
-
-ir::tree::rexp global_acc::exp() const
+global_acc::global_acc(const symbol &name, utils::ref<types::ty> &ty)
+    : access(ty), name_(name)
 {
-	return new ir::tree::mem(new ir::tree::name(name_));
 }
+
+ir::tree::rexp global_acc::exp(size_t offt) const
+{
+	return new ir::tree::mem(addr(offt));
+}
+
+ir::tree::rexp global_acc::addr(size_t offt) const
+{
+	if (!offt)
+		return new ir::tree::name(name_, ty_);
+
+	return new ir::tree::binop(ops::binop::PLUS,
+				   new ir::tree::name(name_, ty_),
+				   new ir::tree::cnst(offt));
+}
+
 std::ostream &global_acc::print(std::ostream &os) const
 {
 	return os << "global_acc(" << name_ << ")";
