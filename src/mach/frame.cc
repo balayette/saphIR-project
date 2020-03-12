@@ -172,7 +172,7 @@ std::ostream &global_acc::print(std::ostream &os) const
 
 frame::frame(const symbol &s, const std::vector<bool> &args,
 	     std::vector<utils::ref<types::ty>> types)
-    : s_(s), escaping_count_(0), reg_count_(0), canary_(alloc_local(true)),
+    : s_(s), locals_size_(8), reg_count_(0), canary_(alloc_local(true)),
       leaf_(true)
 {
 	/*
@@ -188,8 +188,10 @@ frame::frame(const symbol &s, const std::vector<bool> &args,
 
 utils::ref<access> frame::alloc_local(bool escapes, utils::ref<types::ty> type)
 {
-	if (escapes)
-		return new in_frame(-(escaping_count_++ * 8 + 8), type);
+	if (escapes) {
+		locals_size_ += type->size_;
+		return new in_frame(-locals_size_, type);
+	}
 	reg_count_++;
 	return new in_reg(utils::temp(), type);
 }
@@ -259,7 +261,7 @@ asm_function frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
 		"\tpush %rbp\n"
 		"\tmov %rsp, %rbp\n";
 
-	size_t stack_space = ROUND_UP(escaping_count_ * 8, 16);
+	size_t stack_space = ROUND_UP(locals_size_, 16);
 	// There is no need to update %rsp if we're a leaf function
 	// and we need <= 128 bytes of stack space. (System V red zone)
 	// Stack accesses could also use %rsp instead of %rbp, and we could

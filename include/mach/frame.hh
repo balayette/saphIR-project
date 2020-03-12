@@ -142,7 +142,7 @@ struct frame {
 				       utils::label epi_lbl);
 	const symbol s_;
 	std::vector<utils::ref<access>> formals_;
-	int escaping_count_;
+	size_t locals_size_;
 	size_t reg_count_;
 	utils::label body_begin_;
 	utils::ref<access> canary_;
