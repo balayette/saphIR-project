@@ -146,7 +146,7 @@ std::string fun_ty::to_string() const
 	std::string ret("(");
 	for (unsigned i = 0; i < arg_tys_.size(); i++) {
 		ret += arg_tys_[i]->to_string();
-		if (i != arg_tys_.size() - 1)
+		if (i != arg_tys_.size() - 1 || variadic_)
 			ret += ", ";
 	}
 	if (variadic_)
