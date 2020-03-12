@@ -66,14 +66,16 @@ std::vector<utils::temp> args_regs();
 std::vector<utils::temp> special_regs();
 
 struct access {
-	access() = default;
+	access(utils::ref<types::ty> &ty);
 	virtual ~access() = default;
 	virtual ir::tree::rexp exp() const = 0;
 	virtual std::ostream &print(std::ostream &os) const = 0;
+
+	utils::ref<types::ty> ty_;
 };
 
 struct in_reg : public access {
-	in_reg(utils::temp reg);
+	in_reg(utils::temp reg, utils::ref<types::ty> &ty);
 
 	ir::tree::rexp exp() const override;
 
@@ -83,7 +85,7 @@ struct in_reg : public access {
 };
 
 struct in_frame : public access {
-	in_frame(int offt);
+	in_frame(int offt, utils::ref<types::ty> &ty);
 
 	ir::tree::rexp exp() const override;
 
@@ -93,7 +95,7 @@ struct in_frame : public access {
 };
 
 struct global_acc : public access {
-	global_acc(const symbol &name);
+	global_acc(const symbol &name, utils::ref<types::ty> &ty);
 	ir::tree::rexp exp() const override;
 	std::ostream &print(std::ostream &os) const override;
 
@@ -112,8 +114,10 @@ struct asm_function {
 std::string asm_string(utils::label lab, const std::string &str);
 
 struct frame {
-	frame(const symbol &s, const std::vector<bool> &args);
+	frame(const symbol &s, const std::vector<bool> &args,
+	      std::vector<utils::ref<types::ty>> types);
 
+	utils::ref<access> alloc_local(bool escapes, utils::ref<types::ty> ty);
 	utils::ref<access> alloc_local(bool escapes);
 
 	ir::tree::rstm proc_entry_exit_1(ir::tree::rstm s,

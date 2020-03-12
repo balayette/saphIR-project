@@ -4,6 +4,7 @@ namespace types
 {
 const std::string str[] = {"int", "string", "void", "invalid"};
 const unsigned default_size[] = {64, 64, 0, 0};
+builtin_ty *integer_type() { return new builtin_ty(type::INT, 8, 0); }
 
 ty::ty(size_t size, unsigned ptr) : size_(size), ptr_(ptr) {}
 
@@ -27,6 +28,8 @@ std::string builtin_ty::to_string() const
 bool builtin_ty::compatible(const type &t) const { return !ptr_ && ty_ == t; }
 bool builtin_ty::compatible(const ty *t) const
 {
+	if (dynamic_cast<const fun_ty *>(t))
+		return t->compatible(this);
 	if (auto bt = dynamic_cast<const builtin_ty *>(t))
 		return ptr_ == bt->ptr_ && ty_ == bt->ty_;
 	return false;
@@ -131,6 +134,36 @@ size_t struct_ty::member_offset(const symbol &name)
 
 	return offt;
 }
+
+fun_ty::fun_ty(utils::ref<types::ty> ret_ty,
+	       const std::vector<utils::ref<types::ty>> &arg_tys, bool variadic)
+    : ret_ty_(ret_ty), arg_tys_(arg_tys), variadic_(variadic)
+{
+}
+
+std::string fun_ty::to_string() const
+{
+	std::string ret("(");
+	for (unsigned i = 0; i < arg_tys_.size(); i++) {
+		ret += arg_tys_[i]->to_string();
+		if (i != arg_tys_.size() - 1)
+			ret += ", ";
+	}
+	if (variadic_)
+		ret += "...";
+	ret += ") -> ";
+
+	ret += ret_ty_->to_string();
+
+	return ret;
+}
+
+// XXX: There are no function pointer variables, so compatible only checks
+// if t is compatible with the return type of the function.
+// This needs to change if we want to support function pointers.
+bool fun_ty::compatible(const type &t) const { return ret_ty_->compatible(t); }
+
+bool fun_ty::compatible(const ty *t) const { return ret_ty_->compatible(t); }
 
 named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)
 {

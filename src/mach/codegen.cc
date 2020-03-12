@@ -92,7 +92,7 @@ void generator::visit_call(tree::call &c)
 	}
 
 	// XXX: This assumes no floating point parameters
-	if (c.variadic_)
+	if (c.variadic())
 		EMIT(assem::oper("xor `d0, `d0", {reg_to_temp(regs::RAX)}, {},
 				 {}));
 

@@ -100,9 +100,10 @@ tree::rnode canon_default(tree::rnode &tree)
 				utils::temp tmp;
 				bigseq = make_stm(
 					bigseq,
-					new tree::move(new tree::temp(tmp),
-						       call));
-				*ichild = new tree::temp(tmp);
+					new tree::move(
+						new tree::temp(tmp, call->ty_),
+						call));
+				*ichild = new tree::temp(tmp, call->ty_);
 			}
 		}
 
@@ -112,10 +113,13 @@ tree::rnode canon_default(tree::rnode &tree)
 				utils::temp tmp;
 				bigseq = make_stm(
 					bigseq,
-					new tree::move(new tree::temp(tmp),
-						       mem->e()));
+					new tree::move(
+						new tree::temp(tmp,
+							       mem->e()->ty_),
+						mem->e()));
 
-				*(mv->lhs()) = tree::mem(new tree::temp(tmp));
+				*(mv->lhs()) = tree::mem(
+					new tree::temp(tmp, mem->e()->ty_));
 			}
 		}
 	}

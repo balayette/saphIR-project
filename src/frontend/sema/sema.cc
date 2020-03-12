@@ -17,10 +17,13 @@ void binding_visitor::visit_funprotodec(funprotodec &s)
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 
-	for (auto *arg : s.args_)
+	std::vector<utils::ref<types::ty>> arg_tys;
+	for (auto *arg : s.args_) {
 		arg->type_ = get_type(arg->type_);
-
-	s.type_ = get_type(s.type_);
+		arg_tys.push_back(arg->type_);
+	}
+	auto ret_ty = get_type(s.type_);
+	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
 }
 
 void binding_visitor::visit_memberdec(memberdec &s)
@@ -71,15 +74,20 @@ void binding_visitor::visit_fundec(fundec &s)
 		std::cerr << "fun '" << s.name_ << "' already declared\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
-	s.type_ = get_type(s.type_);
+
+	std::vector<utils::ref<types::ty>> arg_tys;
+	for (auto *arg : s.args_) {
+		arg->type_ = get_type(arg->type_);
+		arg_tys.push_back(arg->type_);
+	}
+	auto ret_ty = get_type(s.type_);
+	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
 
 	new_scope();
 	cfunc_.enter(&s);
 
-	for (auto *arg : s.args_) {
-		arg->type_ = get_type(arg->type_);
+	for (auto *arg : s.args_)
 		arg->accept(*this);
-	}
 	for (auto *b : s.body_)
 		b->accept(*this);
 
@@ -286,10 +294,13 @@ void frame_visitor::visit_funprotodec(funprotodec &)
 void frame_visitor::visit_fundec(fundec &s)
 {
 	std::vector<bool> escaping;
-	for (auto *arg : s.args_)
+	std::vector<utils::ref<types::ty>> types;
+	for (auto *arg : s.args_) {
 		escaping.push_back(arg->escapes_);
+		types.push_back(arg->type_);
+	}
 
-	cframe_ = new mach::frame(s.name_, escaping);
+	cframe_ = new mach::frame(s.name_, escaping, types);
 	for (unsigned i = 0; i < s.args_.size(); i++)
 		s.args_[i]->access_ = cframe_->formals_[i];
 
@@ -306,7 +317,7 @@ void frame_visitor::visit_fundec(fundec &s)
 
 void frame_visitor::visit_globaldec(globaldec &s)
 {
-	s.access_ = new mach::global_acc(s.name_);
+	s.access_ = new mach::global_acc(s.name_, s.type_);
 	std::cout << "global var: '" << s.name_ << "' " << s.access_ << '\n';
 	default_visitor::visit_globaldec(s);
 }
@@ -316,7 +327,7 @@ void frame_visitor::visit_locdec(locdec &s)
 	if (s.access_) // Already set by visit_fundec for args
 		return;
 
-	s.access_ = cframe_->alloc_local(s.escapes_);
+	s.access_ = cframe_->alloc_local(s.escapes_, s.type_);
 	std::cout << "frame: var '" << s.name_ << "' " << s.access_ << '\n';
 	default_visitor::visit_locdec(s);
 }

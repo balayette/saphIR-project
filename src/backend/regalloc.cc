@@ -45,9 +45,10 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 				continue;
 
 			auto vi = utils::temp(unique_temp());
-			ir::tree::rstm mv =
-				new ir::tree::move(temp_to_acc[dst]->exp(),
-						   new ir::tree::temp(vi));
+			ir::tree::rstm mv = new ir::tree::move(
+				temp_to_acc[dst]->exp(),
+				new ir::tree::temp(
+					vi, temp_to_acc[dst]->exp()->ty_));
 
 			dst = vi;
 			cgen.emit(inst);

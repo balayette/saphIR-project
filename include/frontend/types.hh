@@ -45,6 +45,9 @@ struct builtin_ty : public ty {
 	type ty_;
 };
 
+// XXX: This should be arch dependant
+builtin_ty *integer_type();
+
 struct braceinit_ty : public ty {
 	braceinit_ty(const std::vector<utils::ref<types::ty>> &types);
 
@@ -82,6 +85,26 @@ struct struct_ty : public braceinit_ty {
 
 	symbol name_;
 	std::vector<symbol> names_;
+};
+
+struct fun_ty : public ty {
+	fun_ty(utils::ref<types::ty> ret_ty,
+	       const std::vector<utils::ref<types::ty>> &arg_tys,
+	       bool variadic);
+
+	std::string to_string() const override;
+
+	bool compatible(const type &t) const override;
+	bool compatible(const ty *t) const override;
+
+	virtual fun_ty *clone() const override
+	{
+		return new fun_ty(ret_ty_, arg_tys_, variadic_);
+	}
+
+	utils::ref<types::ty> ret_ty_;
+	std::vector<utils::ref<types::ty>> arg_tys_;
+	bool variadic_;
 };
 
 /*

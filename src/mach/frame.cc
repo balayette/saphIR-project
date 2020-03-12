@@ -43,6 +43,8 @@ utils::temp fp() { return reg_temp[regs::RBP]; }
 
 utils::temp rv() { return reg_temp[regs::RAX]; }
 
+types::ty *gpr_type() { return types::integer_type(); }
+
 unsigned reg_count() { return registers().size(); }
 
 std::vector<utils::temp> caller_saved_regs()
@@ -92,22 +94,33 @@ std::ostream &operator<<(std::ostream &os, const frame &f)
 	return os;
 }
 
-in_reg::in_reg(utils::temp reg) : reg_(reg) {}
+access::access(utils::ref<types::ty> &ty) : ty_(ty) {}
 
-ir::tree::rexp in_reg::exp() const { return new ir::tree::temp(reg_); }
+in_reg::in_reg(utils::temp reg, utils::ref<types::ty> &ty)
+    : access(ty), reg_(reg)
+{
+}
+
+ir::tree::rexp in_reg::exp() const
+{
+	return new ir::tree::temp(reg_, gpr_type());
+}
 
 std::ostream &in_reg::print(std::ostream &os) const
 {
 	return os << "in_reg(" << reg_ << ")";
 }
 
-in_frame::in_frame(int offt) : offt_(offt) {}
+in_frame::in_frame(int offt, utils::ref<types::ty> &ty)
+    : access(ty), offt_(offt)
+{
+}
 
 ir::tree::rexp in_frame::exp() const
 {
-	return new ir::tree::mem(
-		new ir::tree::binop(ops::binop::PLUS, new ir::tree::temp(fp()),
-				    new ir::tree::cnst(offt_)));
+	return new ir::tree::mem(new ir::tree::binop(
+		ops::binop::PLUS, new ir::tree::temp(fp(), gpr_type()),
+		new ir::tree::cnst(offt_)));
 }
 
 std::ostream &in_frame::print(std::ostream &os) const
@@ -120,7 +133,8 @@ std::ostream &in_frame::print(std::ostream &os) const
 	return os << ")";
 }
 
-global_acc::global_acc(const symbol &name) : name_(name) {}
+global_acc::global_acc(const symbol &name, utils::ref<types::ty>& ty) : access(ty), name_(name) {}
+
 ir::tree::rexp global_acc::exp() const
 {
 	return new ir::tree::mem(new ir::tree::name(name_));
@@ -131,7 +145,8 @@ std::ostream &global_acc::print(std::ostream &os) const
 }
 
 
-frame::frame(const symbol &s, const std::vector<bool> &args)
+frame::frame(const symbol &s, const std::vector<bool> &args,
+	     std::vector<utils::ref<types::ty>> types)
     : s_(s), escaping_count_(0), reg_count_(0), canary_(alloc_local(true)),
       leaf_(true)
 {
@@ -140,20 +155,23 @@ frame::frame(const symbol &s, const std::vector<bool> &args)
 	 * inside the function. The translation for escaping arguments
 	 * passed in registers will be done at a later stage.
 	 */
-	for (size_t i = 0; i < args.size() && i <= 5; i++) {
-		formals_.push_back(alloc_local(args[i]));
-	}
-	for (size_t i = 6; i < args.size(); i++) {
-		formals_.push_back(new in_frame((i - 6) * 8 + 16));
-	}
+	for (size_t i = 0; i < args.size() && i <= 5; i++)
+		formals_.push_back(alloc_local(args[i], types[i]));
+	for (size_t i = 6; i < args.size(); i++)
+		formals_.push_back(new in_frame((i - 6) * 8 + 16, types[i]));
+}
+
+utils::ref<access> frame::alloc_local(bool escapes, utils::ref<types::ty> type)
+{
+	if (escapes)
+		return new in_frame(-(escaping_count_++ * 8 + 8), type);
+	reg_count_++;
+	return new in_reg(utils::temp(), type);
 }
 
 utils::ref<access> frame::alloc_local(bool escapes)
 {
-	if (escapes)
-		return new in_frame(-(escaping_count_++ * 8 + 8));
-	reg_count_++;
-	return new in_reg(utils::temp());
+	return alloc_local(escapes, types::integer_type());
 }
 
 ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, utils::label ret_lbl)
@@ -165,12 +183,14 @@ ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, utils::label ret_lbl)
 	std::vector<utils::temp> callee_saved_temps(callee_saved.size());
 	for (size_t i = 0; i < callee_saved.size(); i++)
 		seq->children_.push_back(new ir::tree::move(
-			new ir::tree::temp(callee_saved_temps[i]),
-			new ir::tree::temp(callee_saved[i])));
+			new ir::tree::temp(callee_saved_temps[i], gpr_type()),
+			new ir::tree::temp(callee_saved[i], gpr_type())));
 
 	for (size_t i = 0; i < formals_.size() && i < in_regs.size(); i++) {
 		seq->children_.push_back(new ir::tree::move(
-			formals_[i]->exp(), new ir::tree::temp(in_regs[i])));
+			formals_[i]->exp(),
+			new ir::tree::temp(in_regs[i],
+					   formals_[i]->exp()->ty_)));
 	}
 
 	seq->children_.push_back(s);
@@ -180,8 +200,8 @@ ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, utils::label ret_lbl)
 
 	for (size_t i = 0; i < callee_saved.size(); i++) {
 		seq->children_.push_back(new ir::tree::move(
-			new ir::tree::temp(callee_saved[i]),
-			new ir::tree::temp(callee_saved_temps[i])));
+			new ir::tree::temp(callee_saved[i], gpr_type()),
+			new ir::tree::temp(callee_saved_temps[i], gpr_type())));
 	}
 
 	return seq;

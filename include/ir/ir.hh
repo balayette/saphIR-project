@@ -4,11 +4,13 @@
 #include "utils/temp.hh"
 #include "frontend/ops.hh"
 #include "frontend/exp.hh"
+#include "frontend/types.hh"
 #include "visitors/ir-visitor.hh"
 #include "utils/ref.hh"
+#include "utils/assert.hh"
 
 /*
- * IR representation: basically Appel's IR.
+ * IR representation: basically Appel's IR, but typed.
  */
 
 #define TREE_KIND(X)                                                           \
@@ -55,6 +57,10 @@ using rnode = utils::ref<ir_node>;
 using rnodevec = std::vector<rnode>;
 
 struct exp : public ir_node {
+	exp() = default;
+	exp(utils::ref<types::ty> ty) : ty_(ty) {}
+
+	utils::ref<types::ty> ty_;
 };
 
 struct stm : public ir_node {
@@ -64,28 +70,39 @@ using rexp = utils::ref<exp>;
 using rstm = utils::ref<stm>;
 
 struct cnst : public exp {
-	cnst(int value) : value_(value) {}
+	// XXX: Constants are all 8 bytes integer at the moment
+	cnst(int value) : exp(types::integer_type()), value_(value) {}
+
 	TREE_KIND(cnst);
 
 	int value_;
 };
 
 struct name : public exp {
+	// Jump destinations can be names, but they don't have a type.
 	name(const utils::label &label) : label_(label) {}
+	name(const utils::label &label, utils::ref<types::ty> ty)
+	    : exp(ty), label_(label)
+	{
+	}
 	TREE_KIND(name)
 
 	utils::label label_;
 };
 
 struct temp : public exp {
-	temp(const utils::temp &temp) : temp_(temp) {}
+	temp(const utils::temp &temp, utils::ref<types::ty> ty)
+	    : exp(ty), temp_(temp)
+	{
+	}
 	TREE_KIND(temp)
 
 	utils::temp temp_;
 };
 
 struct binop : public exp {
-	binop(ops::binop op, rexp lhs, rexp rhs) : op_(op)
+	// XXX: The type of the binop is the type of the lhs of the binop
+	binop(ops::binop op, rexp lhs, rexp rhs) : exp(lhs->ty_), op_(op)
 	{
 		children_.emplace_back(lhs);
 		children_.emplace_back(rhs);
@@ -99,18 +116,27 @@ struct binop : public exp {
 };
 
 struct mem : public exp {
-	mem(rexp e) { children_.emplace_back(e); }
+	mem(rexp e)
+	{
+		auto ty = e->ty_->clone();
+		ty->ptr_--;
+		ty_ = ty;
+
+		children_.emplace_back(e);
+	}
 	TREE_KIND(mem)
 
 	rexp e() { return children_[0].as<exp>(); }
 };
 
 struct call : public exp {
-	call(const rexp &name, const std::vector<rexp> &args, bool variadic)
-	    : variadic_(variadic)
+	call(const rexp &name, const std::vector<rexp> &args,
+	     utils::ref<types::ty> type)
+	    : exp(type)
 	{
 		children_.emplace_back(name);
 		children_.insert(children_.end(), args.begin(), args.end());
+		ASSERT(ty_.as<types::fun_ty>(), "Type is not a fun_ty");
 	}
 	TREE_KIND(call)
 
@@ -125,11 +151,18 @@ struct call : public exp {
 		return args;
 	}
 
-	bool variadic_;
+	bool variadic()
+	{
+		auto ft = ty_.as<types::fun_ty>();
+		return ft->variadic_;
+	}
 };
 
 struct eseq : public exp {
-	eseq(rstm lhs, rexp rhs) { children_ = {lhs, rhs}; }
+	eseq(rstm lhs, rexp rhs) : exp(rhs->ty_)
+	{
+		children_ = {lhs, rhs};
+	}
 	TREE_KIND(eseq)
 
 	rstm lhs() { return children_[0].as<stm>(); }

@@ -38,12 +38,14 @@ tree::rexp cx::un_ex()
 	auto *je = new tree::jump(new tree::name(e_lbl), {e_lbl});
 	auto *cj = new tree::cjump(op_, l_, r_, t_lbl, f_lbl);
 
-	auto *movt = new tree::move(new tree::temp(ret), new tree::cnst(1));
-	auto *movf = new tree::move(new tree::temp(ret), new tree::cnst(0));
+	auto *movt = new tree::move(new tree::temp(ret, types::integer_type()),
+				    new tree::cnst(1));
+	auto *movf = new tree::move(new tree::temp(ret, types::integer_type()),
+				    new tree::cnst(0));
 
 	auto *body = new tree::seq({cj, lt, movt, je, lf, movf, le});
 
-	tree::rexp value = new tree::temp(ret);
+	tree::rexp value = new tree::temp(ret, types::integer_type());
 
 	return new tree::eseq(body, value);
 }
@@ -112,8 +114,10 @@ void translate_visitor::visit_call(call &e)
 		args.emplace_back(ret_->un_ex());
 	}
 
+	std::cerr << e.fdec_->name_ << " = " << e.fdec_->type_->to_string()
+		  << '\n';
 	auto *call = new ir::tree::call(new ir::tree::name(e.fdec_->name_),
-					args, e.fdec_->variadic_);
+					args, e.fdec_->type_);
 
 	ret_ = new ex(call);
 }
@@ -265,10 +269,10 @@ void translate_visitor::visit_ret(ret &s)
 		return;
 	}
 	s.e_->accept(*this);
-	auto lhs = ret_;
+	auto lhs = ret_->un_ex();
 	ret_ = new nx(new ir::tree::seq({
-		new ir::tree::move(new ir::tree::temp(mach::rv()),
-				   lhs->un_ex()),
+		new ir::tree::move(new ir::tree::temp(mach::rv(), lhs->ty_),
+				   lhs),
 		new ir::tree::jump(new ir::tree::name(ret_lbl_), {ret_lbl_}),
 	}));
 }
@@ -291,7 +295,7 @@ void translate_visitor::visit_decs(decs &s)
 
 	auto body = new ir::tree::seq(init_funs_);
 	utils::label ret_lbl = unique_label("init_vars_ret");
-	mach::frame frame(unique_label("init_vars"), {});
+	mach::frame frame(unique_label("init_vars"), {}, {});
 	init_fun_ = new mach::fun_fragment(
 		frame.proc_entry_exit_1(body, ret_lbl), frame, ret_lbl,
 		unique_label("init_vars_epi"));
