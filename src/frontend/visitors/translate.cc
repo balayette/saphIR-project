@@ -96,9 +96,167 @@ tree::rstm nx::un_cx(const utils::label &, const utils::label &)
 	ASSERT(false, "Can't un_cx an nx");
 }
 
+/*
+ * References to structs need to return the address of the struct, but
+ * references to pointers to structs stored in the stack need to return
+ * the value of the pointer.
+ * Cases:
+ * - Of type struct_ty:
+ *     - is a pointer to struct => exp
+ *     - otherwise => addr
+ * - otherwise => exp
+ */
+static tree::rexp access_to_exp(mach::access &access)
+{
+	if (!access.ty_.as<types::struct_ty>())
+		return access.exp();
+	if (access.ty_->ptr_)
+		return access.exp();
+
+	auto exp = access.addr();
+	exp->ty_->ptr_--;
+	return exp;
+}
+
+/*
+ * lhs and rhs are binop(...), with type struct_ty
+ */
+exp *translate_visitor::struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
+{
+	std::cout << "struct_copy(" << lhs->ty_->to_string() << ", "
+		  << rhs->ty_->to_string() << ")\n";
+
+	auto st = lhs->ty_.as<types::struct_ty>();
+	ASSERT(st && rhs->ty_.as<types::struct_ty>(),
+	       "lhs and rhs have to be structs");
+
+	auto s = new ir::tree::seq({});
+	auto dst_base = lhs;
+	auto src_base = rhs;
+
+	utils::temp dst_temp;
+	utils::temp src_temp;
+
+	s->children_.push_back(new tree::move(
+		new tree::temp(dst_temp, types::integer_type()), dst_base));
+	s->children_.push_back(new tree::move(
+		new tree::temp(src_temp, types::integer_type()), src_base));
+
+	size_t offt = 0;
+	for (size_t i = 0; i < st->types_.size(); i++) {
+		tree::exp *dst_exp = new tree::binop(
+			ops::binop::PLUS,
+			new tree::temp(dst_temp, types::integer_type()),
+			new tree::cnst(offt));
+		tree::exp *src_exp = new tree::binop(
+			ops::binop::PLUS,
+			new tree::temp(src_temp, types::integer_type()),
+			new tree::cnst(offt));
+
+		dst_exp->ty_ = st->types_[i]->clone();
+		src_exp->ty_ = st->types_[i]->clone();
+
+		if (dst_exp->ty_->ptr_
+		    || !dst_exp->ty_.as<types::struct_ty>()) {
+			// scalar, so going to be a simple copy on the next
+			// recursion
+			dst_exp->ty_->ptr_++;
+			dst_exp = new tree::mem(dst_exp);
+			src_exp->ty_->ptr_++;
+			src_exp = new tree::mem(src_exp);
+		}
+
+		s->children_.push_back(copy(dst_exp, src_exp)->un_nx());
+		offt += st->types_[i]->size_;
+	}
+
+	return new nx(s);
+}
+
+/*
+ * lhs is a binop(...), with type struct_ty
+ */
+exp *translate_visitor::braceinit_copy(ir::tree::rexp lhs,
+				       utils::ref<ir::tree::braceinit> rhs)
+{
+	std::cout << "braceinit_copy(" << lhs->ty_->to_string() << ", "
+		  << rhs->ty_->to_string() << ")\n";
+
+	auto bit = rhs->ty_.as<types::braceinit_ty>();
+	auto st = lhs->ty_.as<types::struct_ty>();
+	ASSERT(bit && !rhs->ty_.as<types::struct_ty>(),
+	       "rhs has to be a brace init");
+
+	auto s = new ir::tree::seq({});
+	auto base = lhs;
+	auto exps = rhs->exps();
+
+	utils::temp base_temp;
+	s->children_.push_back(new tree::move(
+		new tree::temp(base_temp, types::integer_type()), base));
+
+	size_t offt = 0;
+	for (size_t i = 0; i < exps.size(); i++) {
+		tree::exp *dst_exp = new tree::binop(
+			ops::binop::PLUS,
+			new tree::temp(base_temp, types::integer_type()),
+			new tree::cnst(offt));
+
+		dst_exp->ty_ = st->types_[i]->clone();
+
+		if (dst_exp->ty_->ptr_
+		    || !dst_exp->ty_.as<types::struct_ty>()) {
+			// scalar, so going to be a simple copy on the next
+			// recursion
+			dst_exp->ty_->ptr_++;
+			dst_exp = new tree::mem(dst_exp);
+		}
+
+		s->children_.push_back(copy(dst_exp, exps[i])->un_nx());
+		offt += bit->types_[i]->size_;
+	}
+
+	return new nx(s);
+}
+
+
+exp *translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
+{
+	std::cout << "copy(" << lhs->ty_->to_string() << ", "
+		  << rhs->ty_->to_string() << ")\n";
+
+	/*
+	 * We're past type checking, so dst and rhs are consistent.
+	 * Multiple cases:
+	 * - lhs is a scalar (including all pointers) => emit a move
+	 * - lhs is a struct
+	 *      - rhs is another struct => recurse for every member
+	 *      with a mem node that points to the member. If the member
+	 *      is a nested struct (not a pointer), do not emit the mem node,
+	 *      and make sure that the type of the expression is the type
+	 *      of the nested struct
+	 *      - rhs is a brace init => evaluate the expressions, and recurse
+	 *      with the same rules.
+	 */
+
+	// scalars
+	// XXX: functions can't return structs by value (it is ABI dependant)
+	if (rhs->ty_->ptr_ > 0 || rhs->ty_.as<types::builtin_ty>()
+	    || rhs->ty_.as<types::fun_ty>())
+		return new nx(new ir::tree::move(lhs, rhs));
+
+	// lhs is a struct
+	// rhs is a struct
+	if (auto st = rhs->ty_.as<types::struct_ty>())
+		return struct_copy(lhs, rhs);
+
+	// rhs is a brace init
+	return braceinit_copy(lhs, rhs.as<tree::braceinit>());
+}
+
 void translate_visitor::visit_ref(ref &e)
 {
-	ret_ = new ex(e.dec_->access_->exp());
+	ret_ = new ex(access_to_exp(*e.dec_->access_));
 }
 
 void translate_visitor::visit_num(num &e)
@@ -114,8 +272,6 @@ void translate_visitor::visit_call(call &e)
 		args.emplace_back(ret_->un_ex());
 	}
 
-	std::cerr << e.fdec_->name_ << " = " << e.fdec_->type_->to_string()
-		  << '\n';
 	auto *call = new ir::tree::call(new ir::tree::name(e.fdec_->name_),
 					args, e.fdec_->type_);
 
@@ -247,7 +403,7 @@ void translate_visitor::visit_ass(ass &s)
 	s.rhs_->accept(*this);
 	auto rhs = ret_;
 
-	ret_ = new nx(new ir::tree::move(lhs->un_ex(), rhs->un_ex()));
+	ret_ = copy(lhs->un_ex(), rhs->un_ex());
 }
 
 void translate_visitor::visit_locdec(locdec &s)
@@ -255,10 +411,11 @@ void translate_visitor::visit_locdec(locdec &s)
 	if (!s.rhs_)
 		return;
 
-	s.rhs_->accept(*this);
-	auto rhs = ret_;
+	auto lhs = access_to_exp(*s.access_);
 
-	ret_ = new nx(new ir::tree::move(s.access_->exp(), rhs->un_ex()));
+	s.rhs_->accept(*this);
+
+	ret_ = copy(lhs, ret_->un_ex());
 }
 
 void translate_visitor::visit_ret(ret &s)
@@ -305,7 +462,7 @@ void translate_visitor::visit_globaldec(globaldec &s)
 {
 	s.rhs_->accept(*this);
 	init_funs_.push_back(
-		new ir::tree::move(s.access_->exp(), ret_->un_ex()));
+		copy(access_to_exp(*s.access_), ret_->un_ex())->un_nx());
 }
 
 void translate_visitor::visit_funprotodec(funprotodec &)
@@ -344,11 +501,52 @@ void translate_visitor::visit_addrof(addrof &e)
 	// When taking the address of a variable, we know that it escapes and
 	// is stored in memory. Because we need the address and not the value,
 	// we remove the mem node.
-	// There are no pointes in Tiger, but I think that this is how they
-	// work.
-	auto r = ret_->un_ex().as<ir::tree::mem>();
-	ASSERT(r, "Taking the address of a non escaping variable.");
+	// structs don't have a mem node.
+	if (auto r = ret.as<ir::tree::mem>())
+		ret_ = new ex(r->e());
+	else {
+		ret->ty_ = ret->ty_->clone();
+		ret->ty_->ptr_++;
+		ret_ = new ex(ret);
+	}
+}
 
-	ret_ = new ex(r->e());
+/*
+ * e.e_ is a binop(...), which points to the struct
+ * if the member is a struct, then don't emit the mem node
+ */
+void translate_visitor::visit_memberaccess(memberaccess &e)
+{
+	auto st = e.e_->ty_.as<types::struct_ty>();
+	auto mem_ty = st->member_ty(e.member_);
+	size_t offt = st->member_offset(e.member_);
+
+	e.e_->accept(*this);
+	auto exp = ret_->un_ex();
+
+	ir::tree::exp *dst =
+		new tree::binop(ops::binop::PLUS, exp, new tree::cnst(offt));
+	dst->ty_ = mem_ty->clone();
+
+	if (dst->ty_->ptr_ || !dst->ty_.as<types::braceinit_ty>()) {
+		// the member is a scalar, so return the value and not the
+		// address
+		dst->ty_->ptr_++;
+		dst = new tree::mem(dst);
+	}
+
+	ret_ = new ex(dst);
+}
+
+void translate_visitor::visit_braceinit(braceinit &e)
+{
+	auto bi = new ir::tree::braceinit(e.ty_, {});
+
+	for (auto &c : e.exps_) {
+		c->accept(*this);
+		bi->children_.push_back(ret_->un_ex());
+	}
+
+	ret_ = new ex(bi);
 }
 } // namespace frontend::translate

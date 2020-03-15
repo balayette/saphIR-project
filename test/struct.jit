@@ -1,19 +1,28 @@
+#include "libc.jit"
+
 struct pair { int a, int b };
 
 struct nested { pair a, pair b };
 
-fun test(int a) int {
-        return a * 2;
-}
+struct pairp { int *a, int *b };
 
-fun main(pair* z) int {
-        let pair p = {1, test(5)};
-        let pair p2 = {1, 2};
-        let pair* p3 = &p2;
+let pair glob = {22, 44};
 
-        let nested n = { {1, 2}, {3, 4}};
-        n.a = {5, 6};
-        n.a.a = 7;
+fun main() int {
+        let pair p = {1, 2};
+        let pair *pptr = &p;
 
-        return n.a.b;
+        let pair p2 = {3, 4};
+        p2 = glob;
+
+        let int* pb = &glob.b;
+        p.a = *pb;
+
+        let pair* pptr2 = pptr;
+        let pair* pptr3 = pptr2;
+        pptr = pptr3;
+
+        let int a = 3;
+
+        return p.a + p.b + p2.b;
 }

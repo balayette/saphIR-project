@@ -104,7 +104,7 @@ in_reg::in_reg(utils::temp reg, utils::ref<types::ty> &ty)
 ir::tree::rexp in_reg::exp(size_t offt) const
 {
 	ASSERT(offt == 0, "offt must be zero for registers.\n");
-	return new ir::tree::temp(reg_, gpr_type());
+	return new ir::tree::temp(reg_, ty_->clone());
 }
 
 ir::tree::rexp in_reg::addr(size_t) const
@@ -129,8 +129,16 @@ ir::tree::rexp in_frame::exp(size_t offt) const
 
 ir::tree::rexp in_frame::addr(size_t offt) const
 {
+	/*
+	 * Return a pointer to a variable. If the offset is not 0, then it
+	 * doesn't necessarily point to a variable of the same type as ty_.
+         * (addresses of members of structs, for example)
+	 */
+	auto type = offt ? gpr_type() : ty_->clone();
+	type->ptr_++;
+
 	return new ir::tree::binop(ops::binop::PLUS,
-				   new ir::tree::temp(fp(), gpr_type()),
+				   new ir::tree::temp(fp(), type),
 				   new ir::tree::cnst(offt_ + offt));
 }
 
@@ -154,13 +162,14 @@ ir::tree::rexp global_acc::exp(size_t offt) const
 	return new ir::tree::mem(addr(offt));
 }
 
+// XXX: fix types
 ir::tree::rexp global_acc::addr(size_t offt) const
 {
-	if (!offt)
-		return new ir::tree::name(name_, ty_);
+	auto type = offt ? gpr_type() : ty_->clone();
+	type->ptr_++;
 
 	return new ir::tree::binop(ops::binop::PLUS,
-				   new ir::tree::name(name_, ty_),
+				   new ir::tree::name(name_, type),
 				   new ir::tree::cnst(offt));
 }
 

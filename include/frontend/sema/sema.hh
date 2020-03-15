@@ -46,6 +46,7 @@ class escapes_visitor : public default_visitor
 {
       public:
 	virtual void visit_addrof(addrof &e) override;
+	virtual void visit_locdec(locdec &e) override;
 };
 
 class frame_visitor : public default_visitor

@@ -82,6 +82,13 @@ class translate_visitor : public default_visitor
 	void visit_fundec(fundec &s) override;
 	void visit_deref(deref &e) override;
 	void visit_addrof(addrof &e) override;
+	void visit_memberaccess(memberaccess &e) override;
+	void visit_braceinit(braceinit &e) override;
+
+	exp *braceinit_copy(ir::tree::rexp lhs,
+			    utils::ref<ir::tree::braceinit> rhs);
+	exp *struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
+	exp *copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
 
 	utils::ref<exp> ret_;
 	utils::scoped_var<utils::label> ret_lbl_;

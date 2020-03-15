@@ -286,6 +286,16 @@ void escapes_visitor::visit_addrof(addrof &e)
 	}
 }
 
+void escapes_visitor::visit_locdec(locdec &e)
+{
+	default_visitor::visit_locdec(e);
+
+	// All structs are stored on the stack
+	// XXX: Allow structs in registers (hard?)
+	if (auto si = e.type_.as<types::struct_ty>())
+		e.escapes_ = si->ptr_ == 0;
+}
+
 void frame_visitor::visit_funprotodec(funprotodec &)
 {
 	// Don't recurse.

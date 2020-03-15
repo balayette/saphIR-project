@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 		auto trace = ir::optimize_traces(traces);
 		trace.push_back(new ir::tree::label(frag.epi_lbl_));
 
-		ir::peephole(trace);
+		// ir::peephole(trace);
 
 		std::cout << "Trace:\n";
 		std::cout << "-------------------------------------\n";

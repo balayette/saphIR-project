@@ -3,7 +3,7 @@
 namespace types
 {
 const std::string str[] = {"int", "string", "void", "invalid"};
-const unsigned default_size[] = {64, 64, 0, 0};
+const unsigned default_size[] = {8, 8, 0, 0};
 builtin_ty *integer_type() { return new builtin_ty(type::INT, 8, 0); }
 
 ty::ty(size_t size, unsigned ptr) : size_(size), ptr_(ptr) {}
@@ -45,8 +45,12 @@ braceinit_ty::braceinit_ty(const std::vector<utils::ref<types::ty>> &types)
 std::string braceinit_ty::to_string() const
 {
 	std::string ret("{");
-	for (auto t : types_)
-		ret += " " + t->to_string();
+        for (size_t i = 0; i < types_.size(); i++)
+        {
+		ret += types_[i]->to_string();
+                if (i != types_.size() - 1)
+                        ret += ", ";
+        }
 	ret += "}";
 
 	return ret;
@@ -133,6 +137,14 @@ size_t struct_ty::member_offset(const symbol &name)
 	}
 
 	return offt;
+}
+
+utils::ref<ty> struct_ty::member_ty(const symbol &name)
+{
+	auto idx = member_index(name);
+	if (idx == std::nullopt)
+		return nullptr;
+	return types_[*idx];
 }
 
 fun_ty::fun_ty(utils::ref<types::ty> ret_ty,
