@@ -8,6 +8,16 @@ void ir_pretty_printer::visit_cnst(tree::cnst &n)
 	indent() << "(const " << n.value_ << ")\n";
 }
 
+void ir_pretty_printer::visit_braceinit(tree::braceinit &n)
+{
+        indent() << "(braceinit\n";
+        lvl_++;
+        for (auto& c : n.children_)
+                c->accept(*this);
+        lvl_--;
+        indent() << ")\n";
+}
+
 void ir_pretty_printer::visit_name(tree::name &n)
 {
 	indent() << "(name " << n.label_ << ")\n";

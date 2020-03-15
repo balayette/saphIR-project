@@ -3,6 +3,12 @@ namespace ir
 {
 void default_ir_visitor::visit_cnst(tree::cnst &) {}
 
+void default_ir_visitor::visit_braceinit(tree::braceinit &bi)
+{
+	for (auto &c : bi.children_)
+		c->accept(*this);
+}
+
 void default_ir_visitor::visit_name(tree::name &) {}
 
 void default_ir_visitor::visit_temp(tree::temp &) {}

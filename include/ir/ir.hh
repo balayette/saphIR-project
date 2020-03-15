@@ -24,6 +24,7 @@ namespace ir::tree
 {
 enum class tree_kind {
 	cnst,
+	braceinit,
 	name,
 	temp,
 	binop,
@@ -73,9 +74,27 @@ struct cnst : public exp {
 	// XXX: Constants are all 8 bytes integer at the moment
 	cnst(int value) : exp(types::integer_type()), value_(value) {}
 
-	TREE_KIND(cnst);
+	TREE_KIND(cnst)
 
 	int value_;
+};
+
+struct braceinit : public exp {
+	braceinit(utils::ref<types::ty> &ty, const std::vector<rexp> &exps)
+	    : exp(ty)
+	{
+		children_.insert(children_.end(), exps.begin(), exps.end());
+	}
+
+	std::vector<rexp> exps()
+	{
+		std::vector<rexp> ret;
+		for (auto &c : children_)
+			ret.push_back(c.as<exp>());
+		return ret;
+	}
+
+	TREE_KIND(braceinit)
 };
 
 struct name : public exp {
@@ -119,6 +138,7 @@ struct mem : public exp {
 	mem(rexp e)
 	{
 		auto ty = e->ty_->clone();
+		ASSERT(ty->ptr_ > 0, "expression is not a pointer");
 		ty->ptr_--;
 		ty_ = ty;
 
@@ -159,10 +179,7 @@ struct call : public exp {
 };
 
 struct eseq : public exp {
-	eseq(rstm lhs, rexp rhs) : exp(rhs->ty_)
-	{
-		children_ = {lhs, rhs};
-	}
+	eseq(rstm lhs, rexp rhs) : exp(rhs->ty_) { children_ = {lhs, rhs}; }
 	TREE_KIND(eseq)
 
 	rstm lhs() { return children_[0].as<stm>(); }

@@ -5,6 +5,7 @@ namespace ir
 namespace tree
 {
 struct cnst;
+struct braceinit;
 struct name;
 struct temp;
 struct binop;
@@ -23,6 +24,7 @@ class ir_visitor
 {
       public:
 	virtual void visit_cnst(tree::cnst &n) = 0;
+	virtual void visit_braceinit(tree::braceinit &n) = 0;
 	virtual void visit_name(tree::name &n) = 0;
 	virtual void visit_temp(tree::temp &n) = 0;
 	virtual void visit_binop(tree::binop &n) = 0;

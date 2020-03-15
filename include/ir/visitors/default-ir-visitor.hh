@@ -8,6 +8,7 @@ class default_ir_visitor : public ir_visitor
 {
       public:
 	virtual void visit_cnst(tree::cnst &) override;
+	virtual void visit_braceinit(tree::braceinit &) override;
 	virtual void visit_name(tree::name &) override;
 	virtual void visit_temp(tree::temp &) override;
 	virtual void visit_binop(tree::binop &n) override;

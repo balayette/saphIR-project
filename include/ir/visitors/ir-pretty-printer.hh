@@ -11,6 +11,7 @@ class ir_pretty_printer : public default_ir_visitor
       public:
 	ir_pretty_printer(std::ostream &os);
 	virtual void visit_cnst(tree::cnst &n) override;
+	virtual void visit_braceinit(tree::braceinit &n) override;
 	virtual void visit_name(tree::name &n) override;
 	virtual void visit_temp(tree::temp &n) override;
 	virtual void visit_binop(tree::binop &n) override;
