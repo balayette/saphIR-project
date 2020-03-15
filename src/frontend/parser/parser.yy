@@ -107,9 +107,10 @@
 %type <types::ty*> type
 
 %nonassoc EQ NEQ SMLR GRTR SMLR_EQ GRTR_EQ ASSIGN
-%left AMPERSAND DOT
 %left PLUS MINUS MOD
 %left MULT DIV
+%left AMPERSAND
+%left DOT
 
 %%
 
