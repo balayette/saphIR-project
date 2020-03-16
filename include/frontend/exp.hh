@@ -165,4 +165,18 @@ struct memberaccess : public exp {
 	exp *e_;
 	symbol member_;
 };
+
+struct arrowaccess : public exp {
+	arrowaccess(exp *e, const symbol &member)
+	    : e_(e), member_(member)
+	{
+	}
+
+	ACCEPT(arrowaccess)
+
+	virtual ~arrowaccess() override { delete e_; }
+
+	exp *e_;
+	symbol member_;
+};
 } // namespace frontend

@@ -50,6 +50,7 @@
 	SEMI ";"
 	COLON ","
         DOT "."
+        ARROW "->"
 	FUN "fun"
 	FOR "for"
 	ROF "rof"
@@ -102,7 +103,7 @@
 %type <num*> num
 %type <ref*> ref
 %type <call*> call
-%type <memberaccess*> memberaccess
+%type <exp*> memberaccess
 
 %type <types::ty*> type
 
@@ -110,7 +111,7 @@
 %left PLUS MINUS MOD
 %left MULT DIV
 %left AMPERSAND
-%left DOT
+%left DOT ARROW
 
 %%
 
@@ -259,7 +260,10 @@ ref: ID 	{ $$ = new ref($1); };
 
 call: ID "(" exps_comma ")" 	{ $$ = new call($1, $3); };
 
-memberaccess: exp "." ID { $$ = new memberaccess($1, $3); };
+memberaccess:
+            exp "." ID { $$ = new memberaccess($1, $3); }
+|           exp "->" ID { $$ = new arrowaccess($1, $3); }
+;
 
 type:
 	ID { $$ = new types::named_ty($1); }

@@ -21,6 +21,8 @@ void tycheck_visitor::visit_locdec(locdec &s)
 	if (s.rhs_ && !s.rhs_->ty_->compatible(&s.type_)) {
 		std::cerr << "TypeError: rhs of declaration of variable '"
 			  << s.name_ << "'\n";
+		std::cerr << s.rhs_->ty_->to_string()
+			  << " != " << s.type_->to_string() << '\n';
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
@@ -151,4 +153,17 @@ void tycheck_visitor::visit_memberaccess(memberaccess &e)
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }
+
+void tycheck_visitor::visit_arrowaccess(arrowaccess &e)
+{
+	default_visitor::visit_arrowaccess(e);
+
+	if (!e.e_->ty_->ptr_) {
+		std::cerr << "Arrow accessing member '" << e.member_
+			  << "' on non pointer.\n";
+                std::cerr << e.e_->ty_->to_string() << '\n';
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+}
+
 } // namespace frontend::sema

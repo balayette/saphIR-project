@@ -50,6 +50,7 @@ strlit \"[^"]*\"
 ";"	    	return TOKEN(SEMI);
 ","	    	return TOKEN(COLON);
 "."             return TOKEN(DOT);
+"->"            return TOKEN(ARROW);
 "fun" 		return TOKEN(FUN);
 "for"	    	return TOKEN(FOR);
 "rof"	    	return TOKEN(ROF);

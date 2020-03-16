@@ -6,23 +6,21 @@ struct nested { pair a, pair b };
 
 struct pairp { int *a, int *b };
 
-let pair glob = {22, 44};
+struct nestedp { pairp* a, pairp *b };
+
+fun test(int a) int { return a * 3; }
 
 fun main() int {
-        let pair p = {1, 2};
-        let pair *pptr = &p;
+        let int a = 1;
+        let int b = 2;
+        let int c = 3;
+        let int d = 4;
 
-        let pair p2 = {3, 4};
-        p2 = glob;
+        let pairp p1 = {&a, &b};
+        let pairp p2 = {&c, &d};
 
-        let int* pb = &glob.b;
-        p.a = *pb;
+        let nestedp np = {&p1, &p2};
+        let nestedp* npp = &np;
 
-        let pair* pptr2 = pptr;
-        let pair* pptr3 = pptr2;
-        pptr = pptr3;
-
-        let int a = 3;
-
-        return p.a + p.b + p2.b;
+        return *npp->b->b;
 }

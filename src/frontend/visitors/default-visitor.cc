@@ -108,4 +108,9 @@ void default_visitor::visit_memberaccess(memberaccess &e)
 {
 	e.e_->accept(*this);
 }
+
+void default_visitor::visit_arrowaccess(arrowaccess &e)
+{
+	e.e_->accept(*this);
+}
 } // namespace frontend

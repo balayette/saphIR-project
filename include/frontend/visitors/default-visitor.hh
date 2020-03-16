@@ -29,5 +29,6 @@ class default_visitor : public visitor
 	virtual void visit_call(call &e) override;
 	virtual void visit_str_lit(str_lit &) override;
 	virtual void visit_memberaccess(memberaccess &e) override;
+	virtual void visit_arrowaccess(arrowaccess &e) override;
 };
 } // namespace frontend

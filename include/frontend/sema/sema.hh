@@ -30,6 +30,7 @@ class binding_visitor : public default_visitor
 	virtual void visit_addrof(addrof &e) override;
 	virtual void visit_call(call &e) override;
 	virtual void visit_memberaccess(memberaccess &e) override;
+	virtual void visit_arrowaccess(arrowaccess &e) override;
 
       private:
 	void new_scope();

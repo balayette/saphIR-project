@@ -231,6 +231,26 @@ void binding_visitor::visit_memberaccess(memberaccess &e)
 	e.ty_ = st->types_[*idx];
 }
 
+void binding_visitor::visit_arrowaccess(arrowaccess &e)
+{
+	default_visitor::visit_arrowaccess(e);
+
+	auto st = e.e_->ty_.as<types::struct_ty>();
+	if (!st) {
+		std::cerr << "Arrow accessing member '" << e.member_
+			  << "' on non struct.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	auto idx = st->member_index(e.member_);
+	if (idx == std::nullopt) {
+		std::cerr << "Member '" << e.member_ << "' doesn't exist.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	e.ty_ = st->types_[*idx];
+}
+
 // get_type must be used everytime there can be a refernce to a type.
 // This includes function return values, function arguments declarations,
 // local and global variables declarations, struct members declarations...

@@ -242,8 +242,13 @@ exp *translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 	// scalars
 	// XXX: functions can't return structs by value (it is ABI dependant)
 	if (rhs->ty_->ptr_ > 0 || rhs->ty_.as<types::builtin_ty>()
-	    || rhs->ty_.as<types::fun_ty>())
+	    || rhs->ty_.as<types::fun_ty>()) {
+		std::cout << "copy scalar\n";
+		ir::ir_pretty_printer pir(std::cout);
+		lhs->accept(pir);
+		rhs->accept(pir);
 		return new nx(new ir::tree::move(lhs, rhs));
+	}
 
 	// lhs is a struct
 	// rhs is a struct
@@ -515,17 +520,14 @@ void translate_visitor::visit_addrof(addrof &e)
  * e.e_ is a binop(...), which points to the struct
  * if the member is a struct, then don't emit the mem node
  */
-void translate_visitor::visit_memberaccess(memberaccess &e)
+exp *translate_visitor::struct_access(ir::tree::rexp lhs, const symbol &member)
 {
-	auto st = e.e_->ty_.as<types::struct_ty>();
-	auto mem_ty = st->member_ty(e.member_);
-	size_t offt = st->member_offset(e.member_);
-
-	e.e_->accept(*this);
-	auto exp = ret_->un_ex();
+	auto st = lhs->ty_.as<types::struct_ty>();
+	auto mem_ty = st->member_ty(member);
+	size_t offt = st->member_offset(member);
 
 	ir::tree::exp *dst =
-		new tree::binop(ops::binop::PLUS, exp, new tree::cnst(offt));
+		new tree::binop(ops::binop::PLUS, lhs, new tree::cnst(offt));
 	dst->ty_ = mem_ty->clone();
 
 	if (dst->ty_->ptr_ || !dst->ty_.as<types::braceinit_ty>()) {
@@ -535,7 +537,23 @@ void translate_visitor::visit_memberaccess(memberaccess &e)
 		dst = new tree::mem(dst);
 	}
 
-	ret_ = new ex(dst);
+	return new ex(dst);
+}
+
+void translate_visitor::visit_memberaccess(memberaccess &e)
+{
+	e.e_->accept(*this);
+	ret_ = struct_access(ret_->un_ex(), e.member_);
+}
+
+/*
+ * The only difference between pointers to structs and structs is their
+ * type, but the value of e.e_ is going to be a pointer in both cases
+ */
+void translate_visitor::visit_arrowaccess(arrowaccess &e)
+{
+	e.e_->accept(*this);
+	ret_ = struct_access(ret_->un_ex(), e.member_);
 }
 
 void translate_visitor::visit_braceinit(braceinit &e)
