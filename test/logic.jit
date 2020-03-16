@@ -1,0 +1,9 @@
+#include "libc.jit"
+
+fun main(int a) int
+{
+        if (a == 1 || a == 2)
+                return 1;
+        fi
+        return 0;
+}
