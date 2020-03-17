@@ -23,6 +23,7 @@ class binding_visitor : public default_visitor
 	virtual void visit_ifstmt(ifstmt &s) override;
 	virtual void visit_forstmt(forstmt &s) override;
 
+	virtual void visit_paren(paren &e) override;
 	virtual void visit_braceinit(braceinit &e) override;
 	virtual void visit_bin(bin &e) override;
 	virtual void visit_ref(ref &e) override;

@@ -25,6 +25,7 @@ class pretty_printer : public default_visitor
 	virtual void visit_ass(ass &s) override;
 
 	/* expressions */
+	virtual void visit_paren(paren &e) override;
 	virtual void visit_braceinit(braceinit &e) override;
 	virtual void visit_bin(bin &e) override;
 	virtual void visit_cmp(cmp &e) override;
@@ -43,7 +44,7 @@ class pretty_printer : public default_visitor
 	unsigned lvl_;
 	bool new_line_;
 
-        // don't print a trailing ; on the last assignment in a for.
-        bool in_for_;
+	// don't print a trailing ; on the last assignment in a for.
+	bool in_for_;
 };
 } // namespace frontend

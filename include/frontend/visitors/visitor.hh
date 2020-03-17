@@ -18,6 +18,7 @@ struct ifstmt;
 struct forstmt;
 
 /* expressions */
+struct paren;
 struct braceinit;
 struct bin;
 struct ass;
@@ -56,7 +57,8 @@ class visitor
 	virtual void visit_ass(ass &s) = 0;
 
 	/* expressions */
-        virtual void visit_braceinit(braceinit& e)  = 0;
+	virtual void visit_paren(paren &e) = 0;
+	virtual void visit_braceinit(braceinit &e) = 0;
 	virtual void visit_bin(bin &e) = 0;
 	virtual void visit_cmp(cmp &e) = 0;
 	virtual void visit_num(num &e) = 0;
@@ -65,7 +67,7 @@ class visitor
 	virtual void visit_addrof(addrof &e) = 0;
 	virtual void visit_call(call &e) = 0;
 	virtual void visit_str_lit(str_lit &e) = 0;
-        virtual void visit_memberaccess(memberaccess& e) = 0;
-        virtual void visit_arrowaccess(arrowaccess& e) = 0;
+	virtual void visit_memberaccess(memberaccess &e) = 0;
+	virtual void visit_arrowaccess(arrowaccess &e) = 0;
 };
 } // namespace frontend

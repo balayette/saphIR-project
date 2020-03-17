@@ -25,6 +25,16 @@ struct exp {
 	utils::ref<types::ty> ty_;
 };
 
+struct paren : public exp {
+	paren(exp *e) : exp(), e_(e) {}
+
+	~paren() override { delete e_; }
+
+	void accept(visitor &visitor) override { visitor.visit_paren(*this); }
+
+	exp *e_;
+};
+
 struct braceinit : public exp {
 	braceinit(std::vector<exp *> exps) : exp(), exps_(exps) {}
 
@@ -153,10 +163,7 @@ struct str_lit : public exp {
 };
 
 struct memberaccess : public exp {
-	memberaccess(exp *e, const symbol &member)
-	    : e_(e), member_(member)
-	{
-	}
+	memberaccess(exp *e, const symbol &member) : e_(e), member_(member) {}
 
 	ACCEPT(memberaccess)
 
@@ -167,10 +174,7 @@ struct memberaccess : public exp {
 };
 
 struct arrowaccess : public exp {
-	arrowaccess(exp *e, const symbol &member)
-	    : e_(e), member_(member)
-	{
-	}
+	arrowaccess(exp *e, const symbol &member) : e_(e), member_(member) {}
 
 	ACCEPT(arrowaccess)
 

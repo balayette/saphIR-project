@@ -19,6 +19,7 @@ class default_visitor : public visitor
 	virtual void visit_ifstmt(ifstmt &s) override;
 	virtual void visit_forstmt(forstmt &s) override;
 	virtual void visit_ass(ass &s) override;
+	virtual void visit_paren(paren &e) override;
 	virtual void visit_braceinit(braceinit &e) override;
 	virtual void visit_bin(bin &e) override;
 	virtual void visit_cmp(cmp &e) override;

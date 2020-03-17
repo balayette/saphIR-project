@@ -70,6 +70,11 @@ void default_visitor::visit_ass(ass &s)
 	s.rhs_->accept(*this);
 }
 
+void default_visitor::visit_paren(paren& e)
+{
+        e.e_->accept(*this);
+}
+
 void default_visitor::visit_braceinit(braceinit &e)
 {
 	for (auto *e : e.exps_)

@@ -1,0 +1,6 @@
+#include "libc.jit"
+
+fun main() int
+{
+        return (1 + 2) * 3;
+}

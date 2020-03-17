@@ -57,6 +57,13 @@ void binding_visitor::visit_globaldec(globaldec &s)
 	s.type_ = get_type(s.type_);
 }
 
+void binding_visitor::visit_paren(paren &e)
+{
+	default_visitor::visit_paren(e);
+
+	e.ty_ = e.e_->ty_;
+}
+
 void binding_visitor::visit_locdec(locdec &s)
 {
 	default_visitor::visit_locdec(s);

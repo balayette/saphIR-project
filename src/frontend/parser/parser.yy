@@ -241,7 +241,7 @@ forstmt:
 exp:
  	ref 			{ $$ = $1; }
 | 	MULT exp 		{ $$ = new deref($2); }
-|       "(" exp ")"             { $$ = $2; }
+|       "(" exp ")"             { $$ = new paren($2); }
 |	num 			{ $$ = $1; }
 | 	call 			{ $$ = $1; }
 |       braceinit               { $$ = $1; }

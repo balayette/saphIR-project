@@ -181,6 +181,13 @@ void pretty_printer::visit_braceinit(braceinit &e)
 	os_ << "}";
 }
 
+void pretty_printer::visit_paren(paren &e)
+{
+	os_ << '(';
+	e.e_->accept(*this);
+	os_ << ')';
+}
+
 void pretty_printer::visit_bin(bin &e)
 {
 	e.lhs_->accept(*this);
