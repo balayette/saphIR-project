@@ -2,8 +2,13 @@
 
 namespace ops
 {
-const std::string binop_str[] = {"-", "+", "*", "/", "%"};
-const std::string cmpop_str[] = {"==", "<", ">", "<=", ">=", "!="};
+const std::string binop_str[] = {
+	"-", "+", "*", "/", "%", "&&", "||", "&.", "|.", "^.", "~.",
+};
+
+const std::string cmpop_str[] = {
+	"==", "<", ">", "<=", ">=", "!=",
+};
 
 cmpop invert_cmpop(cmpop op)
 {

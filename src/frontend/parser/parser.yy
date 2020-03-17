@@ -43,6 +43,12 @@
 	MULT "*"
 	DIV "/"
 	AMPERSAND "&"
+	BITOR "|."
+        BITXOR "^."
+	BITAND "&."
+        BITNOT "~."
+        AND "&&"
+	OR "||"
 	LPAREN "("
 	RPAREN ")"
 	LBRACE "{"
@@ -107,9 +113,21 @@
 
 %type <types::ty*> type
 
-%nonassoc EQ NEQ SMLR GRTR SMLR_EQ GRTR_EQ ASSIGN
-%left PLUS MINUS MOD
-%left MULT DIV
+%left OR
+%left AND
+
+%left BITNOT
+%left BITAND
+%left BITOR
+%left BITXOR
+
+%nonassoc ASSIGN
+%nonassoc SMLR GRTR SMLR_EQ GRTR_EQ
+%nonassoc EQ NEQ
+
+%left PLUS MINUS
+%left MULT DIV MOD
+
 %left AMPERSAND
 %left DOT ARROW
 
@@ -223,6 +241,7 @@ forstmt:
 exp:
  	ref 			{ $$ = $1; }
 | 	MULT exp 		{ $$ = new deref($2); }
+|       "(" exp ")"             { $$ = $2; }
 |	num 			{ $$ = $1; }
 | 	call 			{ $$ = $1; }
 |       braceinit               { $$ = $1; }
@@ -235,11 +254,20 @@ exp:
 |	exp GRTR exp	{$$ = new cmp(cmpop::GRTR, $1, $3); }
 |	exp SMLR_EQ exp	{$$ = new cmp(cmpop::SMLR_EQ, $1, $3); }
 |	exp GRTR_EQ exp	{$$ = new cmp(cmpop::GRTR_EQ, $1, $3); }
+
 | 	exp MULT exp 		{ $$ = new bin(binop::MULT, $1, $3); }
 | 	exp DIV exp 		{ $$ = new bin(binop::DIV, $1, $3); }
 | 	exp MOD exp 		{ $$ = new bin(binop::MOD, $1, $3); }
 | 	exp PLUS exp 		{ $$ = new bin(binop::PLUS, $1, $3); }
 | 	exp MINUS exp 		{ $$ = new bin(binop::MINUS, $1, $3); }
+
+|       exp BITAND exp       { $$ = new bin(binop::BITAND, $1, $3); }
+| 	exp BITOR exp 		{ $$ = new bin(binop::BITOR, $1, $3); }
+| 	exp BITXOR exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
+| 	exp BITNOT exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
+
+| 	exp OR exp 		{ $$ = new bin(binop::OR, $1, $3); }
+| 	exp AND exp 		{ $$ = new bin(binop::AND, $1, $3); }
 ;
 
 exps_comma:

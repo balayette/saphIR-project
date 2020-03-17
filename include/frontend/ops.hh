@@ -4,7 +4,19 @@
 
 namespace ops
 {
-enum class binop { MINUS, PLUS, MULT, DIV, MOD };
+enum class binop {
+	MINUS,
+	PLUS,
+	MULT,
+	DIV,
+	MOD,
+	AND,
+	OR,
+	BITAND,
+	BITOR,
+	BITXOR,
+	BITNOT,
+};
 
 // The order of the cmpops matters, they must be ordered "symmetrically".
 // See invert_cmpop

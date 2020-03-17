@@ -281,6 +281,12 @@ void generator::visit_binop(tree::binop &b)
 		EMIT(assem::oper("sub `s0, `d0", {dst}, {rhs, dst}, {}));
 	else if (b.op_ == ops::binop::MULT)
 		EMIT(assem::oper("imulq `s0, `d0", {dst}, {lhs}, {}));
+	else if (b.op_ == ops::binop::BITXOR)
+		EMIT(assem::oper("xor `s0, `d0", {dst}, {lhs, dst}, {}));
+	else if (b.op_ == ops::binop::BITAND)
+		EMIT(assem::oper("and `s0, `d0", {dst}, {lhs, dst}, {}));
+	else if (b.op_ == ops::binop::BITOR)
+		EMIT(assem::oper("or `s0, `d0", {dst}, {lhs, dst}, {}));
 	else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
 		EMIT(assem::move("mov `s0, `d0", {reg_to_temp(regs::RAX)},
 				 {lhs}));

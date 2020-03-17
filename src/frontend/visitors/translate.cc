@@ -283,12 +283,101 @@ void translate_visitor::visit_call(call &e)
 	ret_ = new ex(call);
 }
 
+/*
+ * XXX: && and || emit way too many instructions, find a way to optimize them.
+ */
 void translate_visitor::visit_bin(bin &e)
 {
 	e.lhs_->accept(*this);
 	auto left = ret_;
 	e.rhs_->accept(*this);
 	auto right = ret_;
+
+	if (e.op_ == ops::binop::AND) {
+		// e1 && e2 is a special case, which gets translated to
+		// if (e1 == 0)
+		//      0
+		// else
+		//      e2 != 0
+		//
+		// e1 == 0, f_label, t_label
+		// t_label:
+		// result = e2 != 0
+		// jmp done_label
+		// f_label:
+		// result = 0
+		// done_label:
+
+		utils::temp result;
+		utils::label f_label, t_label, t2_label, done_label;
+
+		utils::ref<cx> cond1 = new cx(ops::cmpop::EQ, left->un_ex(),
+					      new tree::cnst(0));
+		utils::ref<cx> cond2 = new cx(ops::cmpop::NEQ, right->un_ex(),
+					      new tree::cnst(0));
+
+		auto seq = new tree::seq({
+			cond1->un_cx(f_label, t_label),
+			new tree::label(t_label),
+			new tree::move(
+				new tree::temp(result, types::integer_type()),
+				cond2->un_ex()),
+			new tree::jump(new tree::name(done_label),
+				       {done_label}),
+			new tree::label(f_label),
+			new tree::move(
+				new tree::temp(result, types::integer_type()),
+				new tree::cnst(0)),
+			new tree::label(done_label),
+		});
+
+		ret_ = new ex(new tree::eseq(
+			seq, new tree::temp(result, types::integer_type())));
+		return;
+	}
+	if (e.op_ == ops::binop::OR) {
+		/*
+		 * e1 || e2 is a special case, which gets translated to
+		 * if (e1 == 1)
+		 *      1
+		 * else
+		 *      e1 == 1
+		 *
+		 * result = e1 == 1
+		 * result == 1, done_label, f_label
+		 * f_label:
+		 * result = e2 == 1
+		 * done_label:
+		 */
+
+		utils::temp result;
+		utils::label f_label, done_label;
+
+		utils::ref<cx> cond1 = new cx(ops::cmpop::EQ, left->un_ex(),
+					      new tree::cnst(1));
+		utils::ref<cx> cond2 =
+			new cx(ops::cmpop::EQ,
+			       new tree::temp(result, types::integer_type()),
+			       new tree::cnst(1));
+		utils::ref<cx> cond3 = new cx(ops::cmpop::EQ, right->un_ex(),
+					      new tree::cnst(1));
+
+		auto seq = new tree::seq({
+			new tree::move(
+				new tree::temp(result, types::integer_type()),
+				cond1->un_ex()),
+			cond2->un_cx(done_label, f_label),
+			new tree::label(f_label),
+			new tree::move(
+				new tree::temp(result, types::integer_type()),
+				cond3->un_ex()),
+			new tree::label(done_label),
+		});
+
+		ret_ = new ex(new tree::eseq(
+			seq, new tree::temp(result, types::integer_type())));
+		return;
+	}
 
 	ret_ = new ex(
 		new ir::tree::binop(e.op_, left->un_ex(), right->un_ex()));
