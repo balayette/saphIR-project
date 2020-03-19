@@ -161,7 +161,7 @@ void tycheck_visitor::visit_arrowaccess(arrowaccess &e)
 	if (!e.e_->ty_->ptr_) {
 		std::cerr << "Arrow accessing member '" << e.member_
 			  << "' on non pointer.\n";
-                std::cerr << e.e_->ty_->to_string() << '\n';
+		std::cerr << e.e_->ty_->to_string() << '\n';
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }

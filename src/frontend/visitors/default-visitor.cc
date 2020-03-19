@@ -3,7 +3,7 @@ namespace frontend
 {
 void default_visitor::visit_decs(decs &s)
 {
-	for (auto *d : s.decs_)
+	for (auto d : s.decs_)
 		d->accept(*this);
 }
 
@@ -11,7 +11,7 @@ void default_visitor::visit_memberdec(memberdec &) {}
 
 void default_visitor::visit_structdec(structdec &s)
 {
-	for (auto *mem : s.members_)
+	for (auto mem : s.members_)
 		mem->accept(*this);
 }
 
@@ -25,15 +25,15 @@ void default_visitor::visit_locdec(locdec &s)
 
 void default_visitor::visit_funprotodec(funprotodec &s)
 {
-	for (auto *arg : s.args_)
+	for (auto arg : s.args_)
 		arg->accept(*this);
 }
 
 void default_visitor::visit_fundec(fundec &s)
 {
-	for (auto *arg : s.args_)
+	for (auto arg : s.args_)
 		arg->accept(*this);
-	for (auto *b : s.body_)
+	for (auto b : s.body_)
 		b->accept(*this);
 }
 
@@ -48,9 +48,9 @@ void default_visitor::visit_ret(ret &s)
 void default_visitor::visit_ifstmt(ifstmt &s)
 {
 	s.cond_->accept(*this);
-	for (auto *i : s.ibody_)
+	for (auto i : s.ibody_)
 		i->accept(*this);
-	for (auto *e : s.ebody_)
+	for (auto e : s.ebody_)
 		e->accept(*this);
 }
 
@@ -60,7 +60,7 @@ void default_visitor::visit_forstmt(forstmt &s)
 	s.cond_->accept(*this);
 	s.action_->accept(*this);
 
-	for (auto *b : s.body_)
+	for (auto b : s.body_)
 		b->accept(*this);
 }
 
@@ -70,14 +70,11 @@ void default_visitor::visit_ass(ass &s)
 	s.rhs_->accept(*this);
 }
 
-void default_visitor::visit_paren(paren& e)
-{
-        e.e_->accept(*this);
-}
+void default_visitor::visit_paren(paren &e) { e.e_->accept(*this); }
 
 void default_visitor::visit_braceinit(braceinit &e)
 {
-	for (auto *e : e.exps_)
+	for (auto e : e.exps_)
 		e->accept(*this);
 }
 
@@ -103,7 +100,7 @@ void default_visitor::visit_addrof(addrof &e) { e.e_->accept(*this); }
 
 void default_visitor::visit_call(call &e)
 {
-	for (auto *a : e.args_)
+	for (auto a : e.args_)
 		a->accept(*this);
 }
 
@@ -114,8 +111,5 @@ void default_visitor::visit_memberaccess(memberaccess &e)
 	e.e_->accept(*this);
 }
 
-void default_visitor::visit_arrowaccess(arrowaccess &e)
-{
-	e.e_->accept(*this);
-}
+void default_visitor::visit_arrowaccess(arrowaccess &e) { e.e_->accept(*this); }
 } // namespace frontend

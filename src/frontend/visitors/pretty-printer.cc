@@ -8,7 +8,7 @@ pretty_printer::pretty_printer(std::ostream &os)
 
 void pretty_printer::visit_decs(decs &s)
 {
-	for (auto *d : s.decs_) {
+	for (auto d : s.decs_) {
 		d->accept(*this);
 		os_ << '\n';
 	}
@@ -22,7 +22,7 @@ void pretty_printer::visit_structdec(structdec &s)
 {
 	indent() << "struct " << s.name_ << " {\n";
 	lvl_++;
-	for (auto *mem : s.members_) {
+	for (auto mem : s.members_) {
 		new_line_ = true;
 		mem->accept(*this);
 		os_ << '\n';
@@ -77,7 +77,7 @@ void pretty_printer::visit_fundec(fundec &s)
 	os_ << ") " << s.type_->to_string() << " {\n";
 
 	lvl_++;
-	for (auto *b : s.body_) {
+	for (auto b : s.body_) {
 		new_line_ = true;
 		b->accept(*this);
 		os_ << '\n';
@@ -111,7 +111,7 @@ void pretty_printer::visit_ifstmt(ifstmt &s)
 	os_ << ")\n";
 
 	lvl_++;
-	for (auto *b : s.ibody_) {
+	for (auto b : s.ibody_) {
 		new_line_ = true;
 		b->accept(*this);
 		os_ << '\n';
@@ -122,7 +122,7 @@ void pretty_printer::visit_ifstmt(ifstmt &s)
 		new_line_ = true;
 		indent() << "else\n";
 		lvl_++;
-		for (auto *b : s.ebody_) {
+		for (auto b : s.ebody_) {
 			new_line_ = true;
 			b->accept(*this);
 			os_ << '\n';
@@ -147,7 +147,7 @@ void pretty_printer::visit_forstmt(forstmt &s)
 	os_ << ")\n";
 
 	lvl_++;
-	for (auto *b : s.body_) {
+	for (auto b : s.body_) {
 		new_line_ = true;
 		b->accept(*this);
 		os_ << '\n';

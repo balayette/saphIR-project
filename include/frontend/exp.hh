@@ -10,6 +10,7 @@
 namespace frontend
 {
 struct fundec;
+struct funprotodec;
 struct vardec;
 
 struct exp {
@@ -26,68 +27,49 @@ struct exp {
 };
 
 struct paren : public exp {
-	paren(exp *e) : exp(), e_(e) {}
-
-	~paren() override { delete e_; }
+	paren(utils::ref<exp> e) : exp(), e_(e) {}
 
 	void accept(visitor &visitor) override { visitor.visit_paren(*this); }
 
-	exp *e_;
+	utils::ref<exp> e_;
 };
 
 struct braceinit : public exp {
-	braceinit(std::vector<exp *> exps) : exp(), exps_(exps) {}
-
-	~braceinit() override
-	{
-		for (auto *e : exps_)
-			delete e;
-	}
+	braceinit(std::vector<utils::ref<exp>> exps) : exp(), exps_(exps) {}
 
 	void accept(visitor &visitor) override
 	{
 		visitor.visit_braceinit(*this);
 	}
 
-	std::vector<exp *> exps_;
+	std::vector<utils::ref<exp>> exps_;
 };
 
 struct bin : public exp {
-	bin(ops::binop op, exp *lhs, exp *rhs)
+	bin(ops::binop op, utils::ref<exp> lhs, utils::ref<exp> rhs)
 	    : exp(), op_(op), lhs_(lhs), rhs_(rhs)
 	{
-	}
-
-	~bin() override
-	{
-		delete lhs_;
-		delete rhs_;
 	}
 
 	void accept(visitor &visitor) override { visitor.visit_bin(*this); }
 
 	ops::binop op_;
-	exp *lhs_;
-	exp *rhs_;
+	utils::ref<exp> lhs_;
+	utils::ref<exp> rhs_;
 };
 
 struct cmp : public exp {
-	cmp(ops::cmpop op, exp *lhs, exp *rhs) : op_(op), lhs_(lhs), rhs_(rhs)
+	cmp(ops::cmpop op, utils::ref<exp> lhs, utils::ref<exp> rhs)
+	    : op_(op), lhs_(lhs), rhs_(rhs)
 	{
 		ty_ = new types::builtin_ty(types::type::INT);
-	}
-
-	virtual ~cmp() override
-	{
-		delete lhs_;
-		delete rhs_;
 	}
 
 	ACCEPT(cmp)
 
 	ops::cmpop op_;
-	exp *lhs_;
-	exp *rhs_;
+	utils::ref<exp> lhs_;
+	utils::ref<exp> rhs_;
 };
 
 struct num : public exp {
@@ -112,41 +94,31 @@ struct ref : public exp {
 };
 
 struct deref : public exp {
-	deref(exp *e) : e_(e) {}
+	deref(utils::ref<exp> e) : e_(e) {}
 
 	ACCEPT(deref)
 
-	virtual ~deref() override { delete e_; }
-
-	exp *e_;
+	utils::ref<exp> e_;
 };
 
 struct addrof : public exp {
-	addrof(exp *e) : e_(e) {}
+	addrof(utils::ref<exp> e) : e_(e) {}
 
 	ACCEPT(addrof)
 
-	virtual ~addrof() override { delete e_; }
-
-	exp *e_;
+	utils::ref<exp> e_;
 };
 
 struct call : public exp {
-	call(symbol name, std::vector<exp *> args)
+	call(symbol name, std::vector<utils::ref<exp>> args)
 	    : name_(name), args_(args), fdec_(nullptr)
 	{
 	}
 
 	ACCEPT(call)
 
-	virtual ~call() override
-	{
-		for (auto *a : args_)
-			delete a;
-	}
-
 	symbol name_;
-	std::vector<exp *> args_;
+	std::vector<utils::ref<exp>> args_;
 
 	funprotodec *fdec_;
 };
@@ -163,24 +135,26 @@ struct str_lit : public exp {
 };
 
 struct memberaccess : public exp {
-	memberaccess(exp *e, const symbol &member) : e_(e), member_(member) {}
+	memberaccess(utils::ref<exp> e, const symbol &member)
+	    : e_(e), member_(member)
+	{
+	}
 
 	ACCEPT(memberaccess)
 
-	virtual ~memberaccess() override { delete e_; }
-
-	exp *e_;
+	utils::ref<exp> e_;
 	symbol member_;
 };
 
 struct arrowaccess : public exp {
-	arrowaccess(exp *e, const symbol &member) : e_(e), member_(member) {}
+	arrowaccess(utils::ref<exp> e, const symbol &member)
+	    : e_(e), member_(member)
+	{
+	}
 
 	ACCEPT(arrowaccess)
 
-	virtual ~arrowaccess() override { delete e_; }
-
-	exp *e_;
+	utils::ref<exp> e_;
 	symbol member_;
 };
 } // namespace frontend

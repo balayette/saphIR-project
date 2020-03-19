@@ -11,8 +11,7 @@ template <typename T> T rand(T low, T high)
 {
 	ASSERT(low <= high, "Incorrect range");
 
-	std::random_device rd;
-	std::mt19937 gen(rd());
+	std::mt19937 gen(1);
 	std::uniform_int_distribution<T> dis(low, high);
 
 	auto ret = dis(gen);

@@ -10,12 +10,12 @@ void ir_pretty_printer::visit_cnst(tree::cnst &n)
 
 void ir_pretty_printer::visit_braceinit(tree::braceinit &n)
 {
-        indent() << "(braceinit\n";
-        lvl_++;
-        for (auto& c : n.children_)
-                c->accept(*this);
-        lvl_--;
-        indent() << ")\n";
+	indent() << "(braceinit\n";
+	lvl_++;
+	for (auto &c : n.children_)
+		c->accept(*this);
+	lvl_--;
+	indent() << ")\n";
 }
 
 void ir_pretty_printer::visit_name(tree::name &n)

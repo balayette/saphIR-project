@@ -403,7 +403,7 @@ void translate_visitor::visit_forstmt(forstmt &s)
 	auto action = ret_;
 
 	std::vector<ir::tree::rstm> stms;
-	for (auto *s : s.body_) {
+	for (auto s : s.body_) {
 		s->accept(*this);
 		stms.push_back(ret_->un_nx());
 	}
@@ -446,14 +446,14 @@ void translate_visitor::visit_ifstmt(ifstmt &s)
 	auto cond = ret_;
 
 	std::vector<ir::tree::rstm> istms;
-	for (auto *s : s.ibody_) {
+	for (auto s : s.ibody_) {
 		s->accept(*this);
 		istms.push_back(ret_->un_nx());
 	}
 	auto ibody = new ir::tree::seq(istms);
 
 	std::vector<ir::tree::rstm> estms;
-	for (auto *s : s.ebody_) {
+	for (auto s : s.ebody_) {
 		s->accept(*this);
 		estms.push_back(ret_->un_nx());
 	}
@@ -569,7 +569,7 @@ void translate_visitor::visit_fundec(fundec &s)
 	ret_lbl_.enter(unique_label("ret"));
 
 	std::vector<ir::tree::rstm> stms;
-	for (auto *stm : s.body_) {
+	for (auto stm : s.body_) {
 		stm->accept(*this);
 		stms.push_back(ret_->un_nx());
 	}

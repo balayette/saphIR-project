@@ -45,12 +45,11 @@ braceinit_ty::braceinit_ty(const std::vector<utils::ref<types::ty>> &types)
 std::string braceinit_ty::to_string() const
 {
 	std::string ret("{");
-        for (size_t i = 0; i < types_.size(); i++)
-        {
+	for (size_t i = 0; i < types_.size(); i++) {
 		ret += types_[i]->to_string();
-                if (i != types_.size() - 1)
-                        ret += ", ";
-        }
+		if (i != types_.size() - 1)
+			ret += ", ";
+	}
 	ret += "}";
 
 	return ret;

@@ -5,8 +5,8 @@ LINK.o = $(LINK.cc)
 PARSER = frontend/parser
 
 GENERATED = \
-		src/$(PARSER)/parser.cc \
-		src/$(PARSER)/scanner.cc \
+	    src/$(PARSER)/parser.cc \
+	    src/$(PARSER)/scanner.cc \
 
 TRASH_HDR = \
 	    src/$(PARSER)/parser.hh \

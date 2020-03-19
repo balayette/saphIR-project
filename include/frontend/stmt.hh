@@ -22,7 +22,9 @@ struct stmt {
 };
 
 struct dec : public stmt {
-	dec(types::ty *type, symbol name) : type_(type), name_(name) {}
+	dec(utils::ref<types::ty> type, symbol name) : type_(type), name_(name)
+	{
+	}
 
 	virtual void accept(visitor &visitor) = 0;
 
@@ -41,7 +43,7 @@ struct tydec : public dec {
 };
 
 struct memberdec : public dec {
-	memberdec(types::ty *type, symbol name) : dec(type, name) {}
+	memberdec(utils::ref<types::ty> type, symbol name) : dec(type, name) {}
 
 	virtual void accept(visitor &visitor) override
 	{
@@ -50,7 +52,7 @@ struct memberdec : public dec {
 };
 
 struct structdec : public tydec {
-	structdec(symbol name, std::vector<memberdec *> members)
+	structdec(symbol name, std::vector<utils::ref<memberdec>> members)
 	    : tydec(name), members_(members)
 	{
 	}
@@ -60,17 +62,12 @@ struct structdec : public tydec {
 		visitor.visit_structdec(*this);
 	}
 
-	virtual ~structdec()
-	{
-		for (auto *mem : members_)
-			delete mem;
-	}
-
-	std::vector<memberdec *> members_;
+	std::vector<utils::ref<memberdec>> members_;
 };
 
 struct vardec : public dec {
-	vardec(types::ty *type, symbol name) : dec(type, name), escapes_(false)
+	vardec(utils::ref<types::ty> type, symbol name)
+	    : dec(type, name), escapes_(false)
 	{
 	}
 
@@ -78,49 +75,40 @@ struct vardec : public dec {
 };
 
 struct globaldec : public vardec {
-	globaldec(types::ty *type, symbol name, exp *rhs)
+	globaldec(utils::ref<types::ty> type, symbol name, utils::ref<exp> rhs)
 	    : vardec(type, name), rhs_(rhs)
 	{
 	}
-
-	virtual ~globaldec() override { delete rhs_; }
 
 	virtual void accept(visitor &visitor) override
 	{
 		visitor.visit_globaldec(*this);
 	}
 
-	exp *rhs_;
+	utils::ref<exp> rhs_;
 };
 
 struct locdec : public vardec {
-	locdec(types::ty *type, symbol name, exp *rhs)
+	locdec(utils::ref<types::ty> type, symbol name, utils::ref<exp> rhs)
 	    : vardec(type, name), rhs_(rhs)
 	{
 	}
-	virtual ~locdec() override { delete rhs_; }
 
 	virtual void accept(visitor &visitor) override
 	{
 		visitor.visit_locdec(*this);
 	}
 
-	exp *rhs_;
+	utils::ref<exp> rhs_;
 };
 
 std::ostream &operator<<(std::ostream &os, const vardec &dec);
 
 struct funprotodec : public dec {
-	funprotodec(types::ty *ret_ty, symbol name, std::vector<locdec *> args,
-		    bool variadic = false)
+	funprotodec(utils::ref<types::ty> ret_ty, symbol name,
+		    std::vector<utils::ref<locdec>> args, bool variadic = false)
 	    : dec(ret_ty, name), args_(args), variadic_(variadic)
 	{
-	}
-
-	virtual ~funprotodec() override
-	{
-		for (auto *arg : args_)
-			delete arg;
 	}
 
 	virtual void accept(visitor &visitor) override
@@ -128,22 +116,16 @@ struct funprotodec : public dec {
 		visitor.visit_funprotodec(*this);
 	}
 
-	std::vector<locdec *> args_;
+	std::vector<utils::ref<locdec>> args_;
 	bool variadic_;
 };
 
 struct fundec : public funprotodec {
-	fundec(types::ty *ret_ty, symbol name, std::vector<locdec *> args,
-	       std::vector<stmt *> body)
+	fundec(utils::ref<types::ty> ret_ty, symbol name,
+	       std::vector<utils::ref<locdec>> args,
+	       std::vector<utils::ref<stmt>> body)
 	    : funprotodec(ret_ty, name, args), body_(body), has_return_(false)
 	{
-	}
-
-	virtual ~fundec() override
-	{
-		for (auto *s : body_)
-			delete s;
-		delete frame_;
 	}
 
 	virtual void accept(visitor &visitor) override
@@ -151,8 +133,8 @@ struct fundec : public funprotodec {
 		visitor.visit_fundec(*this);
 	}
 
-	std::vector<stmt *> body_;
-	mach::frame *frame_;
+	std::vector<utils::ref<stmt>> body_;
+	utils::ref<mach::frame> frame_;
 	bool has_return_;
 };
 
@@ -165,55 +147,39 @@ struct decs : public stmt {
 		visitor.visit_decs(*this);
 	}
 
-	virtual ~decs() override
-	{
-		for (auto *d : decs_)
-			delete d;
-	}
-
-	std::vector<dec *> decs_;
+	std::vector<utils::ref<dec>> decs_;
 };
 
 
 struct sexp : public stmt {
-	sexp(exp *e) : e_(e) {}
-	virtual ~sexp() override { delete e_; }
+	sexp(utils::ref<exp> e) : e_(e) {}
 
 	virtual void accept(visitor &visitor) override
 	{
 		visitor.visit_sexp(*this);
 	}
 
-	exp *e_;
+	utils::ref<exp> e_;
 };
 
 struct ret : public stmt {
-	ret(exp *e) : e_(e), fdec_(nullptr) {}
-	virtual ~ret() override { delete e_; }
+	ret(utils::ref<exp> e) : e_(e), fdec_(nullptr) {}
 
 	virtual void accept(visitor &visitor) override
 	{
 		visitor.visit_ret(*this);
 	}
 
-	exp *e_;
+	utils::ref<exp> e_;
 
 	fundec *fdec_;
 };
 
 struct ifstmt : public stmt {
-	ifstmt(exp *cond, std::vector<stmt *> ibody, std::vector<stmt *> ebody)
+	ifstmt(utils::ref<exp> cond, std::vector<utils::ref<stmt>> ibody,
+	       std::vector<utils::ref<stmt>> ebody)
 	    : cond_(cond), ibody_(ibody), ebody_(ebody)
 	{
-	}
-
-	virtual ~ifstmt() override
-	{
-		delete cond_;
-		for (auto *s : ibody_)
-			delete s;
-		for (auto *s : ebody_)
-			delete s;
 	}
 
 	virtual void accept(visitor &visitor) override
@@ -221,50 +187,38 @@ struct ifstmt : public stmt {
 		visitor.visit_ifstmt(*this);
 	}
 
-	exp *cond_;
-	std::vector<stmt *> ibody_;
-	std::vector<stmt *> ebody_;
+	utils::ref<exp> cond_;
+	std::vector<utils::ref<stmt>> ibody_;
+	std::vector<utils::ref<stmt>> ebody_;
 };
 
 struct forstmt : public stmt {
-	forstmt(stmt *init, exp *cond, stmt *action, std::vector<stmt *> body)
+	forstmt(utils::ref<stmt> init, utils::ref<exp> cond,
+		utils::ref<stmt> action, std::vector<utils::ref<stmt>> body)
 	    : init_(init), cond_(cond), action_(action), body_(body)
 	{
 	}
 
-	virtual ~forstmt() override
-	{
-		delete cond_;
-		delete init_;
-		delete action_;
-
-		for (auto *s : body_)
-			delete s;
-	}
-
 	ACCEPT(forstmt)
 
-	stmt *init_;
-	exp *cond_;
-	stmt *action_;
-	std::vector<stmt *> body_;
+	utils::ref<stmt> init_;
+	utils::ref<exp> cond_;
+	utils::ref<stmt> action_;
+	std::vector<utils::ref<stmt>> body_;
 };
 
 struct ass : public stmt {
-	ass(exp *lhs, exp *rhs) : lhs_(lhs), rhs_(rhs), dec_(nullptr) {}
-
-	virtual ~ass() override
+	ass(utils::ref<exp> lhs, utils::ref<exp> rhs)
+	    : lhs_(lhs), rhs_(rhs), dec_(nullptr)
 	{
-		delete lhs_;
-		delete rhs_;
 	}
 
 	ACCEPT(ass)
 
-	exp *lhs_;
-	exp *rhs_;
+	utils::ref<exp> lhs_;
+	utils::ref<exp> rhs_;
 
-	dec *dec_;
+	utils::ref<dec> dec_;
 };
 
 } // namespace frontend

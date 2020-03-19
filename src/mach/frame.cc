@@ -132,7 +132,7 @@ ir::tree::rexp in_frame::addr(size_t offt) const
 	/*
 	 * Return a pointer to a variable. If the offset is not 0, then it
 	 * doesn't necessarily point to a variable of the same type as ty_.
-         * (addresses of members of structs, for example)
+	 * (addresses of members of structs, for example)
 	 */
 	auto type = offt ? gpr_type() : ty_->clone();
 	type->ptr_++;

@@ -5,7 +5,7 @@ namespace frontend::sema
 {
 void binding_visitor::visit_decs(decs &s)
 {
-	for (auto *d : s.decs_) {
+	for (auto d : s.decs_) {
 		d->accept(*this);
 	}
 }
@@ -18,7 +18,7 @@ void binding_visitor::visit_funprotodec(funprotodec &s)
 	}
 
 	std::vector<utils::ref<types::ty>> arg_tys;
-	for (auto *arg : s.args_) {
+	for (auto arg : s.args_) {
 		arg->type_ = get_type(arg->type_);
 		arg_tys.push_back(arg->type_);
 	}
@@ -37,7 +37,7 @@ void binding_visitor::visit_structdec(structdec &s)
 
 	std::vector<utils::ref<types::ty>> types;
 	std::vector<symbol> names;
-	for (auto *mem : s.members_) {
+	for (auto mem : s.members_) {
 		types.push_back(mem->type_);
 		names.push_back(mem->name_);
 	}
@@ -83,7 +83,7 @@ void binding_visitor::visit_fundec(fundec &s)
 	}
 
 	std::vector<utils::ref<types::ty>> arg_tys;
-	for (auto *arg : s.args_) {
+	for (auto arg : s.args_) {
 		arg->type_ = get_type(arg->type_);
 		arg_tys.push_back(arg->type_);
 	}
@@ -93,9 +93,9 @@ void binding_visitor::visit_fundec(fundec &s)
 	new_scope();
 	cfunc_.enter(&s);
 
-	for (auto *arg : s.args_)
+	for (auto arg : s.args_)
 		arg->accept(*this);
-	for (auto *b : s.body_)
+	for (auto b : s.body_)
 		b->accept(*this);
 
 	cfunc_.leave();
@@ -107,11 +107,11 @@ void binding_visitor::visit_ifstmt(ifstmt &s)
 	s.cond_->accept(*this);
 
 	new_scope();
-	for (auto *i : s.ibody_)
+	for (auto i : s.ibody_)
 		i->accept(*this);
 	end_scope();
 	new_scope();
-	for (auto *e : s.ebody_)
+	for (auto e : s.ebody_)
 		e->accept(*this);
 	end_scope();
 }
@@ -196,7 +196,7 @@ void binding_visitor::visit_braceinit(braceinit &e)
 	default_visitor::visit_braceinit(e);
 
 	std::vector<utils::ref<types::ty>> types;
-	for (auto *e : e.exps_)
+	for (auto e : e.exps_)
 		types.push_back(e->ty_);
 
 	e.ty_ = new types::braceinit_ty(types);
@@ -305,7 +305,7 @@ void escapes_visitor::visit_addrof(addrof &e)
 {
 	default_visitor::visit_addrof(e);
 
-	if (auto *d = dynamic_cast<ref *>(e.e_)) {
+	if (auto d = e.e_.as<ref>()) {
 		if (!d->dec_->escapes_)
 			std::cout << "escape: var '" << d->dec_->name_
 				  << "' escapes\n";
@@ -332,7 +332,7 @@ void frame_visitor::visit_fundec(fundec &s)
 {
 	std::vector<bool> escaping;
 	std::vector<utils::ref<types::ty>> types;
-	for (auto *arg : s.args_) {
+	for (auto arg : s.args_) {
 		escaping.push_back(arg->escapes_);
 		types.push_back(arg->type_);
 	}

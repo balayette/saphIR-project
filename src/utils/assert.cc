@@ -10,8 +10,7 @@ void assertion_failed(const std::string &file, size_t line,
 {
 	std::cerr << file << ":" << line << ":" << fun << " - `" << cond
 		  << "` failed: " << msg << '\n';
-        (void) retcode;
-	std::abort();
+	std::exit(retcode);
 }
 
 std::string cfail_strs[] = {

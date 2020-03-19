@@ -135,8 +135,8 @@ int main(int argc, char *argv[])
 		fout << mach::asm_string(lab, s.str_);
 	fout << '\n';
 
-	for (auto *glob : drv.prog_->decs_) {
-		if (dynamic_cast<globaldec *>(glob))
+	for (auto &glob : drv.prog_->decs_) {
+		if (glob.as<globaldec>())
 			fout << "\t.lcomm .L_" << glob->name_ << ", 8\n";
 	}
 	fout << "\n";
@@ -160,8 +160,6 @@ int main(int argc, char *argv[])
 		fout << f.epilogue_;
 		fout << '\n';
 	}
-
-	delete drv.prog_;
 
 	return 0;
 }

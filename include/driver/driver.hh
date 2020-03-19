@@ -21,7 +21,7 @@ class driver
 	void scan_end();
 
 	yy::location location_;
-	frontend::decs *prog_;
+	utils::ref<frontend::decs> prog_;
 
       private:
 	bool debug_parsing_;

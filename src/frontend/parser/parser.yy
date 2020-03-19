@@ -10,6 +10,7 @@
 %code requires {
 	#include <string>
 	#include "utils/symbol.hh"
+        #include "utils/ref.hh"
 	#include "frontend/stmt.hh"
 	#include "frontend/exp.hh"
 	class driver;
@@ -72,45 +73,45 @@
 %token <int> INT_LIT "int_lit"
 %token <std::string> STR_LIT "str_lit"
 
-%type <decs*> decs
+%type <utils::ref<decs>> decs
 
-%type <fundec*> fundec
-%type <funprotodec*> funprotodec
+%type <utils::ref<fundec>> fundec
+%type <utils::ref<funprotodec>> funprotodec
 
-%type <std::vector<memberdec*>> memberdecs
-%type <std::vector<memberdec*>> memberdecsp
-%type <memberdec*> memberdec
+%type <std::vector<utils::ref<memberdec>>> memberdecs
+%type <std::vector<utils::ref<memberdec>>> memberdecsp
+%type <utils::ref<memberdec>> memberdec
 
-%type <structdec*> structdec
+%type <utils::ref<structdec>> structdec
 
-%type <std::vector<locdec*>> argdecs
-%type <std::vector<locdec*>> argdecsp
-%type <locdec*> argdec
+%type <std::vector<utils::ref<locdec>>> argdecs
+%type <std::vector<utils::ref<locdec>>> argdecsp
+%type <utils::ref<locdec>> argdec
 
-%type <std::vector<stmt*>> stmts
-%type <std::vector<stmt*>> stmtsp
-%type <stmt*> stmt
-%type <stmt*> stmt_body
+%type <std::vector<utils::ref<stmt>>> stmts
+%type <std::vector<utils::ref<stmt>>> stmtsp
+%type <utils::ref<stmt>> stmt
+%type <utils::ref<stmt>> stmt_body
 
-%type <braceinit*> braceinit
-%type <locdec*> locdec
-%type <globaldec*> globaldec
-%type <sexp*> sexp
-%type <ret*> ret
-%type <ifstmt*> ifstmt
-%type <forstmt*> forstmt
+%type <utils::ref<braceinit>> braceinit
+%type <utils::ref<locdec>> locdec
+%type <utils::ref<globaldec>> globaldec
+%type <utils::ref<sexp>> sexp
+%type <utils::ref<ret>> ret
+%type <utils::ref<ifstmt>> ifstmt
+%type <utils::ref<forstmt>> forstmt
 
-%type <exp*> exp
-%type <std::vector<exp*>> exps_comma
-%type <std::vector<exp*>> exps_commap
+%type <utils::ref<exp>> exp
+%type <std::vector<utils::ref<exp>>> exps_comma
+%type <std::vector<utils::ref<exp>>> exps_commap
 
-%type <ass*> ass
-%type <num*> num
-%type <ref*> ref
-%type <call*> call
-%type <exp*> memberaccess
+%type <utils::ref<ass>> ass
+%type <utils::ref<num>> num
+%type <utils::ref<ref>> ref
+%type <utils::ref<call>> call
+%type <utils::ref<exp>> memberaccess
 
-%type <types::ty*> type
+%type <utils::ref<types::ty>> type
 
 %left OR
 %left AND
@@ -156,12 +157,12 @@ fundec: "fun" ID "(" argdecs ")" type "{" stmts "}" {
 structdec: "struct" ID "{" memberdecs "}" { $$ = new structdec($2, $4); };
 
 memberdecs:
-          %empty        { $$ = std::vector<memberdec*>(); }
+          %empty        { $$ = std::vector<utils::ref<memberdec>>(); }
 |         memberdecsp 
 ;
 
 memberdecsp:
-           memberdec   { $$ = std::vector<memberdec*>(); $$.push_back($1); }
+           memberdec   { $$ = std::vector<utils::ref<memberdec>>(); $$.push_back($1); }
 |          memberdecsp "," memberdec { $1.push_back($3); $$ = $1; }
 ;
 
@@ -170,24 +171,24 @@ memberdec: type ID { $$ = new memberdec($1, $2); };
 braceinit: "{" exps_comma "}" { $$ = new braceinit($2); };
 
 argdecs:
-       	%empty 			{ $$ = std::vector<locdec*>(); }
+       	%empty 			{ $$ = std::vector<utils::ref<locdec>>(); }
 | 	argdecsp
 ;
 
 argdecsp:
-	argdec 			{ $$ = std::vector<locdec*>(); $$.push_back($1); }
+	argdec 			{ $$ = std::vector<utils::ref<locdec>>(); $$.push_back($1); }
 | 	argdecsp "," argdec	{ $1.push_back($3); $$ = $1; }
 ;
 
 argdec: type ID 	{ $$ = new locdec($1, $2, nullptr); };
 
 stmts:
-     	%empty 		{ $$ = std::vector<stmt*>(); }
+     	%empty 		{ $$ = std::vector<utils::ref<stmt>>(); }
 | 	stmtsp
 ;
 
 stmtsp:
-      	stmt 		{ $$ = std::vector<stmt*>(); $$.push_back($1); }
+      	stmt 		{ $$ = std::vector<utils::ref<stmt>>(); $$.push_back($1); }
 | 	stmtsp stmt 	{ $1.push_back($2); $$ = $1; }
 ;
 
@@ -217,7 +218,7 @@ ret:
 
 ifstmt:
       	IF "(" exp ")" stmts FI { 
-		$$ = new ifstmt($3, $5, std::vector<stmt*>()); 
+		$$ = new ifstmt($3, $5, std::vector<utils::ref<stmt>>()); 
 	}
 | 	IF "(" exp ")" stmts ELSE stmts FI {
 		$$ = new ifstmt($3, $5, $7);
@@ -260,7 +261,7 @@ exp:
 | 	exp PLUS exp 		{ $$ = new bin(binop::PLUS, $1, $3); }
 | 	exp MINUS exp 		{ $$ = new bin(binop::MINUS, $1, $3); }
 
-|       exp AMPERSAND exp %prec BITAND { $$ = new bin(binop::BITAND, $1, $3); }
+|       exp AMPERSAND exp      %prec BITAND { $$ = new bin(binop::BITAND, $1, $3); }
 | 	exp BITOR exp 		{ $$ = new bin(binop::BITOR, $1, $3); }
 | 	exp BITXOR exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
 | 	exp BITNOT exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
@@ -270,12 +271,12 @@ exp:
 ;
 
 exps_comma:
-	%empty 			{ $$ = std::vector<exp*>(); }
+	%empty 			{ $$ = std::vector<utils::ref<exp>>(); }
 | 	exps_commap		{ $$ = $1; }
 ;
 
 exps_commap:
-	exp 			{ $$ = std::vector<exp*>(); $$.push_back($1); }
+	exp 			{ $$ = std::vector<utils::ref<exp>>(); $$.push_back($1); }
 | 	exps_commap "," exp 	{ $1.push_back($3); $$ = $1; }
 ;
 
