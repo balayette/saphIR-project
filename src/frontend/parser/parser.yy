@@ -43,10 +43,9 @@
 	MULT "*"
 	DIV "/"
 	AMPERSAND "&"
-	BITOR "|."
-        BITXOR "^."
-	BITAND "&."
-        BITNOT "~."
+	BITOR "|"
+        BITXOR "^"
+        BITNOT "~"
         AND "&&"
 	OR "||"
 	LPAREN "("
@@ -117,7 +116,7 @@
 %left AND
 
 %left BITNOT
-%left BITAND
+%left BITAND // &, but used for precendance
 %left BITOR
 %left BITXOR
 
@@ -261,7 +260,7 @@ exp:
 | 	exp PLUS exp 		{ $$ = new bin(binop::PLUS, $1, $3); }
 | 	exp MINUS exp 		{ $$ = new bin(binop::MINUS, $1, $3); }
 
-|       exp BITAND exp       { $$ = new bin(binop::BITAND, $1, $3); }
+|       exp AMPERSAND exp %prec BITAND { $$ = new bin(binop::BITAND, $1, $3); }
 | 	exp BITOR exp 		{ $$ = new bin(binop::BITOR, $1, $3); }
 | 	exp BITXOR exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
 | 	exp BITNOT exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
