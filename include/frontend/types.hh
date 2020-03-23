@@ -45,8 +45,10 @@ struct builtin_ty : public ty {
 	type ty_;
 };
 
+utils::ref<builtin_ty> void_type();
+
 // XXX: This should be arch dependant
-builtin_ty *integer_type();
+utils::ref<builtin_ty> integer_type();
 
 struct braceinit_ty : public ty {
 	braceinit_ty(const std::vector<utils::ref<types::ty>> &types);

@@ -43,7 +43,7 @@ utils::temp fp() { return reg_temp[regs::RBP]; }
 
 utils::temp rv() { return reg_temp[regs::RAX]; }
 
-types::ty *gpr_type() { return types::integer_type(); }
+utils::ref<types::ty> gpr_type() { return types::integer_type(); }
 
 unsigned reg_count() { return registers().size(); }
 

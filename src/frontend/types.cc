@@ -4,7 +4,20 @@ namespace types
 {
 const std::string str[] = {"int", "string", "void", "invalid"};
 const unsigned default_size[] = {8, 8, 0, 0};
-builtin_ty *integer_type() { return new builtin_ty(type::INT, 8, 0); }
+
+utils::ref<builtin_ty> integer_type()
+{
+	static auto t = std::make_shared<builtin_ty>(type::INT, 8, 0);
+
+	return t;
+}
+
+utils::ref<builtin_ty> void_type()
+{
+	static auto t = std::make_shared<builtin_ty>(type::VOID, 0, 0);
+
+	return t;
+}
 
 ty::ty(size_t size, unsigned ptr) : size_(size), ptr_(ptr) {}
 
