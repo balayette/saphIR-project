@@ -15,7 +15,7 @@ struct ty {
 
 	virtual std::string to_string() const = 0;
 
-	virtual bool compatible(const ty *t) const = 0;
+	virtual bool assign_compat(const ty *t) const = 0;
 
 	virtual ty *clone() const = 0;
 
@@ -32,7 +32,7 @@ struct builtin_ty : public ty {
 
 	std::string to_string() const override;
 
-	bool compatible(const ty *t) const override;
+	bool assign_compat(const ty *t) const override;
 
 	virtual builtin_ty *clone() const override
 	{
@@ -57,7 +57,7 @@ struct braceinit_ty : public composite_ty {
 
 	std::string to_string() const override;
 
-	bool compatible(const ty *t) const override;
+	bool assign_compat(const ty *t) const override;
 
 	virtual braceinit_ty *clone() const override
 	{
@@ -74,7 +74,7 @@ struct struct_ty : public composite_ty {
 
 	std::string to_string() const override;
 
-	bool compatible(const ty *t) const override;
+	bool assign_compat(const ty *t) const override;
 
 	virtual struct_ty *clone() const override
 	{
@@ -97,7 +97,7 @@ struct fun_ty : public ty {
 
 	std::string to_string() const override;
 
-	bool compatible(const ty *t) const override;
+	bool assign_compat(const ty *t) const override;
 
 	virtual fun_ty *clone() const override
 	{
@@ -118,7 +118,7 @@ struct named_ty : public ty {
 	named_ty(const symbol &name, unsigned ptr = 0);
 	std::string to_string() const override;
 
-	bool compatible(const ty *t) const override;
+	bool assign_compat(const ty *t) const override;
 
 	virtual named_ty *clone() const override
 	{

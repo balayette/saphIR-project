@@ -46,10 +46,10 @@ std::string builtin_ty::to_string() const
 	return ret;
 }
 
-bool builtin_ty::compatible(const ty *t) const
+bool builtin_ty::assign_compat(const ty *t) const
 {
 	if (dynamic_cast<const fun_ty *>(t))
-		return t->compatible(this);
+		return t->assign_compat(this);
 	if (auto bt = dynamic_cast<const builtin_ty *>(t))
 		return ptr_ == bt->ptr_ && ty_ == bt->ty_;
 	return false;
@@ -76,14 +76,14 @@ std::string braceinit_ty::to_string() const
 }
 
 // no brace init of scalars
-bool braceinit_ty::compatible(const ty *t) const
+bool braceinit_ty::assign_compat(const ty *t) const
 {
 	if (auto *st = dynamic_cast<const struct_ty *>(t)) {
 		if (st->types_.size() != types_.size())
 			return false;
 
 		for (size_t i = 0; i < types_.size(); i++) {
-			if (!types_[i]->compatible(&st->types_[i]))
+			if (!types_[i]->assign_compat(&st->types_[i]))
 				return false;
 		}
 
@@ -119,7 +119,7 @@ std::string struct_ty::to_string() const
 	return ret;
 }
 
-bool struct_ty::compatible(const ty *t) const
+bool struct_ty::assign_compat(const ty *t) const
 {
 	// struct names are unique in a scope, so this should be enough
 	if (auto *st = dynamic_cast<const struct_ty *>(t))
@@ -131,7 +131,7 @@ bool struct_ty::compatible(const ty *t) const
 		if (bi->types_.size() != types_.size())
 			return false;
 		for (size_t i = 0; i < types_.size(); i++) {
-			if (!types_[i]->compatible(&bi->types_[i]))
+			if (!types_[i]->assign_compat(&bi->types_[i]))
 				return false;
 		}
 		return true;
@@ -190,10 +190,10 @@ std::string fun_ty::to_string() const
 	return ret;
 }
 
-// XXX: There are no function pointer variables, so compatible only checks
-// if t is compatible with the return type of the function.
+// XXX: There are no function pointer variables, so assign_compat only checks
+// if t is assign_compat with the return type of the function.
 // This needs to change if we want to support function pointers.
-bool fun_ty::compatible(const ty *t) const { return ret_ty_->compatible(t); }
+bool fun_ty::assign_compat(const ty *t) const { return ret_ty_->assign_compat(t); }
 
 named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)
 {
@@ -201,5 +201,5 @@ named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)
 
 std::string named_ty::to_string() const { return name_; }
 
-bool named_ty::compatible(const ty *) const { return false; }
+bool named_ty::assign_compat(const ty *) const { return false; }
 } // namespace types
