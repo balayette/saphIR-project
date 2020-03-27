@@ -49,7 +49,7 @@ bool builtin_ty::compatible(const ty *t) const
 }
 
 braceinit_ty::braceinit_ty(const std::vector<utils::ref<types::ty>> &types)
-    : ty(0, 0), types_(types)
+    : types_(types)
 {
 	for (auto t : types_)
 		size_ += t->size_;
@@ -90,12 +90,17 @@ bool braceinit_ty::compatible(const ty *t) const
 struct_ty::struct_ty(const symbol &name, const std::vector<symbol> &names,
 		     const std::vector<utils::ref<types::ty>> &types,
 		     unsigned ptr)
-    : braceinit_ty(types), name_(name), names_(names)
+    : types_(types), name_(name), names_(names)
 {
 	ptr_ = ptr;
+
+	// XXX: Arch specific pointer size
 	if (ptr_)
 		size_ = 8;
-	// else, size_ was set by braceinit_ty's constructor
+	else {
+		for (auto t : types_)
+			size_ += t->size_;
+	}
 }
 
 std::string struct_ty::to_string() const

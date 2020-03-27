@@ -50,7 +50,10 @@ utils::ref<builtin_ty> void_type();
 // XXX: This should be arch dependant
 utils::ref<builtin_ty> integer_type();
 
-struct braceinit_ty : public ty {
+struct composite_ty : public ty {
+};
+
+struct braceinit_ty : public composite_ty {
 	braceinit_ty(const std::vector<utils::ref<types::ty>> &types);
 
 	std::string to_string() const override;
@@ -66,7 +69,7 @@ struct braceinit_ty : public ty {
 	std::vector<utils::ref<types::ty>> types_;
 };
 
-struct struct_ty : public braceinit_ty {
+struct struct_ty : public composite_ty {
 	struct_ty(const symbol &name, const std::vector<symbol> &names,
 		  const std::vector<utils::ref<types::ty>> &types,
 		  unsigned ptr = 0);
@@ -85,6 +88,7 @@ struct struct_ty : public braceinit_ty {
 	size_t member_offset(const symbol &name);
 	utils::ref<ty> member_ty(const symbol &name);
 
+	std::vector<utils::ref<types::ty>> types_;
 	symbol name_;
 	std::vector<symbol> names_;
 };

@@ -183,9 +183,9 @@ exp *translate_visitor::braceinit_copy(ir::tree::rexp lhs,
 		  << rhs->ty_->to_string() << ")\n";
 
 	auto bit = rhs->ty_.as<types::braceinit_ty>();
+	ASSERT(bit, "rhs has to be a brace init");
+
 	auto st = lhs->ty_.as<types::struct_ty>();
-	ASSERT(bit && !rhs->ty_.as<types::struct_ty>(),
-	       "rhs has to be a brace init");
 
 	auto s = new ir::tree::seq({});
 	auto base = lhs;
@@ -289,9 +289,9 @@ void translate_visitor::visit_call(call &e)
 void translate_visitor::visit_bin(bin &e)
 {
 	e.lhs_->accept(*this);
-	auto left = ret_;
+	auto left = ret_->un_ex();
 	e.rhs_->accept(*this);
-	auto right = ret_;
+	auto right = ret_->un_ex();
 
 	if (e.op_ == ops::binop::AND) {
 		// e1 && e2 is a special case, which gets translated to
@@ -311,10 +311,10 @@ void translate_visitor::visit_bin(bin &e)
 		utils::temp result;
 		utils::label f_label, t_label, t2_label, done_label;
 
-		utils::ref<cx> cond1 = new cx(ops::cmpop::EQ, left->un_ex(),
-					      new tree::cnst(0));
-		utils::ref<cx> cond2 = new cx(ops::cmpop::NEQ, right->un_ex(),
-					      new tree::cnst(0));
+		utils::ref<cx> cond1 =
+			new cx(ops::cmpop::EQ, left, new tree::cnst(0));
+		utils::ref<cx> cond2 =
+			new cx(ops::cmpop::NEQ, right, new tree::cnst(0));
 
 		auto seq = new tree::seq({
 			cond1->un_cx(f_label, t_label),
@@ -353,14 +353,14 @@ void translate_visitor::visit_bin(bin &e)
 		utils::temp result;
 		utils::label f_label, done_label;
 
-		utils::ref<cx> cond1 = new cx(ops::cmpop::EQ, left->un_ex(),
-					      new tree::cnst(1));
+		utils::ref<cx> cond1 =
+			new cx(ops::cmpop::EQ, left, new tree::cnst(1));
 		utils::ref<cx> cond2 =
 			new cx(ops::cmpop::EQ,
 			       new tree::temp(result, types::integer_type()),
 			       new tree::cnst(1));
-		utils::ref<cx> cond3 = new cx(ops::cmpop::EQ, right->un_ex(),
-					      new tree::cnst(1));
+		utils::ref<cx> cond3 =
+			new cx(ops::cmpop::EQ, right, new tree::cnst(1));
 
 		auto seq = new tree::seq({
 			new tree::move(
@@ -379,8 +379,7 @@ void translate_visitor::visit_bin(bin &e)
 		return;
 	}
 
-	ret_ = new ex(
-		new ir::tree::binop(e.op_, left->un_ex(), right->un_ex()));
+	ret_ = new ex(new ir::tree::binop(e.op_, left, right));
 }
 
 void translate_visitor::visit_cmp(cmp &e)
@@ -619,7 +618,7 @@ exp *translate_visitor::struct_access(ir::tree::rexp lhs, const symbol &member)
 		new tree::binop(ops::binop::PLUS, lhs, new tree::cnst(offt));
 	dst->ty_ = mem_ty->clone();
 
-	if (dst->ty_->ptr_ || !dst->ty_.as<types::braceinit_ty>()) {
+	if (dst->ty_->ptr_ || !dst->ty_.as<types::composite_ty>()) {
 		// the member is a scalar, so return the value and not the
 		// address
 		dst->ty_->ptr_++;
