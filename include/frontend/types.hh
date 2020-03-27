@@ -47,6 +47,8 @@ utils::ref<builtin_ty> void_type();
 // XXX: This should be arch dependant
 utils::ref<builtin_ty> integer_type();
 
+bool is_scalar(const ty *ty);
+
 struct composite_ty : public ty {
 };
 

@@ -100,17 +100,10 @@ tree::rstm nx::un_cx(const utils::label &, const utils::label &)
  * References to structs need to return the address of the struct, but
  * references to pointers to structs stored in the stack need to return
  * the value of the pointer.
- * Cases:
- * - Of type struct_ty:
- *     - is a pointer to struct => exp
- *     - otherwise => addr
- * - otherwise => exp
  */
 static tree::rexp access_to_exp(mach::access &access)
 {
-	if (!access.ty_.as<types::struct_ty>())
-		return access.exp();
-	if (access.ty_->ptr_)
+	if (types::is_scalar(&access.ty_))
 		return access.exp();
 
 	auto exp = access.addr();
@@ -156,8 +149,7 @@ exp *translate_visitor::struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 		dst_exp->ty_ = st->types_[i]->clone();
 		src_exp->ty_ = st->types_[i]->clone();
 
-		if (dst_exp->ty_->ptr_
-		    || !dst_exp->ty_.as<types::struct_ty>()) {
+		if (types::is_scalar(&dst_exp->ty_)) {
 			// scalar, so going to be a simple copy on the next
 			// recursion
 			dst_exp->ty_->ptr_++;
@@ -204,8 +196,7 @@ exp *translate_visitor::braceinit_copy(ir::tree::rexp lhs,
 
 		dst_exp->ty_ = st->types_[i]->clone();
 
-		if (dst_exp->ty_->ptr_
-		    || !dst_exp->ty_.as<types::struct_ty>()) {
+		if (types::is_scalar(&dst_exp->ty_)) {
 			// scalar, so going to be a simple copy on the next
 			// recursion
 			dst_exp->ty_->ptr_++;
@@ -241,8 +232,7 @@ exp *translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 
 	// scalars
 	// XXX: functions can't return structs by value (it is ABI dependant)
-	if (rhs->ty_->ptr_ > 0 || rhs->ty_.as<types::builtin_ty>()
-	    || rhs->ty_.as<types::fun_ty>()) {
+	if (types::is_scalar(&rhs->ty_)) {
 		std::cout << "copy scalar\n";
 		ir::ir_pretty_printer pir(std::cout);
 		lhs->accept(pir);
@@ -618,7 +608,7 @@ exp *translate_visitor::struct_access(ir::tree::rexp lhs, const symbol &member)
 		new tree::binop(ops::binop::PLUS, lhs, new tree::cnst(offt));
 	dst->ty_ = mem_ty->clone();
 
-	if (dst->ty_->ptr_ || !dst->ty_.as<types::composite_ty>()) {
+	if (types::is_scalar(&dst->ty_)) {
 		// the member is a scalar, so return the value and not the
 		// address
 		dst->ty_->ptr_++;

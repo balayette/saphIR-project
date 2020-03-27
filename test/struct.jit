@@ -16,8 +16,11 @@ fun main() int {
         let int c = 3;
         let int d = 4;
 
-        let pairp p1 = {&a, &b};
-        let pairp p2 = {&c, &d};
+        let pair p = {a, test(b)};
+        let pair pp = {c, test(d)};
+
+        let pairp p1 = {&p.a, &p.b};
+        let pairp p2 = {&pp.a, &pp.b};
 
         let nestedp np = {&p1, &p2};
         let nestedp* npp = &np;

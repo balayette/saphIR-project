@@ -19,6 +19,14 @@ utils::ref<builtin_ty> void_type()
 	return t;
 }
 
+bool is_scalar(const ty *ty)
+{
+	if (ty->ptr_)
+		return true;
+
+	return dynamic_cast<const composite_ty *>(ty) == nullptr;
+}
+
 ty::ty(size_t size, unsigned ptr) : size_(size), ptr_(ptr) {}
 
 builtin_ty::builtin_ty() : ty(0, 0), ty_(type::INVALID) {}
