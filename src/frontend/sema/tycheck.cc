@@ -108,7 +108,7 @@ void tycheck_visitor::visit_addrof(addrof &e)
 {
 	default_visitor::visit_addrof(e);
 
-	if (e.ty_->compatible(types::type::VOID)) {
+	if (e.ty_->compatible(&types::void_type())) {
 		std::cerr << "TypeError: Pointers to void are not supported.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}

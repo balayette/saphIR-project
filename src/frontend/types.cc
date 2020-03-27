@@ -38,7 +38,6 @@ std::string builtin_ty::to_string() const
 	return ret;
 }
 
-bool builtin_ty::compatible(const type &t) const { return !ptr_ && ty_ == t; }
 bool builtin_ty::compatible(const ty *t) const
 {
 	if (dynamic_cast<const fun_ty *>(t))
@@ -69,8 +68,6 @@ std::string braceinit_ty::to_string() const
 }
 
 // no brace init of scalars
-bool braceinit_ty::compatible(const type &) const { return false; }
-
 bool braceinit_ty::compatible(const ty *t) const
 {
 	if (auto *st = dynamic_cast<const struct_ty *>(t)) {
@@ -113,8 +110,6 @@ std::string struct_ty::to_string() const
 
 	return ret;
 }
-
-bool struct_ty::compatible(const type &) const { return false; }
 
 bool struct_ty::compatible(const ty *t) const
 {
@@ -190,8 +185,6 @@ std::string fun_ty::to_string() const
 // XXX: There are no function pointer variables, so compatible only checks
 // if t is compatible with the return type of the function.
 // This needs to change if we want to support function pointers.
-bool fun_ty::compatible(const type &t) const { return ret_ty_->compatible(t); }
-
 bool fun_ty::compatible(const ty *t) const { return ret_ty_->compatible(t); }
 
 named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)
@@ -200,8 +193,5 @@ named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)
 
 std::string named_ty::to_string() const { return name_; }
 
-bool named_ty::compatible(const type &) const { return false; }
-
 bool named_ty::compatible(const ty *) const { return false; }
-
 } // namespace types
