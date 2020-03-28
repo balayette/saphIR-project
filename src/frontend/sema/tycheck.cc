@@ -13,30 +13,126 @@ namespace frontend::sema
 		}                                                              \
 	} while (0)
 
+tycheck_visitor::tycheck_visitor()
+{
+	tmap_.add("int", new types::builtin_ty(types::type::INT));
+	tmap_.add("string", new types::builtin_ty(types::type::STRING));
+	tmap_.add("void", new types::builtin_ty(types::type::VOID));
+}
+
+// get_type must be used everytime there can be a refernce to a type.
+// This includes function return values, function arguments declarations,
+// local and global variables declarations, struct members declarations...
+utils::ref<types::ty> tycheck_visitor::get_type(utils::ref<types::ty> t)
+{
+	utils::ref<types::named_ty> nt;
+	auto pt = t.as<types::pointer_ty>();
+	if (pt)
+		nt = pt->ty_.as<types::named_ty>();
+	else
+		nt = t.as<types::named_ty>();
+
+	if (!nt)
+		return t;
+
+	auto type = tmap_.get(nt->name_);
+	if (type == std::nullopt) {
+		std::cerr << "Type '" << nt->name_ << "' doesn't exist.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	utils::ref<types::ty> ret = (*type)->clone();
+	if (pt) {
+		pt = pt->clone();
+		pt->ty_ = ret;
+		ret = pt;
+	}
+
+	return ret;
+}
+
+void tycheck_visitor::visit_paren(paren &e)
+{
+	default_visitor::visit_paren(e);
+
+	e.ty_ = e.e_->ty_;
+}
+
 void tycheck_visitor::visit_globaldec(globaldec &s)
 {
 	default_visitor::visit_globaldec(s);
 
+	s.type_ = get_type(s.type_);
+
 	CHECK_TYPE_ERROR(&s.type_, &s.rhs_->ty_,
 			 "declaration of variable '" << s.name_ << "'");
+}
+
+void tycheck_visitor::visit_structdec(structdec &s)
+{
+	default_visitor::visit_structdec(s);
+
+	std::vector<utils::ref<types::ty>> types;
+	std::vector<symbol> names;
+	for (auto mem : s.members_) {
+		types.push_back(mem->type_);
+		names.push_back(mem->name_);
+	}
+
+	s.type_ = new types::struct_ty(s.name_, names, types);
+	tmap_.add(s.name_, s.type_);
+}
+
+void tycheck_visitor::visit_memberdec(memberdec &s)
+{
+	s.type_ = get_type(s.type_);
 }
 
 void tycheck_visitor::visit_locdec(locdec &s)
 {
 	default_visitor::visit_locdec(s);
 
+	s.type_ = get_type(s.type_);
+
 	if (s.rhs_)
 		CHECK_TYPE_ERROR(&s.type_, &s.rhs_->ty_,
 				 "declaration of variable '" << s.name_ << "'");
 }
 
+void tycheck_visitor::visit_funprotodec(funprotodec &s)
+{
+	std::vector<utils::ref<types::ty>> arg_tys;
+	for (auto arg : s.args_) {
+		arg->type_ = get_type(arg->type_);
+		arg_tys.push_back(arg->type_);
+	}
+	auto ret_ty = get_type(s.type_);
+	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
+}
+
 void tycheck_visitor::visit_fundec(fundec &s)
 {
+	std::vector<utils::ref<types::ty>> arg_tys;
+	for (auto arg : s.args_) {
+		arg->type_ = get_type(arg->type_);
+		arg_tys.push_back(arg->type_);
+	}
+
+	auto ret_ty = get_type(s.type_);
+	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
+
 	default_visitor::visit_fundec(s);
+
 	if (!s.has_return_)
 		CHECK_TYPE_ERROR(&types::void_type(), &s.type_,
 				 "function '" << s.name_
 					      << "' without return statement");
+}
+
+void tycheck_visitor::visit_ref(ref &e)
+{
+	default_visitor::visit_ref(e);
+	e.ty_ = e.dec_->type_;
 }
 
 void tycheck_visitor::visit_ret(ret &s)
@@ -80,8 +176,23 @@ void tycheck_visitor::visit_ass(ass &s)
 void tycheck_visitor::visit_bin(bin &e)
 {
 	default_visitor::visit_bin(e);
+
+	// XXX: binop_compat
+	e.ty_ = e.lhs_->ty_;
+
 	CHECK_TYPE_ERROR(&e.lhs_->ty_, &e.rhs_->ty_,
 			 ops::binop_to_string(e.op_));
+}
+
+void tycheck_visitor::visit_braceinit(braceinit &e)
+{
+	default_visitor::visit_braceinit(e);
+
+	std::vector<utils::ref<types::ty>> types;
+	for (auto e : e.exps_)
+		types.push_back(e->ty_);
+
+	e.ty_ = new types::braceinit_ty(types);
 }
 
 void tycheck_visitor::visit_cmp(cmp &e)
@@ -101,11 +212,15 @@ void tycheck_visitor::visit_deref(deref &e)
 			  << e.e_->ty_->to_string() << ": not pointer type.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
+
+	e.ty_ = types::deref_pointer_type(e.e_->ty_);
 }
 
 void tycheck_visitor::visit_addrof(addrof &e)
 {
 	default_visitor::visit_addrof(e);
+
+	e.ty_ = new types::pointer_ty(e.e_->ty_);
 
 	if (e.ty_->assign_compat(&types::void_type())) {
 		std::cerr << "TypeError: Pointers to void are not supported.\n";
@@ -116,6 +231,8 @@ void tycheck_visitor::visit_addrof(addrof &e)
 void tycheck_visitor::visit_call(call &e)
 {
 	default_visitor::visit_call(e);
+
+	e.ty_ = e.fdec_->type_;
 
 	for (size_t i = 0; i < e.fdec_->args_.size(); i++) {
 		CHECK_TYPE_ERROR(&e.args_[i]->ty_, &e.fdec_->args_[i]->type_,
@@ -134,6 +251,22 @@ void tycheck_visitor::visit_memberaccess(memberaccess &e)
 			  << e.e_->ty_->to_string() << "'\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
+
+	auto st = e.e_->ty_.as<types::struct_ty>();
+	if (!st) {
+		std::cerr << "Accessing member '" << e.member_
+			  << "' on non struct.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	auto idx = st->member_index(e.member_);
+	if (idx == std::nullopt) {
+		std::cerr << "Member '" << e.member_ << "' of type '"
+			  << st->to_string() << "' doesn't exist.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	e.ty_ = st->types_[*idx];
 }
 
 void tycheck_visitor::visit_arrowaccess(arrowaccess &e)
@@ -153,6 +286,21 @@ void tycheck_visitor::visit_arrowaccess(arrowaccess &e)
 			  << e.e_->ty_->to_string() << "'\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
+
+	auto st = pt->ty_.as<types::struct_ty>();
+	if (!st) {
+		std::cerr << "Arrow accessing member '" << e.member_
+			  << "' on non struct.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	auto idx = st->member_index(e.member_);
+	if (idx == std::nullopt) {
+		std::cerr << "Member '" << e.member_ << "' doesn't exist.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	e.ty_ = st->types_[*idx];
 }
 
 } // namespace frontend::sema

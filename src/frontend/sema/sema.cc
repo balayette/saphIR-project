@@ -3,47 +3,12 @@
 
 namespace frontend::sema
 {
-void binding_visitor::visit_decs(decs &s)
-{
-	for (auto d : s.decs_) {
-		d->accept(*this);
-	}
-}
-
 void binding_visitor::visit_funprotodec(funprotodec &s)
 {
 	if (!fmap_.add(s.name_, &s)) {
 		std::cerr << "fun '" << s.name_ << "' already declared\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
-
-	std::vector<utils::ref<types::ty>> arg_tys;
-	for (auto arg : s.args_) {
-		arg->type_ = get_type(arg->type_);
-		arg_tys.push_back(arg->type_);
-	}
-	auto ret_ty = get_type(s.type_);
-	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
-}
-
-void binding_visitor::visit_memberdec(memberdec &s)
-{
-	s.type_ = get_type(s.type_);
-}
-
-void binding_visitor::visit_structdec(structdec &s)
-{
-	default_visitor::visit_structdec(s);
-
-	std::vector<utils::ref<types::ty>> types;
-	std::vector<symbol> names;
-	for (auto mem : s.members_) {
-		types.push_back(mem->type_);
-		names.push_back(mem->name_);
-	}
-
-	s.type_ = new types::struct_ty(s.name_, names, types);
-	tmap_.add(s.name_, s.type_);
 }
 
 void binding_visitor::visit_globaldec(globaldec &s)
@@ -53,15 +18,6 @@ void binding_visitor::visit_globaldec(globaldec &s)
 		std::cerr << "var '" << s.name_ << "' already declared.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
-
-	s.type_ = get_type(s.type_);
-}
-
-void binding_visitor::visit_paren(paren &e)
-{
-	default_visitor::visit_paren(e);
-
-	e.ty_ = e.e_->ty_;
 }
 
 void binding_visitor::visit_locdec(locdec &s)
@@ -71,8 +27,6 @@ void binding_visitor::visit_locdec(locdec &s)
 		std::cerr << "var '" << s.name_ << "' already declared.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
-
-	s.type_ = get_type(s.type_);
 }
 
 void binding_visitor::visit_fundec(fundec &s)
@@ -81,14 +35,6 @@ void binding_visitor::visit_fundec(fundec &s)
 		std::cerr << "fun '" << s.name_ << "' already declared\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
-
-	std::vector<utils::ref<types::ty>> arg_tys;
-	for (auto arg : s.args_) {
-		arg->type_ = get_type(arg->type_);
-		arg_tys.push_back(arg->type_);
-	}
-	auto ret_ty = get_type(s.type_);
-	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
 
 	new_scope();
 	cfunc_.enter(&s);
@@ -125,6 +71,7 @@ void binding_visitor::visit_forstmt(forstmt &s)
 
 void binding_visitor::visit_ref(ref &e)
 {
+	default_visitor::visit_ref(e);
 	auto v = vmap_.get(e.name_);
 
 	if (v == std::nullopt) {
@@ -133,10 +80,7 @@ void binding_visitor::visit_ref(ref &e)
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 	std::cout << "ref: " << e.name_ << " bound to variable " << *v << '\n';
-	e.ty_ = (*v)->type_;
 	e.dec_ = *v;
-
-	default_visitor::visit_ref(e);
 }
 
 void binding_visitor::visit_call(call &e)
@@ -169,18 +113,9 @@ void binding_visitor::visit_call(call &e)
 		}
 	}
 
-	e.ty_ = (*f)->type_;
 	e.fdec_ = *f;
 
 	default_visitor::visit_call(e);
-}
-
-void binding_visitor::visit_bin(bin &e)
-{
-	default_visitor::visit_bin(e);
-
-	/* TODO: This only works in the basic case, move it to tycheck? */
-	e.ty_ = e.lhs_->ty_;
 }
 
 void binding_visitor::visit_ret(ret &s)
@@ -191,129 +126,16 @@ void binding_visitor::visit_ret(ret &s)
 	s.fdec_ = cfunc_.get();
 }
 
-void binding_visitor::visit_braceinit(braceinit &e)
-{
-	default_visitor::visit_braceinit(e);
-
-	std::vector<utils::ref<types::ty>> types;
-	for (auto e : e.exps_)
-		types.push_back(e->ty_);
-
-	e.ty_ = new types::braceinit_ty(types);
-}
-
-void binding_visitor::visit_addrof(addrof &e)
-{
-	default_visitor::visit_addrof(e);
-
-	e.ty_ = new types::pointer_ty(e.e_->ty_);
-}
-
-void binding_visitor::visit_deref(deref &e)
-{
-	default_visitor::visit_deref(e);
-
-	e.ty_ = types::deref_pointer_type(e.e_->ty_);
-}
-
-void binding_visitor::visit_memberaccess(memberaccess &e)
-{
-	default_visitor::visit_memberaccess(e);
-
-	auto st = e.e_->ty_.as<types::struct_ty>();
-	if (!st) {
-		std::cerr << "Accessing member '" << e.member_
-			  << "' on non struct.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	auto idx = st->member_index(e.member_);
-	if (idx == std::nullopt) {
-		std::cerr << "Member '" << e.member_ << "' doesn't exist.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	e.ty_ = st->types_[*idx];
-}
-
-void binding_visitor::visit_arrowaccess(arrowaccess &e)
-{
-	default_visitor::visit_arrowaccess(e);
-
-	auto pt = e.e_->ty_.as<types::pointer_ty>();
-	if (!pt) {
-		std::cerr << "Arrow accessing member '" << e.member_
-			  << "' on non pointer.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	auto st = pt->ty_.as<types::struct_ty>();
-	if (!st) {
-		std::cerr << "Arrow accessing member '" << e.member_
-			  << "' on non struct.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	auto idx = st->member_index(e.member_);
-	if (idx == std::nullopt) {
-		std::cerr << "Member '" << e.member_ << "' doesn't exist.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	e.ty_ = st->types_[*idx];
-}
-
-// get_type must be used everytime there can be a refernce to a type.
-// This includes function return values, function arguments declarations,
-// local and global variables declarations, struct members declarations...
-utils::ref<types::ty> binding_visitor::get_type(utils::ref<types::ty> t)
-{
-	utils::ref<types::named_ty> nt;
-	auto pt = t.as<types::pointer_ty>();
-	if (pt)
-		nt = pt->ty_.as<types::named_ty>();
-	else
-		nt = t.as<types::named_ty>();
-
-	if (!nt)
-		return t;
-
-	auto type = tmap_.get(nt->name_);
-	if (type == std::nullopt) {
-		std::cerr << "Type '" << nt->name_ << "' doesn't exist.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	utils::ref<types::ty> ret = (*type)->clone();
-	if (pt) {
-		pt = pt->clone();
-		pt->ty_ = ret;
-		ret = pt;
-	}
-
-	return ret;
-}
-
 void binding_visitor::new_scope()
 {
 	fmap_.new_scope();
 	vmap_.new_scope();
-	tmap_.new_scope();
 }
 
 void binding_visitor::end_scope()
 {
 	fmap_.end_scope();
 	vmap_.end_scope();
-	tmap_.end_scope();
-}
-
-binding_visitor::binding_visitor()
-{
-	;
-	tmap_.add("int", new types::builtin_ty(types::type::INT));
-	tmap_.add("string", new types::builtin_ty(types::type::STRING));
-	tmap_.add("void", new types::builtin_ty(types::type::VOID));
 }
 
 void escapes_visitor::visit_addrof(addrof &e)
