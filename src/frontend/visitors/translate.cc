@@ -680,4 +680,19 @@ void translate_visitor::visit_braceinit(braceinit &e)
 
 	ret_ = new ex(bi);
 }
+
+void translate_visitor::visit_subscript(subscript &e)
+{
+	e.base_->accept(*this);
+	auto base = ret_->un_ex();
+	e.index_->accept(*this);
+	auto index = ret_->un_ex();
+
+	auto pt = e.base_->ty_.as<types::pointer_ty>();
+
+	ret_ = new ex(new tree::mem(new tree::binop(
+		ops::binop::PLUS, base,
+		new tree::binop(ops::binop::MULT, index,
+				new tree::cnst(pt->pointed_size())))));
+}
 } // namespace frontend::translate

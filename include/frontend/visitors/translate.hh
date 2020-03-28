@@ -85,6 +85,7 @@ class translate_visitor : public default_visitor
 	void visit_memberaccess(memberaccess &e) override;
 	void visit_arrowaccess(arrowaccess &e) override;
 	void visit_braceinit(braceinit &e) override;
+	void visit_subscript(subscript &e) override;
 
 	exp *struct_access(ir::tree::rexp lhs, const symbol &member);
 	exp *braceinit_copy(ir::tree::rexp lhs,
