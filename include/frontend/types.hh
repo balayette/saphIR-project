@@ -53,9 +53,10 @@ struct builtin_ty : public ty {
 
 	size_t size() const override;
 
+	type ty_;
+
       private:
 	size_t size_;
-	type ty_;
 };
 
 struct pointer_ty : public ty {
@@ -77,6 +78,7 @@ struct pointer_ty : public ty {
 	}
 
 	size_t size() const override;
+	size_t pointed_size() const;
 
 	utils::ref<ty> ty_;
 	unsigned ptr_;
@@ -88,6 +90,7 @@ utils::ref<builtin_ty> integer_type();
 
 bool is_scalar(const ty *ty);
 utils::ref<ty> deref_pointer_type(utils::ref<ty> ty);
+bool is_integer(const ty *ty);
 
 struct composite_ty : public ty {
 };

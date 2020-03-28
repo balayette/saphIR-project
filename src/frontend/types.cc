@@ -28,6 +28,13 @@ bool is_scalar(const ty *ty)
 	return dynamic_cast<const composite_ty *>(ty) == nullptr;
 }
 
+bool is_integer(const ty *ty)
+{
+	if (auto bt = dynamic_cast<const builtin_ty *>(ty))
+		return bt->ty_ == type::INT;
+	return false;
+}
+
 utils::ref<ty> deref_pointer_type(utils::ref<ty> ty)
 {
 	auto pt = ty.as<pointer_ty>();
@@ -68,13 +75,33 @@ bool builtin_ty::assign_compat(const ty *t) const
 	return false;
 }
 
-utils::ref<ty> builtin_ty::binop_compat(ops::binop, const ty *t) const
+/*
+ * + and - can be applied to int and pointer type
+ * In other cases, the rules are the same as for assignment
+ */
+utils::ref<ty> builtin_ty::binop_compat(ops::binop op, const ty *t) const
 {
-	if (!assign_compat(t))
+	// no operations on strings
+	if (ty_ == type::STRING)
 		return nullptr;
 
-	// TODO: Implicit widening conversions
-	return this->clone();
+	if (op != ops::binop::MINUS && op != ops::binop::PLUS) {
+		if (!assign_compat(t))
+			return nullptr;
+
+		// TODO: Implicit conversions
+		return this->clone();
+	}
+
+	// if assign_compat, then not special cases for + and -
+	if (assign_compat(t))
+		return this->clone();
+
+	auto pt = dynamic_cast<const pointer_ty *>(t);
+	if (pt && ty_ == type::INT)
+		return pt->clone();
+
+	return nullptr;
 }
 
 pointer_ty::pointer_ty(utils::ref<ty> ty, unsigned ptr) : ty_(ty), ptr_(ptr) {}
@@ -108,9 +135,27 @@ bool pointer_ty::assign_compat(const ty *t) const
 	return false;
 }
 
-utils::ref<ty> pointer_ty::binop_compat(ops::binop, const ty *) const
+utils::ref<ty> pointer_ty::binop_compat(ops::binop op, const ty *t) const
 {
-	return nullptr;
+	if (op != ops::binop::PLUS && op != ops::binop::MINUS)
+		return nullptr;
+
+	auto bt = dynamic_cast<const builtin_ty *>(t);
+	if (!bt)
+		return nullptr;
+
+	if (bt->ty_ != type::INT)
+		return nullptr;
+
+	return this->clone();
+}
+
+size_t pointer_ty::pointed_size() const
+{
+	if (ptr_ > 1)
+		return 8;
+
+	return ty_->size();
 }
 
 braceinit_ty::braceinit_ty(const std::vector<utils::ref<types::ty>> &types)

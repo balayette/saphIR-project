@@ -178,10 +178,16 @@ void tycheck_visitor::visit_bin(bin &e)
 	default_visitor::visit_bin(e);
 
 	// XXX: binop_compat
-	e.ty_ = e.lhs_->ty_;
+	auto ty = e.lhs_->ty_->binop_compat(e.op_, &e.rhs_->ty_);
+	if (!ty) {
+		std::cerr << "TypeError: Incompatible types '"
+			  << e.lhs_->ty_->to_string() << "' and '"
+			  << e.rhs_->ty_->to_string() << "' in "
+			  << ops::binop_to_string(e.op_) << '\n';
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
 
-	CHECK_TYPE_ERROR(&e.lhs_->ty_, &e.rhs_->ty_,
-			 ops::binop_to_string(e.op_));
+	e.ty_ = ty;
 }
 
 void tycheck_visitor::visit_braceinit(braceinit &e)
