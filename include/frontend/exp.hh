@@ -157,4 +157,15 @@ struct arrowaccess : public exp {
 	utils::ref<exp> e_;
 	symbol member_;
 };
+
+struct subscript : public exp {
+	subscript(utils::ref<exp> base, utils::ref<exp> index)
+	    : base_(base), index_(index)
+	{
+	}
+	ACCEPT(subscript)
+
+	utils::ref<exp> base_;
+	utils::ref<exp> index_;
+};
 } // namespace frontend

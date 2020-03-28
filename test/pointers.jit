@@ -13,7 +13,7 @@ fun main() void {
         let pair p = {1, 2};
 
         for (let int i = 0; i < 2; i = i + 1)
-                printf("%d ", *(&p.a + i));
+                printf("%d ", (&p.a)[i]);
         rof
         printf("\n");
 }

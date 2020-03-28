@@ -309,4 +309,19 @@ void tycheck_visitor::visit_arrowaccess(arrowaccess &e)
 	e.ty_ = st->types_[*idx];
 }
 
+void tycheck_visitor::visit_subscript(subscript &e)
+{
+	default_visitor::visit_subscript(e);
+
+	CHECK_TYPE_ERROR(&e.index_->ty_, &types::integer_type(),
+			 "array subscript");
+	if (!e.base_->ty_.as<types::pointer_ty>()) {
+		std::cerr
+			<< "TypeError: Subscript operator on non pointer of type '"
+			<< e.base_->ty_->to_string() << "'\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+	e.ty_ = types::deref_pointer_type(e.base_->ty_);
+}
+
 } // namespace frontend::sema

@@ -31,6 +31,7 @@ struct call;
 struct str_lit;
 struct memberaccess;
 struct arrowaccess;
+struct subscript;
 
 
 #define ACCEPT(X)                                                              \
@@ -69,5 +70,6 @@ class visitor
 	virtual void visit_str_lit(str_lit &e) = 0;
 	virtual void visit_memberaccess(memberaccess &e) = 0;
 	virtual void visit_arrowaccess(arrowaccess &e) = 0;
+	virtual void visit_subscript(subscript &e) = 0;
 };
 } // namespace frontend

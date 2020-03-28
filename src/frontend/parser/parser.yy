@@ -53,6 +53,8 @@
 	RPAREN ")"
 	LBRACE "{"
 	RBRACE "}"
+        LBRACK "["
+        RBRACK "]"
 	SEMI ";"
 	COLON ","
         DOT "."
@@ -110,6 +112,7 @@
 %type <utils::ref<ref>> ref
 %type <utils::ref<call>> call
 %type <utils::ref<exp>> memberaccess
+%type <utils::ref<subscript>> subscript
 
 %type <utils::ref<types::ty>> type
 
@@ -129,7 +132,7 @@
 %left MULT DIV MOD
 
 %left AMPERSAND
-%left DOT ARROW
+%left DOT ARROW LBRACK RBRACK
 
 %%
 
@@ -268,7 +271,10 @@ exp:
 
 | 	exp OR exp 		{ $$ = new bin(binop::OR, $1, $3); }
 | 	exp AND exp 		{ $$ = new bin(binop::AND, $1, $3); }
+|       subscript { $$ = $1; }
 ;
+
+subscript: exp "[" exp "]" { $$ = new subscript($1, $3); }
 
 exps_comma:
 	%empty 			{ $$ = std::vector<utils::ref<exp>>(); }

@@ -259,4 +259,18 @@ void pretty_printer::visit_memberaccess(memberaccess &e)
 	e.e_->accept(*this);
 	os_ << "." << e.member_;
 }
+
+void pretty_printer::visit_arrowaccess(arrowaccess &e)
+{
+	e.e_->accept(*this);
+	os_ << "->" << e.member_;
+}
+
+void pretty_printer::visit_subscript(subscript &e)
+{
+	e.base_->accept(*this);
+        os_ << '[';
+        e.index_->accept(*this);
+        os_ << ']';
+}
 } // namespace frontend

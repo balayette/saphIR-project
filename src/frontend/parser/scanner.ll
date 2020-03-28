@@ -58,6 +58,8 @@ strlit \"[^"]*\"
 ","	    	return TOKEN(COLON);
 "."             return TOKEN(DOT);
 "->"            return TOKEN(ARROW);
+"["             return TOKEN(LBRACK);
+"]"             return TOKEN(RBRACK);
 "fun" 		return TOKEN(FUN);
 "for"	    	return TOKEN(FOR);
 "rof"	    	return TOKEN(ROF);

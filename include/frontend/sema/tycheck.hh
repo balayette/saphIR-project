@@ -33,6 +33,7 @@ class tycheck_visitor : public default_visitor
 	virtual void visit_arrowaccess(arrowaccess &e) override;
 	virtual void visit_ref(ref &e) override;
 	virtual void visit_braceinit(braceinit &e) override;
+	virtual void visit_subscript(subscript &e) override;
 
 	utils::ref<types::ty> get_type(utils::ref<types::ty> t);
 	utils::scoped_map<symbol, utils::ref<types::ty>> tmap_;
