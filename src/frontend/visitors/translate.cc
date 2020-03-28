@@ -369,6 +369,36 @@ void translate_visitor::visit_bin(bin &e)
 		return;
 	}
 
+	/*
+	 * + and - are special cases when adding an integer and a pointer,
+	 * because the integer must be multiplied by the size of the type
+	 * pointed to by the pointer
+	 */
+	if (e.op_ == ops::binop::PLUS || e.op_ == ops::binop::MINUS) {
+		bool should_replace = false;
+		if (left->ty_.as<types::pointer_ty>())
+			should_replace = types::is_integer(&right->ty_);
+		else if (types::is_integer(&left->ty_))
+			should_replace =
+				right->ty_.as<types::pointer_ty>() != nullptr;
+
+		if (should_replace) {
+			if (types::is_integer(&left->ty_)) {
+				auto sz = right->ty_.as<types::pointer_ty>()
+						  ->pointed_size();
+				left = new tree::binop(ops::binop::MULT,
+						       new tree::cnst(sz),
+						       left);
+			} else {
+				auto sz = left->ty_.as<types::pointer_ty>()
+						  ->pointed_size();
+				right = new tree::binop(ops::binop::MULT,
+							new tree::cnst(sz),
+							right);
+			}
+		}
+	}
+
 	ret_ = new ex(new ir::tree::binop(e.op_, left, right));
 }
 

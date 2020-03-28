@@ -1,7 +1,19 @@
 #include "libc.jit"
 
+struct pair {
+        int a,
+        int b
+};
+
 fun main() void {
         let int a = 0;
-        printf("%p\n", &a);
-        printf("%p\n", &a + 1);
+        let int *ap = &a;
+        let int *ap3 = 2 + ap;
+
+        let pair p = {1, 2};
+
+        for (let int i = 0; i < 2; i = i + 1)
+                printf("%d ", *(&p.a + i));
+        rof
+        printf("\n");
 }
