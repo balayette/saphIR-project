@@ -295,7 +295,7 @@ memberaccess:
 
 type:
 	ID { $$ = new types::named_ty($1); }
-| 	type "*" { $$ = $1; $$->ptr_++; }
+| 	type "*" { $$ = new types::pointer_ty($1); }
 ;
 
 %%

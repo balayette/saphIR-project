@@ -34,7 +34,7 @@ void tycheck_visitor::visit_fundec(fundec &s)
 {
 	default_visitor::visit_fundec(s);
 	if (!s.has_return_)
-		CHECK_TYPE_ERROR(&s.type_, &types::void_type(),
+		CHECK_TYPE_ERROR(&types::void_type(), &s.type_,
 				 "function '" << s.name_
 					      << "' without return statement");
 }
@@ -43,16 +43,15 @@ void tycheck_visitor::visit_ret(ret &s)
 {
 	default_visitor::visit_ret(s);
 
-	if (s.e_ == nullptr) {
-		/* return; in void function */
-		CHECK_TYPE_ERROR(&s.fdec_->type_, &types::void_type(),
+	/* return; in void function */
+	if (s.e_ == nullptr)
+		CHECK_TYPE_ERROR(&types::void_type(), &s.fdec_->type_,
 				 "function '" << s.fdec_->name_
 					      << "' return statement");
-	}
-
-	CHECK_TYPE_ERROR(&s.fdec_->type_, &s.e_->ty_,
-			 "function '" << s.fdec_->name_
-				      << "' return statement");
+	else
+		CHECK_TYPE_ERROR(&s.e_->ty_, &s.fdec_->type_,
+				 "function '" << s.fdec_->name_
+					      << "' return statement");
 }
 
 void tycheck_visitor::visit_ifstmt(ifstmt &s)
@@ -97,7 +96,7 @@ void tycheck_visitor::visit_deref(deref &e)
 {
 	default_visitor::visit_deref(e);
 
-	if (!e.e_->ty_->ptr_) {
+	if (!e.e_->ty_.as<types::pointer_ty>()) {
 		std::cerr << "TypeError: Can't derefence "
 			  << e.e_->ty_->to_string() << ": not pointer type.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
@@ -130,7 +129,7 @@ void tycheck_visitor::visit_memberaccess(memberaccess &e)
 {
 	default_visitor::visit_memberaccess(e);
 
-	if (e.e_->ty_->ptr_) {
+	if (e.e_->ty_.as<types::pointer_ty>()) {
 		std::cerr << "TypeError: Operator '.' on pointer type '"
 			  << e.e_->ty_->to_string() << "'\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
@@ -141,10 +140,17 @@ void tycheck_visitor::visit_arrowaccess(arrowaccess &e)
 {
 	default_visitor::visit_arrowaccess(e);
 
-	if (!e.e_->ty_->ptr_) {
+	auto pt = e.e_->ty_.as<types::pointer_ty>();
+	if (!pt) {
 		std::cerr << "TypeError: Arrow accessing member '" << e.member_
 			  << "' on non pointer type '" << e.e_->ty_->to_string()
 			  << "'\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+	if (pt->ptr_ != 1) {
+		std::cerr << "TypeError: Arrow accessing member '" << e.member_
+			  << "' on non pointer to struct type '"
+			  << e.e_->ty_->to_string() << "'\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
 }

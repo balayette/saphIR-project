@@ -135,7 +135,7 @@ ir::tree::rexp in_frame::addr(size_t offt) const
 	 * (addresses of members of structs, for example)
 	 */
 	auto type = offt ? gpr_type() : ty_->clone();
-	type->ptr_++;
+	type = new types::pointer_ty(type);
 
 	return new ir::tree::binop(ops::binop::PLUS,
 				   new ir::tree::temp(fp(), type),
@@ -166,7 +166,7 @@ ir::tree::rexp global_acc::exp(size_t offt) const
 ir::tree::rexp global_acc::addr(size_t offt) const
 {
 	auto type = offt ? gpr_type() : ty_->clone();
-	type->ptr_++;
+	type = new types::pointer_ty(type);
 
 	return new ir::tree::binop(ops::binop::PLUS,
 				   new ir::tree::name(name_, type),
@@ -198,7 +198,9 @@ frame::frame(const symbol &s, const std::vector<bool> &args,
 utils::ref<access> frame::alloc_local(bool escapes, utils::ref<types::ty> type)
 {
 	if (escapes) {
-		locals_size_ += type->size_;
+		locals_size_ += type->size();
+		std::cout << "allocating " << type->to_string() << " at "
+			  << locals_size_ << "\n";
 		return new in_frame(-locals_size_, type);
 	}
 	reg_count_++;

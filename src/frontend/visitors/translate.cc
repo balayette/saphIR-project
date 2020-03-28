@@ -107,7 +107,7 @@ static tree::rexp access_to_exp(mach::access &access)
 		return access.exp();
 
 	auto exp = access.addr();
-	exp->ty_->ptr_--;
+	exp->ty_ = deref_pointer_type(exp->ty_);
 	return exp;
 }
 
@@ -152,14 +152,14 @@ exp *translate_visitor::struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 		if (types::is_scalar(&dst_exp->ty_)) {
 			// scalar, so going to be a simple copy on the next
 			// recursion
-			dst_exp->ty_->ptr_++;
+			dst_exp->ty_ = new types::pointer_ty(dst_exp->ty_);
 			dst_exp = new tree::mem(dst_exp);
-			src_exp->ty_->ptr_++;
+			src_exp->ty_ = new types::pointer_ty(src_exp->ty_);
 			src_exp = new tree::mem(src_exp);
 		}
 
 		s->children_.push_back(copy(dst_exp, src_exp)->un_nx());
-		offt += st->types_[i]->size_;
+		offt += st->types_[i]->size();
 	}
 
 	return new nx(s);
@@ -199,12 +199,12 @@ exp *translate_visitor::braceinit_copy(ir::tree::rexp lhs,
 		if (types::is_scalar(&dst_exp->ty_)) {
 			// scalar, so going to be a simple copy on the next
 			// recursion
-			dst_exp->ty_->ptr_++;
+			dst_exp->ty_ = new types::pointer_ty(dst_exp->ty_);
 			dst_exp = new tree::mem(dst_exp);
 		}
 
 		s->children_.push_back(copy(dst_exp, exps[i])->un_nx());
-		offt += bit->types_[i]->size_;
+		offt += st->types_[i]->size();
 	}
 
 	return new nx(s);
@@ -588,8 +588,7 @@ void translate_visitor::visit_addrof(addrof &e)
 	if (auto r = ret.as<ir::tree::mem>())
 		ret_ = new ex(r->e());
 	else {
-		ret->ty_ = ret->ty_->clone();
-		ret->ty_->ptr_++;
+		ret->ty_ = new types::pointer_ty(ret->ty_);
 		ret_ = new ex(ret);
 	}
 }
@@ -601,6 +600,12 @@ void translate_visitor::visit_addrof(addrof &e)
 exp *translate_visitor::struct_access(ir::tree::rexp lhs, const symbol &member)
 {
 	auto st = lhs->ty_.as<types::struct_ty>();
+	if (!st) {
+		// the struct type can be embedded in a pointer type, in the
+		// case of arrow accesses.
+		auto pt = lhs->ty_.as<types::pointer_ty>();
+		st = pt->ty_.as<types::struct_ty>();
+	}
 	auto mem_ty = st->member_ty(member);
 	size_t offt = st->member_offset(member);
 
@@ -611,7 +616,7 @@ exp *translate_visitor::struct_access(ir::tree::rexp lhs, const symbol &member)
 	if (types::is_scalar(&dst->ty_)) {
 		// the member is a scalar, so return the value and not the
 		// address
-		dst->ty_->ptr_++;
+		dst->ty_ = new types::pointer_ty(dst->ty_);
 		dst = new tree::mem(dst);
 	}
 

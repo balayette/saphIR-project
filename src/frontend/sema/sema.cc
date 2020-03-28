@@ -206,16 +206,14 @@ void binding_visitor::visit_addrof(addrof &e)
 {
 	default_visitor::visit_addrof(e);
 
-	e.ty_ = e.e_->ty_->clone();
-	e.ty_->ptr_++;
+	e.ty_ = new types::pointer_ty(e.e_->ty_);
 }
 
 void binding_visitor::visit_deref(deref &e)
 {
 	default_visitor::visit_deref(e);
 
-	e.ty_ = e.e_->ty_->clone();
-	e.ty_->ptr_--;
+	e.ty_ = types::deref_pointer_type(e.e_->ty_);
 }
 
 void binding_visitor::visit_memberaccess(memberaccess &e)
@@ -242,7 +240,14 @@ void binding_visitor::visit_arrowaccess(arrowaccess &e)
 {
 	default_visitor::visit_arrowaccess(e);
 
-	auto st = e.e_->ty_.as<types::struct_ty>();
+	auto pt = e.e_->ty_.as<types::pointer_ty>();
+	if (!pt) {
+		std::cerr << "Arrow accessing member '" << e.member_
+			  << "' on non pointer.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	auto st = pt->ty_.as<types::struct_ty>();
 	if (!st) {
 		std::cerr << "Arrow accessing member '" << e.member_
 			  << "' on non struct.\n";
@@ -263,7 +268,13 @@ void binding_visitor::visit_arrowaccess(arrowaccess &e)
 // local and global variables declarations, struct members declarations...
 utils::ref<types::ty> binding_visitor::get_type(utils::ref<types::ty> t)
 {
-	utils::ref<types::named_ty> nt = t.as<types::named_ty>();
+	utils::ref<types::named_ty> nt;
+	auto pt = t.as<types::pointer_ty>();
+	if (pt)
+		nt = pt->ty_.as<types::named_ty>();
+	else
+		nt = t.as<types::named_ty>();
+
 	if (!nt)
 		return t;
 
@@ -274,8 +285,12 @@ utils::ref<types::ty> binding_visitor::get_type(utils::ref<types::ty> t)
 	}
 
 	utils::ref<types::ty> ret = (*type)->clone();
+	if (pt) {
+		pt = pt->clone();
+		pt->ty_ = ret;
+		ret = pt;
+	}
 
-	ret->ptr_ = nt->ptr_;
 	return ret;
 }
 
@@ -296,9 +311,9 @@ void binding_visitor::end_scope()
 binding_visitor::binding_visitor()
 {
 	;
-	tmap_.add("int", new types::builtin_ty(types::type::INT, 8, 0));
-	tmap_.add("string", new types::builtin_ty(types::type::STRING, 8, 0));
-	tmap_.add("void", new types::builtin_ty(types::type::VOID, 0, 0));
+	tmap_.add("int", new types::builtin_ty(types::type::INT));
+	tmap_.add("string", new types::builtin_ty(types::type::STRING));
+	tmap_.add("void", new types::builtin_ty(types::type::VOID));
 }
 
 void escapes_visitor::visit_addrof(addrof &e)
@@ -319,8 +334,7 @@ void escapes_visitor::visit_locdec(locdec &e)
 
 	// All structs are stored on the stack
 	// XXX: Allow structs in registers (hard?)
-	if (auto si = e.type_.as<types::struct_ty>())
-		e.escapes_ = si->ptr_ == 0;
+	e.escapes_ = e.type_.as<types::struct_ty>() != nullptr;
 }
 
 void frame_visitor::visit_funprotodec(funprotodec &)

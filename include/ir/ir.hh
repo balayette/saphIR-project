@@ -137,11 +137,7 @@ struct binop : public exp {
 struct mem : public exp {
 	mem(rexp e)
 	{
-		auto ty = e->ty_->clone();
-		ASSERT(ty->ptr_ > 0, "expression is not a pointer");
-		ty->ptr_--;
-		ty_ = ty;
-
+		ty_ = types::deref_pointer_type(e->ty_);
 		children_.emplace_back(e);
 	}
 	TREE_KIND(mem)

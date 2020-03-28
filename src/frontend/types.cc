@@ -1,4 +1,5 @@
 #include "frontend/types.hh"
+#include "utils/assert.hh"
 
 namespace types
 {
@@ -7,59 +8,114 @@ const unsigned default_size[] = {8, 8, 0, 0};
 
 utils::ref<builtin_ty> integer_type()
 {
-	static auto t = std::make_shared<builtin_ty>(type::INT, 8, 0);
+	static auto t = std::make_shared<builtin_ty>(type::INT, 8);
 
 	return t;
 }
 
 utils::ref<builtin_ty> void_type()
 {
-	static auto t = std::make_shared<builtin_ty>(type::VOID, 0, 0);
+	static auto t = std::make_shared<builtin_ty>(type::VOID, 0);
 
 	return t;
 }
 
 bool is_scalar(const ty *ty)
 {
-	if (ty->ptr_)
+	if (dynamic_cast<const pointer_ty *>(ty))
 		return true;
 
 	return dynamic_cast<const composite_ty *>(ty) == nullptr;
 }
 
-ty::ty(size_t size, unsigned ptr) : size_(size), ptr_(ptr) {}
+utils::ref<ty> deref_pointer_type(utils::ref<ty> ty)
+{
+	auto pt = ty.as<pointer_ty>();
+	ASSERT(pt, "Trying to dereference non pointer");
 
-builtin_ty::builtin_ty() : ty(0, 0), ty_(type::INVALID) {}
-builtin_ty::builtin_ty(type t, size_t size, unsigned ptr)
-    : ty(size, ptr), ty_(t)
+	if (pt->ptr_ == 1)
+		return pt->ty_->clone();
+
+	auto ret = pt->clone();
+	ret->ptr_--;
+	return ret;
+}
+
+builtin_ty::builtin_ty() : ty_(type::INVALID) {}
+builtin_ty::builtin_ty(type t, size_t size) : ty_(t)
 {
 	if (size == 0)
 		size_ = default_size[static_cast<unsigned>(t)];
+	else
+		size_ = size;
 }
 
 std::string builtin_ty::to_string() const
 {
 	std::string ret(str[static_cast<int>(ty_)]);
 	ret += "<" + std::to_string(size_) + ">";
+	return ret;
+}
+
+size_t builtin_ty::size() const { return size_; }
+
+bool builtin_ty::assign_compat(const ty *t) const
+{
+	if (auto ft = dynamic_cast<const fun_ty *>(t))
+		return this->assign_compat(&ft->ret_ty_);
+	if (auto bt = dynamic_cast<const builtin_ty *>(t))
+		return ty_ == bt->ty_;
+	return false;
+}
+
+utils::ref<ty> builtin_ty::binop_compat(ops::binop, const ty *t) const
+{
+	if (!assign_compat(t))
+		return nullptr;
+
+	// TODO: Implicit widening conversions
+	return this->clone();
+}
+
+pointer_ty::pointer_ty(utils::ref<ty> ty, unsigned ptr) : ty_(ty), ptr_(ptr) {}
+
+pointer_ty::pointer_ty(utils::ref<ty> ty)
+{
+	if (auto pt = ty.as<pointer_ty>()) {
+		ty_ = pt->ty_;
+		ptr_ = pt->ptr_ + 1;
+	} else {
+		ty_ = ty;
+		ptr_ = 1;
+	}
+}
+
+std::string pointer_ty::to_string() const
+{
+	auto ret = ty_->to_string();
 	for (unsigned i = 0; i < ptr_; i++)
 		ret += '*';
 	return ret;
 }
 
-bool builtin_ty::assign_compat(const ty *t) const
+size_t pointer_ty::size() const { return 8; }
+
+bool pointer_ty::assign_compat(const ty *t) const
 {
-	if (dynamic_cast<const fun_ty *>(t))
-		return t->assign_compat(this);
-	if (auto bt = dynamic_cast<const builtin_ty *>(t))
-		return ptr_ == bt->ptr_ && ty_ == bt->ty_;
+	if (auto pt = dynamic_cast<const pointer_ty *>(t))
+		return ptr_ == pt->ptr_ && ty_->assign_compat(&pt->ty_);
+
 	return false;
+}
+
+utils::ref<ty> pointer_ty::binop_compat(ops::binop, const ty *) const
+{
+	return nullptr;
 }
 
 braceinit_ty::braceinit_ty(const std::vector<utils::ref<types::ty>> &types)
     : types_(types)
 {
-	for (auto t : types_)
-		size_ += t->size_;
 }
 
 std::string braceinit_ty::to_string() const
@@ -89,33 +145,31 @@ bool braceinit_ty::assign_compat(const ty *t) const
 
 		return true;
 	}
+
 	return false;
 }
 
+utils::ref<ty> braceinit_ty::binop_compat(ops::binop, const ty *) const
+{
+	return nullptr;
+}
+
 struct_ty::struct_ty(const symbol &name, const std::vector<symbol> &names,
-		     const std::vector<utils::ref<types::ty>> &types,
-		     unsigned ptr)
+		     const std::vector<utils::ref<types::ty>> &types)
     : types_(types), name_(name), names_(names)
 {
-	ptr_ = ptr;
-
+	size_ = 0;
 	// XXX: Arch specific pointer size
-	if (ptr_)
-		size_ = 8;
-	else {
-		for (auto t : types_)
-			size_ += t->size_;
-	}
+	for (auto t : types_)
+		size_ += t->size();
 }
+
+size_t struct_ty::size() const { return size_; }
 
 std::string struct_ty::to_string() const
 {
 	std::string ret("struct ");
 	ret += name_;
-
-	for (unsigned i = 0; i < ptr_; i++)
-		ret += '*';
-
 	return ret;
 }
 
@@ -126,8 +180,6 @@ bool struct_ty::assign_compat(const ty *t) const
 		return st->name_ == name_;
 
 	if (auto *bi = dynamic_cast<const braceinit_ty *>(t)) {
-		if (ptr_)
-			return false;
 		if (bi->types_.size() != types_.size())
 			return false;
 		for (size_t i = 0; i < types_.size(); i++) {
@@ -137,6 +189,11 @@ bool struct_ty::assign_compat(const ty *t) const
 		return true;
 	}
 	return false;
+}
+
+utils::ref<ty> struct_ty::binop_compat(ops::binop, const ty *) const
+{
+	return nullptr;
 }
 
 std::optional<size_t> struct_ty::member_index(const symbol &name)
@@ -153,7 +210,7 @@ size_t struct_ty::member_offset(const symbol &name)
 {
 	size_t offt = 0;
 	for (size_t i = 0; i < types_.size() && names_[i] != name; i++) {
-		offt += types_[i]->size_;
+		offt += types_[i]->size();
 	}
 
 	return offt;
@@ -190,16 +247,19 @@ std::string fun_ty::to_string() const
 	return ret;
 }
 
-// XXX: There are no function pointer variables, so assign_compat only checks
-// if t is assign_compat with the return type of the function.
-// This needs to change if we want to support function pointers.
-bool fun_ty::assign_compat(const ty *t) const { return ret_ty_->assign_compat(t); }
-
-named_ty::named_ty(const symbol &name, unsigned ptr) : ty(0, ptr), name_(name)
+bool fun_ty::assign_compat(const ty *) const { return false; }
+utils::ref<ty> fun_ty::binop_compat(ops::binop, const ty *) const
 {
+	return nullptr;
 }
 
-std::string named_ty::to_string() const { return name_; }
+named_ty::named_ty(const symbol &name) : name_(name) {}
+
+std::string named_ty::to_string() const { return name_.get() + "_NAMED"; }
 
 bool named_ty::assign_compat(const ty *) const { return false; }
+utils::ref<ty> named_ty::binop_compat(ops::binop, const ty *) const
+{
+	return nullptr;
+}
 } // namespace types
