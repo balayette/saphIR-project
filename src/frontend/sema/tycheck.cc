@@ -27,8 +27,11 @@ utils::ref<types::ty> tycheck_visitor::get_type(utils::ref<types::ty> t)
 {
 	utils::ref<types::named_ty> nt;
 	auto pt = t.as<types::pointer_ty>();
+	auto at = t.as<types::array_ty>();
 	if (pt)
 		nt = pt->ty_.as<types::named_ty>();
+	else if (at)
+		nt = at->ty_.as<types::named_ty>();
 	else
 		nt = t.as<types::named_ty>();
 
@@ -46,6 +49,10 @@ utils::ref<types::ty> tycheck_visitor::get_type(utils::ref<types::ty> t)
 		pt = pt->clone();
 		pt->ty_ = ret;
 		ret = pt;
+	} else if (at) {
+		at = at->clone();
+		at->ty_ = ret;
+		ret = at;
 	}
 
 	return ret;
@@ -241,7 +248,7 @@ void tycheck_visitor::visit_call(call &e)
 	e.ty_ = e.fdec_->type_;
 
 	for (size_t i = 0; i < e.fdec_->args_.size(); i++) {
-		CHECK_TYPE_ERROR(&e.args_[i]->ty_, &e.fdec_->args_[i]->type_,
+		CHECK_TYPE_ERROR(&e.fdec_->args_[i]->type_, &e.args_[i]->ty_,
 				 "argument '" << e.fdec_->args_[i]->name_
 					      << "' of call to function '"
 					      << e.fdec_->name_ << "'");
@@ -315,7 +322,8 @@ void tycheck_visitor::visit_subscript(subscript &e)
 
 	CHECK_TYPE_ERROR(&e.index_->ty_, &types::integer_type(),
 			 "array subscript");
-	if (!e.base_->ty_.as<types::pointer_ty>()) {
+	if (!e.base_->ty_.as<types::pointer_ty>()
+	    && !e.base_->ty_.as<types::array_ty>()) {
 		std::cerr
 			<< "TypeError: Subscript operator on non pointer of type '"
 			<< e.base_->ty_->to_string() << "'\n";
