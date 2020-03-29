@@ -156,7 +156,8 @@ void escapes_visitor::visit_locdec(locdec &e)
 
 	// All structs are stored on the stack
 	// XXX: Allow structs in registers (hard?)
-	e.escapes_ = e.type_.as<types::struct_ty>() != nullptr;
+	e.escapes_ = e.type_.as<types::array_ty>() != nullptr
+		     || e.type_.as<types::struct_ty>() != nullptr;
 }
 
 void frame_visitor::visit_funprotodec(funprotodec &)
