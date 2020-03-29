@@ -88,9 +88,14 @@ class translate_visitor : public default_visitor
 	void visit_subscript(subscript &e) override;
 
 	exp *struct_access(ir::tree::rexp lhs, const symbol &member);
+	exp *braceinit_copy_to_struct(ir::tree::rexp lhs,
+				      utils::ref<ir::tree::braceinit> rhs);
+	exp *braceinit_copy_to_array(ir::tree::rexp lhs,
+				     utils::ref<ir::tree::braceinit> rhs);
 	exp *braceinit_copy(ir::tree::rexp lhs,
 			    utils::ref<ir::tree::braceinit> rhs);
 	exp *struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
+	exp *array_copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
 	exp *copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
 
 	utils::ref<exp> ret_;

@@ -112,6 +112,60 @@ static tree::rexp access_to_exp(mach::access &access)
 }
 
 /*
+ * lhs and rhs are binop(...), with type array_ty
+ */
+exp *translate_visitor::array_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
+{
+	std::cout << "array_copy(" << lhs->ty_->to_string() << ", "
+		  << rhs->ty_->to_string() << ")\n";
+
+	auto at = lhs->ty_.as<types::array_ty>();
+	ASSERT(at && rhs->ty_.as<types::array_ty>(),
+	       "lhs and rhs have to be arrays");
+
+	auto s = new ir::tree::seq({});
+	auto dst_base = lhs;
+	auto src_base = rhs;
+
+	utils::temp dst_temp;
+	utils::temp src_temp;
+
+	s->children_.push_back(new tree::move(
+		new tree::temp(dst_temp, types::integer_type()), dst_base));
+	s->children_.push_back(new tree::move(
+		new tree::temp(src_temp, types::integer_type()), src_base));
+
+	size_t offt = 0;
+	for (size_t i = 0; i < at->n_; i++) {
+		tree::exp *dst_exp = new tree::binop(
+			ops::binop::PLUS,
+			new tree::temp(dst_temp, types::integer_type()),
+			new tree::cnst(offt));
+		tree::exp *src_exp = new tree::binop(
+			ops::binop::PLUS,
+			new tree::temp(src_temp, types::integer_type()),
+			new tree::cnst(offt));
+
+		dst_exp->ty_ = at->ty_->clone();
+		src_exp->ty_ = at->ty_->clone();
+
+		if (types::is_scalar(&dst_exp->ty_)) {
+			// scalar, so going to be a simple copy on the next
+			// recursion
+			dst_exp->ty_ = new types::pointer_ty(dst_exp->ty_);
+			dst_exp = new tree::mem(dst_exp);
+			src_exp->ty_ = new types::pointer_ty(src_exp->ty_);
+			src_exp = new tree::mem(src_exp);
+		}
+
+		s->children_.push_back(copy(dst_exp, src_exp)->un_nx());
+		offt += at->ty_->size();
+	}
+
+	return new nx(s);
+}
+
+/*
  * lhs and rhs are binop(...), with type struct_ty
  */
 exp *translate_visitor::struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
@@ -167,17 +221,73 @@ exp *translate_visitor::struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 
 /*
  * lhs is a binop(...), with type struct_ty
+ * lhs is a binop(...), with type array_ty
  */
 exp *translate_visitor::braceinit_copy(ir::tree::rexp lhs,
 				       utils::ref<ir::tree::braceinit> rhs)
 {
-	std::cout << "braceinit_copy(" << lhs->ty_->to_string() << ", "
+	if (lhs->ty_.as<types::struct_ty>())
+		return braceinit_copy_to_struct(lhs, rhs);
+	else if (lhs->ty_.as<types::array_ty>())
+		return braceinit_copy_to_array(lhs, rhs);
+
+	UNREACHABLE("Only structs and arrays can make it to this function");
+}
+
+exp *translate_visitor::braceinit_copy_to_array(
+	ir::tree::rexp lhs, utils::ref<ir::tree::braceinit> rhs)
+{
+	std::cout << "braceinit_copy_to_array(" << lhs->ty_->to_string() << ", "
 		  << rhs->ty_->to_string() << ")\n";
 
 	auto bit = rhs->ty_.as<types::braceinit_ty>();
 	ASSERT(bit, "rhs has to be a brace init");
 
+	auto at = lhs->ty_.as<types::array_ty>();
+	ASSERT(at, "lhs has to be an array");
+
+	auto s = new ir::tree::seq({});
+	auto base = lhs;
+	auto exps = rhs->exps();
+
+	utils::temp base_temp;
+	s->children_.push_back(new tree::move(
+		new tree::temp(base_temp, types::integer_type()), base));
+
+	size_t offt = 0;
+	for (size_t i = 0; i < exps.size(); i++) {
+		tree::exp *dst_exp = new tree::binop(
+			ops::binop::PLUS,
+			new tree::temp(base_temp, types::integer_type()),
+			new tree::cnst(offt));
+
+		dst_exp->ty_ = at->ty_->clone();
+
+		if (types::is_scalar(&dst_exp->ty_)) {
+			// scalar, so going to be a simple copy on the next
+			// recursion
+			dst_exp->ty_ = new types::pointer_ty(dst_exp->ty_);
+			dst_exp = new tree::mem(dst_exp);
+		}
+
+		s->children_.push_back(copy(dst_exp, exps[i])->un_nx());
+		offt += at->ty_->size();
+	}
+
+	return new nx(s);
+}
+
+exp *translate_visitor::braceinit_copy_to_struct(
+	ir::tree::rexp lhs, utils::ref<ir::tree::braceinit> rhs)
+{
+	std::cout << "braceinit_copy_to_struct(" << lhs->ty_->to_string()
+		  << ", " << rhs->ty_->to_string() << ")\n";
+
+	auto bit = rhs->ty_.as<types::braceinit_ty>();
+	ASSERT(bit, "rhs has to be a brace init");
+
 	auto st = lhs->ty_.as<types::struct_ty>();
+	ASSERT(st, "lhs has to be a struct");
 
 	auto s = new ir::tree::seq({});
 	auto base = lhs;
@@ -244,9 +354,12 @@ exp *translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 	// rhs is a struct
 	if (auto st = rhs->ty_.as<types::struct_ty>())
 		return struct_copy(lhs, rhs);
+	if (auto brace = rhs.as<tree::braceinit>())
+		return braceinit_copy(lhs, brace);
+	else if (auto at = lhs->ty_.as<types::array_ty>())
+		return array_copy(lhs, rhs);
 
-	// rhs is a brace init
-	return braceinit_copy(lhs, rhs.as<tree::braceinit>());
+	UNREACHABLE("Copy not implemented for those types");
 }
 
 void translate_visitor::visit_ref(ref &e)
@@ -688,11 +801,9 @@ void translate_visitor::visit_subscript(subscript &e)
 	e.index_->accept(*this);
 	auto index = ret_->un_ex();
 
-	auto pt = e.base_->ty_.as<types::pointer_ty>();
-
 	ret_ = new ex(new tree::mem(new tree::binop(
 		ops::binop::PLUS, base,
 		new tree::binop(ops::binop::MULT, index,
-				new tree::cnst(pt->pointed_size())))));
+				new tree::cnst(e.ty_->size())))));
 }
 } // namespace frontend::translate
