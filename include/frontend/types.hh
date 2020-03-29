@@ -95,6 +95,25 @@ bool is_integer(const ty *ty);
 struct composite_ty : public ty {
 };
 
+struct array_ty : public composite_ty {
+	array_ty(utils::ref<types::ty> type, size_t n);
+
+	std::string to_string() const override;
+	size_t size() const override;
+
+	bool assign_compat(const ty *t) const override;
+	utils::ref<ty> binop_compat(ops::binop binop,
+				    const ty *t) const override;
+
+	virtual array_ty *clone() const override
+	{
+		return new array_ty(ty_, n_);
+	}
+
+	utils::ref<types::ty> ty_;
+	size_t n_;
+};
+
 struct braceinit_ty : public composite_ty {
 	braceinit_ty(const std::vector<utils::ref<types::ty>> &types);
 

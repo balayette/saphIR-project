@@ -38,7 +38,11 @@ bool is_integer(const ty *ty)
 utils::ref<ty> deref_pointer_type(utils::ref<ty> ty)
 {
 	auto pt = ty.as<pointer_ty>();
-	ASSERT(pt, "Trying to dereference non pointer");
+	auto at = ty.as<array_ty>();
+	ASSERT(pt || at, "Trying to dereference non pointer or array");
+
+	if (at)
+		return at->ty_->clone();
 
 	if (pt->ptr_ == 1)
 		return pt->ty_->clone();
@@ -131,6 +135,8 @@ bool pointer_ty::assign_compat(const ty *t) const
 {
 	if (auto pt = dynamic_cast<const pointer_ty *>(t))
 		return ptr_ == pt->ptr_ && ty_->assign_compat(&pt->ty_);
+	if (auto at = dynamic_cast<const array_ty *>(t))
+		return ptr_ == 1 && ty_->assign_compat(&at->ty_);
 
 	return false;
 }
@@ -260,6 +266,43 @@ size_t struct_ty::member_offset(const symbol &name)
 
 	return offt;
 }
+
+array_ty::array_ty(utils::ref<types::ty> type, size_t n) : ty_(type), n_(n) {}
+
+std::string array_ty::to_string() const
+{
+	return ty_->to_string() + "[" + std::to_string(n_) + "]";
+}
+
+bool array_ty::assign_compat(const ty *t) const
+{
+	// Can assign a braceinit, if it has the same number of fields, and
+	// if all the types are compatible with ty_
+	auto bit = dynamic_cast<const braceinit_ty *>(t);
+	if (bit) {
+		if (bit->types_.size() != n_)
+			return false;
+		for (auto rhs : bit->types_) {
+			if (!ty_->assign_compat(&rhs))
+				return false;
+		}
+
+		return true;
+	}
+
+	// Can assign an array if it is the same size, and the types are
+	// compatible
+	auto at = dynamic_cast<const array_ty *>(t);
+	return at && n_ == at->n_ && ty_->assign_compat(&at->ty_);
+}
+
+// no binops on arrays
+utils::ref<ty> array_ty::binop_compat(ops::binop, const ty *) const
+{
+	return nullptr;
+}
+
+size_t array_ty::size() const { return n_ * ty_->size(); }
 
 utils::ref<ty> struct_ty::member_ty(const symbol &name)
 {
