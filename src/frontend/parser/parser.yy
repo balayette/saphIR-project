@@ -208,8 +208,18 @@ stmt_body:
 | 	ass 	{ $$ = $1; }
 ;
 
-locdec: "let" type ID "=" exp { $$ = new locdec($2, $3, $5); };
-globaldec: "let" type ID "=" exp { $$ = new globaldec($2, $3, $5); };
+locdec:
+      "let" type ID "=" exp { $$ = new locdec($2, $3, $5); }
+|     "let" type "[" INT_LIT "]" ID "=" exp {
+        $$ = new locdec(new types::array_ty($2, $4), $6, $8);
+}
+;
+globaldec:
+         "let" type ID "=" exp { $$ = new globaldec($2, $3, $5); }
+|     "let" type "[" INT_LIT "]" ID "=" exp {
+        $$ = new globaldec(new types::array_ty($2, $4), $6, $8);
+}
+;
 
 /* TODO: This accepts 1; */
 sexp: exp { $$ = new sexp($1); };
