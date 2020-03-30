@@ -1,4 +1,4 @@
-CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -pedantic -g -MMD -Og
+CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -pedantic -g -MMD -O3
 CPPFLAGS = -Iinclude/
 LINK.o = $(LINK.cc)
 

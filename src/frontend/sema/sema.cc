@@ -79,7 +79,6 @@ void binding_visitor::visit_ref(ref &e)
 			  << " used before definition.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
-	std::cout << "ref: " << e.name_ << " bound to variable " << *v << '\n';
 	e.dec_ = *v;
 }
 
@@ -92,7 +91,6 @@ void binding_visitor::visit_call(call &e)
 			  << e.name_ << "'\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
-	std::cout << "call: " << e.name_ << " bound to function " << *f << '\n';
 
 	if (!(*f)->variadic_) {
 		if (e.args_.size() != (*f)->args_.size()) {

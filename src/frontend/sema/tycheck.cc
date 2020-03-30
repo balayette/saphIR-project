@@ -126,14 +126,21 @@ void tycheck_visitor::visit_fundec(fundec &s)
 	}
 
 	auto ret_ty = get_type(s.type_);
-	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
+	if (ret_ty.as<types::composite_ty>()) {
+		std::cerr << "TypeError: Cannot return composite type '"
+			  << ret_ty->to_string() << "' in function '" << s.name_
+			  << "'\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
 
-	default_visitor::visit_fundec(s);
+	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
 
 	if (!s.has_return_)
 		CHECK_TYPE_ERROR(&types::void_type(), &s.type_,
 				 "function '" << s.name_
 					      << "' without return statement");
+
+	default_visitor::visit_fundec(s);
 }
 
 void tycheck_visitor::visit_ref(ref &e)

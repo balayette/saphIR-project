@@ -210,15 +210,9 @@ stmt_body:
 
 locdec:
       "let" type ID "=" exp { $$ = new locdec($2, $3, $5); }
-|     "let" type "[" INT_LIT "]" ID "=" exp {
-        $$ = new locdec(new types::array_ty($2, $4), $6, $8);
-}
 ;
 globaldec:
          "let" type ID "=" exp { $$ = new globaldec($2, $3, $5); }
-|     "let" type "[" INT_LIT "]" ID "=" exp {
-        $$ = new globaldec(new types::array_ty($2, $4), $6, $8);
-}
 ;
 
 /* TODO: This accepts 1; */
@@ -312,6 +306,7 @@ memberaccess:
 type:
 	ID { $$ = new types::named_ty($1); }
 | 	type "*" { $$ = new types::pointer_ty($1); }
+|       type "[" INT_LIT "]" { $$ = new types::array_ty($1, $3); }
 ;
 
 %%

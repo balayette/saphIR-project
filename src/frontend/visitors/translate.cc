@@ -114,7 +114,8 @@ static tree::rexp access_to_exp(mach::access &access)
 /*
  * lhs and rhs are binop(...), with type array_ty
  */
-exp *translate_visitor::array_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
+utils::ref<exp> translate_visitor::array_copy(ir::tree::rexp lhs,
+					      ir::tree::rexp rhs)
 {
 	std::cout << "array_copy(" << lhs->ty_->to_string() << ", "
 		  << rhs->ty_->to_string() << ")\n";
@@ -168,7 +169,8 @@ exp *translate_visitor::array_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 /*
  * lhs and rhs are binop(...), with type struct_ty
  */
-exp *translate_visitor::struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
+utils::ref<exp> translate_visitor::struct_copy(ir::tree::rexp lhs,
+					       ir::tree::rexp rhs)
 {
 	std::cout << "struct_copy(" << lhs->ty_->to_string() << ", "
 		  << rhs->ty_->to_string() << ")\n";
@@ -223,8 +225,9 @@ exp *translate_visitor::struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
  * lhs is a binop(...), with type struct_ty
  * lhs is a binop(...), with type array_ty
  */
-exp *translate_visitor::braceinit_copy(ir::tree::rexp lhs,
-				       utils::ref<ir::tree::braceinit> rhs)
+utils::ref<exp>
+translate_visitor::braceinit_copy(ir::tree::rexp lhs,
+				  utils::ref<ir::tree::braceinit> rhs)
 {
 	if (lhs->ty_.as<types::struct_ty>())
 		return braceinit_copy_to_struct(lhs, rhs);
@@ -234,8 +237,9 @@ exp *translate_visitor::braceinit_copy(ir::tree::rexp lhs,
 	UNREACHABLE("Only structs and arrays can make it to this function");
 }
 
-exp *translate_visitor::braceinit_copy_to_array(
-	ir::tree::rexp lhs, utils::ref<ir::tree::braceinit> rhs)
+utils::ref<exp>
+translate_visitor::braceinit_copy_to_array(ir::tree::rexp lhs,
+					   utils::ref<ir::tree::braceinit> rhs)
 {
 	std::cout << "braceinit_copy_to_array(" << lhs->ty_->to_string() << ", "
 		  << rhs->ty_->to_string() << ")\n";
@@ -277,8 +281,9 @@ exp *translate_visitor::braceinit_copy_to_array(
 	return new nx(s);
 }
 
-exp *translate_visitor::braceinit_copy_to_struct(
-	ir::tree::rexp lhs, utils::ref<ir::tree::braceinit> rhs)
+utils::ref<exp>
+translate_visitor::braceinit_copy_to_struct(ir::tree::rexp lhs,
+					    utils::ref<ir::tree::braceinit> rhs)
 {
 	std::cout << "braceinit_copy_to_struct(" << lhs->ty_->to_string()
 		  << ", " << rhs->ty_->to_string() << ")\n";
@@ -321,7 +326,7 @@ exp *translate_visitor::braceinit_copy_to_struct(
 }
 
 
-exp *translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
+utils::ref<exp> translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 {
 	std::cout << "copy(" << lhs->ty_->to_string() << ", "
 		  << rhs->ty_->to_string() << ")\n";
@@ -342,13 +347,8 @@ exp *translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 
 	// scalars
 	// XXX: functions can't return structs by value (it is ABI dependant)
-	if (types::is_scalar(&rhs->ty_)) {
-		std::cout << "copy scalar\n";
-		ir::ir_pretty_printer pir(std::cout);
-		lhs->accept(pir);
-		rhs->accept(pir);
+	if (types::is_scalar(&lhs->ty_))
 		return new nx(new ir::tree::move(lhs, rhs));
-	}
 
 	// lhs is a struct
 	// rhs is a struct
@@ -740,7 +740,8 @@ void translate_visitor::visit_addrof(addrof &e)
  * e.e_ is a binop(...), which points to the struct
  * if the member is a struct, then don't emit the mem node
  */
-exp *translate_visitor::struct_access(ir::tree::rexp lhs, const symbol &member)
+utils::ref<exp> translate_visitor::struct_access(ir::tree::rexp lhs,
+						 const symbol &member)
 {
 	auto st = lhs->ty_.as<types::struct_ty>();
 	if (!st) {
