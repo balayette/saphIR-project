@@ -10,7 +10,6 @@
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
-#include "ir/opt/peephole.hh"
 #include "backend/cfg.hh"
 #include "backend/liveness.hh"
 #include "backend/regalloc.hh"
@@ -94,8 +93,6 @@ int main(int argc, char *argv[])
 		auto traces = ir::create_traces(bbs, frag.body_lbl_);
 		auto trace = ir::optimize_traces(traces);
 		trace.push_back(new ir::tree::label(frag.epi_lbl_));
-
-		// ir::peephole(trace);
 
 		std::cout << "Trace:\n";
 		std::cout << "-------------------------------------\n";

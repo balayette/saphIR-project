@@ -176,32 +176,6 @@ void generator::visit_move(tree::move &mv)
 			EMIT(assem::move("mov `s0, (`s1)", {}, {rhs, lhs}));
 			return;
 		}
-		if (auto binop = lmem->e().as<tree::binop>()) {
-			/*
-			 * Canon guarantees that
-			 * (mem (binop + a 1) (temp t)) is translated into
-			 * (move (temp t2) (binop + a 1))
-			 * (mem (t2) (temp t))
-			 * Peephole reintroduces it in the case we're checking
-			 * here.
-			 * XXX: This might be a hack, and should maybe be in a
-			 * mach dependant peephole opti, and not in the IR
-			 * peephole... Leaving it here for the moment,
-			 * because I don't have mach dependant peepholes yet,
-			 * and it makes assembly output much more readable.
-			 * */
-			ASSERT(binop->op_ == ops::binop::PLUS, "Wrong binop");
-			std::string repr("mov `s1, ");
-			repr += std::to_string(
-				binop->rhs().as<tree::cnst>()->value_);
-			repr += "(`s0)";
-			EMIT(assem::oper(repr, {},
-					 {binop->lhs().as<tree::temp>()->temp_,
-					  mv.rhs().as<tree::temp>()->temp_},
-					 {}));
-			return;
-		}
-
 		// (move (mem e1) e2)
 		// mov e2, (e1)
 		lmem->e()->accept(*this);
