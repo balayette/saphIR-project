@@ -44,6 +44,7 @@ OBJ = \
       src/backend/liveness.o \
       src/backend/regalloc.o \
       src/backend/color.o \
+      src/backend/opt/peephole.o \
       src/frontend/ops.o \
 
 DEP = $(OBJ:.o=.d)

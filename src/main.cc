@@ -13,6 +13,7 @@
 #include "backend/cfg.hh"
 #include "backend/liveness.hh"
 #include "backend/regalloc.hh"
+#include "backend/opt/peephole.hh"
 #include "mach/codegen.hh"
 #include "utils/assert.hh"
 
@@ -121,6 +122,7 @@ int main(int argc, char *argv[])
 		std::cout << "######################\n";
 
 		backend::regalloc::alloc(instrs, frag);
+		backend::opt::peephole(instrs);
 		auto f = frag.frame_.proc_entry_exit_3(instrs, frag.body_lbl_,
 						       frag.epi_lbl_);
 
