@@ -53,7 +53,7 @@ void generator::visit_name(tree::name &n)
 	repr += "(%rip), `d0";
 
 	utils::temp ret;
-	EMIT(assem::move(repr, {ret}, {}));
+	EMIT(assem::oper(repr, {ret}, {}, {}));
 
 	ret_ = ret;
 }
@@ -163,11 +163,25 @@ void generator::visit_jump(tree::jump &j)
 // matches (temp t)
 bool is_reg(tree::rexp e) { return e.as<tree::temp>() != nullptr; }
 
+// matches (temp t) and (cnst x)
+bool is_simple_source(tree::rexp e)
+{
+	return is_reg(e) || e.as<tree::cnst>() != nullptr;
+}
+
 // matches (binop + (temp t) (cnst x))
-bool is_reg_disp(tree::rexp e)
+// if check_ty is true, and the type of the binop is not a pointer type,
+// then don't match.
+bool is_reg_disp(tree::rexp e, bool check_ty = false)
 {
 	auto binop = e.as<tree::binop>();
 	if (!binop || binop->op_ != ops::binop::PLUS)
+		return false;
+
+	// try to only use lea when dealing with pointers and structs
+	if (check_ty
+	    && (!binop->ty_.as<types::pointer_ty>()
+		|| !binop->ty_.as<types::struct_ty>()))
 		return false;
 
 	auto reg = binop->lhs().as<tree::temp>();
@@ -195,6 +209,20 @@ std::pair<std::string, utils::temp> reg_deref_str(tree::rexp e,
 	}
 
 	UNREACHABLE("what");
+}
+
+std::pair<std::string, std::optional<utils::temp>>
+simple_src_str(tree::rexp e, std::string regstr)
+{
+	auto reg = e.as<tree::temp>();
+	if (reg)
+		return {regstr, reg->temp_};
+
+	auto cnst = e.as<tree::cnst>();
+	if (cnst)
+		return {"$" + std::to_string(cnst->value_), std::nullopt};
+
+	UNREACHABLE("simple_src is a reg or cnst");
 }
 
 // matches (mem (temp t)) and (mem (binop + (temp t) (cnst x)))
@@ -238,15 +266,26 @@ void generator::visit_move(tree::move &mv)
 	ir::ir_pretty_printer pir(std::cout);
 	mv.accept(pir);
 
-	if (is_reg(mv.lhs()) && is_reg(mv.rhs())) {
+	if (is_reg(mv.lhs()) && is_simple_source(mv.rhs())) {
 		// mov %t2, %t1
 		auto t1 = mv.lhs().as<tree::temp>()->temp_;
-		auto t2 = mv.rhs().as<tree::temp>()->temp_;
+		auto [s, t2] = simple_src_str(mv.rhs(), "`s0");
 
-		EMIT(assem::move("mov `s0, `d0", {t1}, {t2}));
+		/*
+		 * Technically, this isn't necessary, because not doing it
+		 * would generate
+		 * mov $x, ntemp
+		 * mov temp, t1
+		 * Which the register allocator easily optimizes, but I am
+		 * leaving it here for good measure.
+		 */
+		if (t2 == std::nullopt)
+			EMIT(assem::move("mov " + s + ", `d0", {t1}, {}));
+		else
+			EMIT(assem::move("mov `s0, `d0", {t1}, {*t2}));
 		return;
 	}
-	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs())) {
+	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs(), false)) {
 		// lea 3(%t2), %t1
 		auto t1 = mv.lhs().as<tree::temp>()->temp_;
 		auto [s, t2] = reg_deref_str(mv.rhs(), "`s0");
@@ -264,14 +303,20 @@ void generator::visit_move(tree::move &mv)
 		EMIT(assem::oper("mov " + s + ", `d0", {t1}, {t2}, {}));
 		return;
 	}
-	if (is_mem_reg(mv.lhs()) && is_reg(mv.rhs())) {
+	if (is_mem_reg(mv.lhs()) && is_simple_source(mv.rhs())) {
 		// mov %t2, 3(%t1)
-		auto t2 = mv.rhs().as<tree::temp>()->temp_;
+		auto [s1, t2] = simple_src_str(mv.rhs(), "`s0");
 
 		auto mem = mv.lhs().as<tree::mem>();
-		auto [s, t1] = reg_deref_str(mem->e(), "`s1");
+		auto [s2, t1] = reg_deref_str(
+			mem->e(), t2 == std::nullopt ? "`s0" : "`s1");
 
-		EMIT(assem::oper("mov `s0, " + s, {}, {t2, t1}, {}));
+		if (t2 == std::nullopt)
+			EMIT(assem::oper("movq " + s1 + ", " + s2, {}, {t1},
+					 {}));
+		else
+			EMIT(assem::oper("movq " + s1 + ", " + s2, {},
+					 {*t2, t1}, {}));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
@@ -331,7 +376,7 @@ void generator::visit_mem(tree::mem &mm)
 	}
 
 	mm.e()->accept(*this);
-	EMIT(assem::move("mov (`s0), `d0", {dst}, {ret_}));
+	EMIT(assem::oper("mov (`s0), `d0", {dst}, {ret_}, {}));
 	ret_ = dst;
 }
 
@@ -342,7 +387,7 @@ void generator::visit_cnst(tree::cnst &c)
 	instr += std::to_string(c.value_);
 	instr += ", `d0";
 
-	EMIT(assem::move(instr, {dst}, {}));
+	EMIT(assem::oper(instr, {dst}, {}, {}));
 
 	ret_ = dst;
 }

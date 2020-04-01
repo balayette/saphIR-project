@@ -19,11 +19,16 @@ std::string format_repr(std::string repr, std::vector<std::string> src,
 		bool source = c == 's';
 		c = repr[++i];
 		ASSERT(c >= '0' && c <= '9', "Wrong register number");
-		int idx = c - '0';
-		if (source)
+		unsigned idx = c - '0';
+		if (source) {
+			ASSERT(idx < src.size(),
+			       "Source register out of bounds");
 			ret += src[idx];
-		else
+		} else {
+			ASSERT(idx < dst.size(),
+			       "Destination register out of bounds");
 			ret += dst[idx];
+		}
 	}
 
 	return ret;
