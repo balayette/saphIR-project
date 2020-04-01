@@ -1,37 +1,38 @@
 #include "libc.jit"
 
-fun print(int* arr, int len) void
+fun print(int *arr, int len) void
 {
-        for (let int i = 0; i < len; i = i + 1)
-                printf("%d\n", arr[i]);
-        rof
+	for (let int i = 0; i < len; i = i + 1)
+		printf("%d\n", arr[i]);
+	rof
 }
 
 let int[3] glob = {55, 44, 33};
 
-fun main() void {
-        printf("arr\n");
-        let int[4] arr = {1, 2, 3, 4};
-        print(arr, 4);
+fun main() void
+{
+	printf("arr\n");
+	let int[4] arr = {1, 2, 3, 4};
+	print(arr, 4);
 
-        printf("arr2\n");
-        let int[4] arr2 = {4, 5, 6, 7};
-        print(arr2, 4);
+	printf("arr2\n");
+	let int[4] arr2 = {4, 5, 6, 7};
+	print(arr2, 4);
 
-        printf("arr\n");
-        arr = arr2;
-        print(arr, 4);
+	printf("arr\n");
+	arr = arr2;
+	print(arr, 4);
 
-        for (let int i = 0; i < 4; i = i + 1)
-                arr[i] = arr[i] + arr2[i];
-        rof
+	for (let int i = 0; i < 4; i = i + 1)
+		arr[i] = arr[i] + arr2[i];
+	rof
 
         printf("arr2 * 2\n");
-        let int* ptr = arr;
-        print(ptr, 4);
+	let int *ptr = arr;
+	print(ptr, 4);
 
-        printf("hand glob\n");
-        for (let int i = 0; i < 3; i = i + 1)
-                printf("glob[%d] = %d\n", i, glob[i]);
-        rof
+	printf("hand glob\n");
+	for (let int i = 0; i < 3; i = i + 1)
+		printf("glob[%d] = %d\n", i, glob[i]);
+	rof
 }

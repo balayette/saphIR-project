@@ -26,5 +26,9 @@ struct generator : public ir::default_ir_visitor {
 
 	std::vector<assem::rinstr> instrs_;
 	utils::temp ret_;
+
+      private:
+	bool opt_add(ir::tree::binop &add);
+	bool opt_mul(ir::tree::binop &add);
 };
 } // namespace mach

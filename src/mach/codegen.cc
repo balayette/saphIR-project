@@ -160,22 +160,136 @@ void generator::visit_jump(tree::jump &j)
 		UNREACHABLE("Destination of jump must be a name");
 }
 
+// matches (temp t)
+bool is_reg(tree::rexp e) { return e.as<tree::temp>() != nullptr; }
+
+// matches (binop + (temp t) (cnst x))
+bool is_reg_disp(tree::rexp e)
+{
+	auto binop = e.as<tree::binop>();
+	if (!binop || binop->op_ != ops::binop::PLUS)
+		return false;
+
+	auto reg = binop->lhs().as<tree::temp>();
+	auto cnst = binop->rhs().as<tree::cnst>();
+
+	if (!reg || !cnst)
+		return false;
+
+	return true;
+}
+
+std::pair<std::string, utils::temp> reg_deref_str(tree::rexp e,
+						  std::string regstr)
+{
+	if (is_reg_disp(e)) {
+		auto binop = e.as<tree::binop>();
+		auto reg = binop->lhs().as<tree::temp>();
+		auto cnst = binop->rhs().as<tree::cnst>();
+
+		return {std::to_string(cnst->value_) + "(" + regstr + ")",
+			reg->temp_};
+	} else if (is_reg(e)) {
+		auto reg = e.as<tree::temp>();
+		return {"(" + regstr + ")", reg->temp_};
+	}
+
+	UNREACHABLE("what");
+}
+
+// matches (mem (temp t)) and (mem (binop + (temp t) (cnst x)))
+bool is_mem_reg(tree::rexp e)
+{
+	auto mem = e.as<tree::mem>();
+	return mem && (is_reg(mem->e()) || is_reg_disp(mem->e()));
+}
+
+/*
+ * Move codegen cases and expected output
+ * All (binop + (temp t) (cnst x)) can also be a simple (temp t) node except
+ * in the lea case
+ *
+ * (move (temp t1) (temp t2))
+ *      => mov %t2, %t1
+ *
+ * (move (temp t1) (binop + (temp t2) (cnst 3)))
+ *      => lea 3(%t2), %t1
+ *
+ * (move (temp t1) (mem (binop + (temp t2) (cnst 3))))
+ *      => mov 3(%t2), %t1
+ *
+ * (move (mem (binop + (temp t1) (cnst 3))) (temp t2))
+ *      => mov %t2, 3(%t1)
+ *
+ * (move (mem (binop + (temp t1) (cnst 3))) (mem (binop + (temp t2) (cnst 4))))
+ *      Split
+ *      (move t3 (mem (binop + (temp t2) (cnst 4))))
+ *      (move (mem (binop + (temp t1) (cnst 3))) t3)
+ *      =>
+ *      mov 4(%t2), %t3
+ *      mov %t3, 3(%t1)
+ *
+ * All other cases aren't optimized
+ */
+
 void generator::visit_move(tree::move &mv)
 {
-	if (auto lmem = mv.lhs().as<tree::mem>()) {
-		if (auto rmem = mv.rhs().as<tree::mem>()) {
-			// (move (mem e1) (mem e2))
-			// mov (e2), e2
-			// mov e2, (e1)
-			lmem->e()->accept(*this);
-			auto lhs = ret_;
-			rmem->e()->accept(*this);
-			auto rhs = ret_;
+	std::cout << "===== MOVE ======\n";
+	ir::ir_pretty_printer pir(std::cout);
+	mv.accept(pir);
 
-			EMIT(assem::move("mov (`s0), `d0", {rhs}, {rhs}));
-			EMIT(assem::move("mov `s0, (`s1)", {}, {rhs, lhs}));
-			return;
-		}
+	if (is_reg(mv.lhs()) && is_reg(mv.rhs())) {
+		// mov %t2, %t1
+		auto t1 = mv.lhs().as<tree::temp>()->temp_;
+		auto t2 = mv.rhs().as<tree::temp>()->temp_;
+
+		EMIT(assem::move("mov `s0, `d0", {t1}, {t2}));
+		return;
+	}
+	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs())) {
+		// lea 3(%t2), %t1
+		auto t1 = mv.lhs().as<tree::temp>()->temp_;
+		auto [s, t2] = reg_deref_str(mv.rhs(), "`s0");
+
+		EMIT(assem::oper("lea " + s + ", `d0", {t1}, {t2}, {}));
+		return;
+	}
+	if (is_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
+		// mov 3(%t2), %t1
+		auto t1 = mv.lhs().as<tree::temp>()->temp_;
+
+		auto mem = mv.rhs().as<tree::mem>();
+		auto [s, t2] = reg_deref_str(mem->e(), "`s0");
+
+		EMIT(assem::oper("mov " + s + ", `d0", {t1}, {t2}, {}));
+		return;
+	}
+	if (is_mem_reg(mv.lhs()) && is_reg(mv.rhs())) {
+		// mov %t2, 3(%t1)
+		auto t2 = mv.rhs().as<tree::temp>()->temp_;
+
+		auto mem = mv.lhs().as<tree::mem>();
+		auto [s, t1] = reg_deref_str(mem->e(), "`s1");
+
+		EMIT(assem::oper("mov `s0, " + s, {}, {t2, t1}, {}));
+		return;
+	}
+	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
+		// mov 4(%t2), %t3
+		// mov %t3, 3(%t1)
+		utils::temp t3;
+		auto mem1 = mv.rhs().as<tree::mem>();
+		auto [s1, t2] = reg_deref_str(mem1->e(), "`s0");
+		EMIT(assem::oper("mov " + s1 + ", `d0", {t3}, {t2}, {}));
+
+		auto mem2 = mv.lhs().as<tree::mem>();
+		auto [s2, t1] = reg_deref_str(mem2->e(), "`s1");
+		EMIT(assem::oper("mov `s0, " + s2, {}, {t3, t1}, {}));
+		return;
+	}
+
+	std::cout << "default\n";
+	if (auto lmem = mv.lhs().as<tree::mem>()) {
 		// (move (mem e1) e2)
 		// mov e2, (e1)
 		lmem->e()->accept(*this);
@@ -183,7 +297,7 @@ void generator::visit_move(tree::move &mv)
 		mv.rhs()->accept(*this);
 		auto rhs = ret_;
 
-		EMIT(assem::move("mov `s0, (`s1)", {}, {rhs, lhs}));
+		EMIT(assem::oper("mov `s0, (`s1)", {}, {rhs, lhs}, {}));
 		return;
 	}
 
@@ -235,8 +349,62 @@ void generator::visit_cnst(tree::cnst &c)
 
 void generator::visit_temp(tree::temp &t) { ret_ = t.temp_; }
 
+bool generator::opt_mul(tree::binop &b)
+{
+	ASSERT(b.op_ == ops::binop::MULT, "not mult node");
+	auto cnst = b.rhs().as<tree::cnst>();
+	if (!cnst)
+		return false;
+
+	b.lhs()->accept(*this);
+	auto lhs = ret_;
+
+	std::string repr("imulq $");
+	repr += std::to_string(cnst->value_);
+	repr += ", `d0";
+
+	utils::temp dst;
+	EMIT(assem::move("mov `s0, `d0", {dst}, {lhs}));
+
+	EMIT(assem::oper(repr, {dst}, {lhs}, {}));
+
+	ret_ = dst;
+
+	return true;
+}
+
+bool generator::opt_add(tree::binop &b)
+{
+	ASSERT(b.op_ == ops::binop::PLUS, "not add node");
+	auto cnst = b.rhs().as<tree::cnst>();
+	if (!cnst)
+		return false;
+
+	b.lhs()->accept(*this);
+	auto lhs = ret_;
+
+	std::string repr("add $");
+	repr += std::to_string(cnst->value_);
+	repr += ", `d0";
+
+	utils::temp dst;
+	EMIT(assem::move("mov `s0, `d0", {dst}, {lhs}));
+
+	if (cnst->value_ != 0)
+		EMIT(assem::oper(repr, {dst}, {lhs}, {}));
+
+	ret_ = dst;
+
+	return true;
+}
+
 void generator::visit_binop(tree::binop &b)
 {
+	if (b.op_ == ops::binop::PLUS && opt_add(b))
+		return;
+	else if (b.op_ == ops::binop::MULT && opt_mul(b))
+		return;
+
 	b.lhs()->accept(*this);
 	auto lhs = ret_;
 	b.rhs()->accept(*this);

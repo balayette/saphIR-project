@@ -168,9 +168,12 @@ ir::tree::rexp global_acc::addr(size_t offt) const
 	auto type = offt ? gpr_type() : ty_->clone();
 	type = new types::pointer_ty(type);
 
-	return new ir::tree::binop(ops::binop::PLUS,
-				   new ir::tree::name(name_, type),
-				   new ir::tree::cnst(offt));
+	if (offt != 0)
+		return new ir::tree::binop(ops::binop::PLUS,
+					   new ir::tree::name(name_, type),
+					   new ir::tree::cnst(offt));
+	else
+		return new ir::tree::name(name_, type);
 }
 
 std::ostream &global_acc::print(std::ostream &os) const
@@ -199,8 +202,6 @@ utils::ref<access> frame::alloc_local(bool escapes, utils::ref<types::ty> type)
 {
 	if (escapes) {
 		locals_size_ += type->size();
-		std::cout << "allocating " << type->to_string() << " at "
-			  << locals_size_ << "\n";
 		return new in_frame(-locals_size_, type);
 	}
 	reg_count_++;

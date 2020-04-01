@@ -11,6 +11,7 @@ struct nestedp { pairp* a, pairp *b };
 fun test(int a) int { return a * 3; }
 
 fun main() int {
+        let nested test = {{22, 33}, {44, 55}};
         let int a = 1;
         let int b = 2;
         let int c = 3;
