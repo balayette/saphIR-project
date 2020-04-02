@@ -91,24 +91,24 @@ reset:
 				continue;
 
 			bool cont = true;
-			std::vector<std::smatch> matches;
+			std::vector<std::string> vecmatches;
+
 			for (size_t curr = 0;
 			     cont && curr < pass->pattern_.size(); curr++) {
+				// std::regex_match has deleted the rvalue
+				// reference overload...
+				auto repr = instrs[i + curr]->repr();
+
 				std::smatch match;
-				cont = std::regex_match(instrs[i + curr]->repr_,
-							match,
+				cont = std::regex_match(repr, match,
 							pass->pattern_[curr]);
-				matches.push_back(match);
+				for (unsigned i = 1; i < match.size(); i++)
+					vecmatches.push_back(match[i].str());
 			}
 
 			if (!cont)
 				continue;
 
-			std::vector<std::string> vecmatches;
-			for (auto &m : matches) {
-				for (unsigned i = 1; i < m.size(); i++)
-					vecmatches.push_back(m[i].str());
-			}
 			std::cout << "Pattern found: " << pass->name_ << '\n';
 
 			auto updated = pass->process_patt(

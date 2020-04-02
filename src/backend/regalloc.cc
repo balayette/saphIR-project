@@ -89,11 +89,11 @@ void replace_allocation(std::vector<assem::rinstr> &instrs,
 
 	std::vector<assem::rinstr> filterd;
 	for (auto &inst : instrs) {
-		if (auto move = inst.as<assem::move>()) {
-			if (move->repr_ == "mov `s0, `d0"
-			    && move->dst_ == move->src_)
-				continue;
-		}
+		// Remove redundant moves
+		auto move = inst.as<assem::move>();
+		if (move && move->dst_ == move->src_)
+			continue;
+
 		filterd.push_back(inst);
 	}
 

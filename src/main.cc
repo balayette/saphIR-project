@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 	for (auto &f : funs) {
 		fout << f.prologue_;
 		for (auto &i : f.instrs_) {
-			if (i->repr_.size() == 0)
+			if (i->repr().size() == 0)
 				continue;
 			if (!i.as<assem::label>())
 				fout << '\t';

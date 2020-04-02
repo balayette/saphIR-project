@@ -48,12 +48,8 @@ std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
 
 void generator::visit_name(tree::name &n)
 {
-	std::string repr("lea ");
-	repr += label_to_asm(n.label_);
-	repr += "(%rip), `d0";
-
 	utils::temp ret;
-	EMIT(assem::oper(repr, {ret}, {}, {}));
+	EMIT(assem::lea(ret, label_to_asm(n.label_) + "(%rip)"));
 
 	ret_ = ret;
 }
@@ -88,7 +84,7 @@ void generator::visit_call(tree::call &c)
 	for (size_t i = 0; i < reg_args_count; i++) {
 		args[i]->accept(*this);
 		src.push_back(ret_);
-		EMIT(assem::move("mov `s0, `d0", {cc[i]}, {ret_}));
+		EMIT(assem::move({cc[i]}, {ret_}));
 	}
 
 	// XXX: This assumes no floating point parameters
@@ -110,7 +106,7 @@ void generator::visit_call(tree::call &c)
 				 {}, {}, {}));
 
 	utils::temp ret;
-	EMIT(assem::move("mov `s0, `d0", {ret}, {reg_to_temp(regs::RAX)}));
+	EMIT(assem::move({ret}, {reg_to_temp(regs::RAX)}));
 
 	// XXX: The last move is not necessary if (sexp (call))
 	ret_ = ret;
@@ -280,9 +276,9 @@ void generator::visit_move(tree::move &mv)
 		 * leaving it here for good measure.
 		 */
 		if (t2 == std::nullopt)
-			EMIT(assem::move("mov " + s + ", `d0", {t1}, {}));
+			EMIT(assem::oper("mov " + s + ", `d0", {t1}, {}, {}));
 		else
-			EMIT(assem::move("mov `s0, `d0", {t1}, {*t2}));
+			EMIT(assem::move({t1}, {*t2}));
 		return;
 	}
 	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs(), false)) {
@@ -290,7 +286,7 @@ void generator::visit_move(tree::move &mv)
 		auto t1 = mv.lhs().as<tree::temp>()->temp_;
 		auto [s, t2] = reg_deref_str(mv.rhs(), "`s0");
 
-		EMIT(assem::oper("lea " + s + ", `d0", {t1}, {t2}, {}));
+		EMIT(assem::lea(t1, {s, t2}));
 		return;
 	}
 	if (is_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
@@ -351,7 +347,7 @@ void generator::visit_move(tree::move &mv)
 	mv.rhs()->accept(*this);
 	auto rhs = ret_;
 
-	EMIT(assem::move("mov `s0, `d0", {lhs}, {rhs}));
+	EMIT(assem::move({lhs}, {rhs}));
 }
 
 void generator::visit_mem(tree::mem &mm)
@@ -409,7 +405,7 @@ bool generator::opt_mul(tree::binop &b)
 	repr += ", `d0";
 
 	utils::temp dst;
-	EMIT(assem::move("mov `s0, `d0", {dst}, {lhs}));
+	EMIT(assem::move({dst}, {lhs}));
 
 	EMIT(assem::oper(repr, {dst}, {lhs}, {}));
 
@@ -433,7 +429,7 @@ bool generator::opt_add(tree::binop &b)
 	repr += ", `d0";
 
 	utils::temp dst;
-	EMIT(assem::move("mov `s0, `d0", {dst}, {lhs}));
+	EMIT(assem::move({dst}, {lhs}));
 
 	if (cnst->value_ != 0)
 		EMIT(assem::oper(repr, {dst}, {lhs}, {}));
@@ -458,9 +454,9 @@ void generator::visit_binop(tree::binop &b)
 	utils::temp dst;
 
 	if (b.op_ != ops::binop::MINUS)
-		EMIT(assem::move("mov `s0, `d0", {dst}, {rhs}));
+		EMIT(assem::move({dst}, {rhs}));
 	else
-		EMIT(assem::move("mov `s0, `d0", {dst}, {lhs}));
+		EMIT(assem::move({dst}, {lhs}));
 
 	if (b.op_ == ops::binop::PLUS)
 		EMIT(assem::oper("add `s0, `d0", {dst}, {lhs, dst}, {}));
@@ -475,8 +471,7 @@ void generator::visit_binop(tree::binop &b)
 	else if (b.op_ == ops::binop::BITOR)
 		EMIT(assem::oper("or `s0, `d0", {dst}, {lhs, dst}, {}));
 	else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
-		EMIT(assem::move("mov `s0, `d0", {reg_to_temp(regs::RAX)},
-				 {lhs}));
+		EMIT(assem::move({reg_to_temp(regs::RAX)}, {lhs}));
 		EMIT(assem::oper(
 			"cqto",
 			{reg_to_temp(regs::RAX), reg_to_temp(regs::RDX)},
@@ -488,11 +483,9 @@ void generator::visit_binop(tree::binop &b)
 			{dst, reg_to_temp(regs::RAX), reg_to_temp(regs::RAX)},
 			{}));
 		if (b.op_ == ops::binop::DIV)
-			EMIT(assem::move("mov `s0, `d0", {dst},
-					 {reg_to_temp(regs::RAX)}));
+			EMIT(assem::move({dst}, {reg_to_temp(regs::RAX)}));
 		else
-			EMIT(assem::move("mov `s0, `d0", {dst},
-					 {reg_to_temp(regs::RDX)}));
+			EMIT(assem::move({dst}, {reg_to_temp(regs::RDX)}));
 	} else
 		UNREACHABLE("Unimplemented binop");
 
@@ -503,7 +496,7 @@ void generator::emit(assem::rinstr ins)
 {
 	unsigned width = 50;
 	std::stringstream str;
-	str << ins->repr_;
+	str << ins->repr();
 
 	while (str.str().size() <= width / 2)
 		str << " ";
