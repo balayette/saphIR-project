@@ -1,9 +1,11 @@
 #include "libc.jit"
 
-fun mult(int a, int b) int {
+struct pair { int a, int b };
+
+fun mult(pair* p) int {
         let int ret = 0;
-        for (let int i = 1; i != b + 1; i = i + 1)
-                ret = ret + a;
+        for (let int i = 1; i != p->b + 1; i = i + 1)
+                ret = ret + p->a;
         rof
         return ret;
 }
@@ -11,7 +13,8 @@ fun mult(int a, int b) int {
 fun fact(int n) int {
         let int ret = 1;
         for (let int i = 1; i != n + 1; i = i + 1)
-                ret = mult(ret, i);
+                let pair p = {ret, i};
+                ret = mult(&p);
         rof
         return ret;
 }
