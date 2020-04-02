@@ -75,7 +75,7 @@ struct cmp : public exp {
 struct num : public exp {
 	num(int value) : value_(value)
 	{
-		ty_ = new types::builtin_ty(types::type::INT);
+		ty_ = new types::builtin_ty(types::type::INT, 4);
 	}
 
 	ACCEPT(num)

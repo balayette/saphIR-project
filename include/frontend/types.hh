@@ -7,6 +7,8 @@
 #include "utils/symbol.hh"
 #include "utils/ref.hh"
 
+#define DEFAULT_SIZE (42)
+
 namespace types
 {
 enum class type { INT, STRING, VOID, INVALID };
@@ -27,6 +29,8 @@ struct ty {
 
 	virtual ty *clone() const = 0;
 
+	virtual bool size_modifier(size_t sz) { return sz == DEFAULT_SIZE; }
+
 	virtual size_t size() const
 	{
 		UNREACHABLE("size() on type with no size");
@@ -38,7 +42,8 @@ bool operator!=(const ty *ty, const type &t);
 
 struct builtin_ty : public ty {
 	builtin_ty();
-	builtin_ty(type t, size_t size = 0);
+	builtin_ty(type t);
+	builtin_ty(type t, size_t size);
 
 	std::string to_string() const override;
 
@@ -52,11 +57,13 @@ struct builtin_ty : public ty {
 	}
 
 	size_t size() const override;
+	bool size_modifier(size_t sz) override;
 
 	type ty_;
 
       private:
 	size_t size_;
+	size_t size_modif_;
 };
 
 struct pointer_ty : public ty {
@@ -187,7 +194,7 @@ struct fun_ty : public ty {
  * This is necessary because of type declarations that the parser doesn't track.
  */
 struct named_ty : public ty {
-	named_ty(const symbol &name);
+	named_ty(const symbol &name, size_t sz = DEFAULT_SIZE);
 	std::string to_string() const override;
 
 	bool assign_compat(const ty *t) const override;
@@ -195,7 +202,11 @@ struct named_ty : public ty {
 				    const ty *t) const override;
 
 	virtual named_ty *clone() const override { return new named_ty(name_); }
+	size_t size() const override;
 
 	symbol name_;
+
+      private:
+	int sz_;
 };
 } // namespace types

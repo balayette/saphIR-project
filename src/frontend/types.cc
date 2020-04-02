@@ -1,5 +1,6 @@
 #include "frontend/types.hh"
 #include "utils/assert.hh"
+#include "utils/misc.hh"
 
 namespace types
 {
@@ -8,14 +9,14 @@ const unsigned default_size[] = {8, 8, 0, 0};
 
 utils::ref<builtin_ty> integer_type()
 {
-	static auto t = std::make_shared<builtin_ty>(type::INT, 8);
+	static auto t = std::make_shared<builtin_ty>(type::INT);
 
 	return t;
 }
 
 utils::ref<builtin_ty> void_type()
 {
-	static auto t = std::make_shared<builtin_ty>(type::VOID, 0);
+	static auto t = std::make_shared<builtin_ty>(type::VOID);
 
 	return t;
 }
@@ -53,29 +54,52 @@ utils::ref<ty> deref_pointer_type(utils::ref<ty> ty)
 }
 
 builtin_ty::builtin_ty() : ty_(type::INVALID) {}
-builtin_ty::builtin_ty(type t, size_t size) : ty_(t)
+builtin_ty::builtin_ty(type t) : builtin_ty(t, DEFAULT_SIZE) {}
+builtin_ty::builtin_ty(type t, size_t size) : ty_(t), size_modif_(DEFAULT_SIZE)
 {
-	if (size == 0)
+	if (size == DEFAULT_SIZE)
 		size_ = default_size[static_cast<unsigned>(t)];
 	else
 		size_ = size;
 }
 
+bool builtin_ty::size_modifier(size_t sz)
+{
+	if (sz == DEFAULT_SIZE)
+		return true;
+
+	if (ty_ != type::INT)
+		return false;
+
+	if (sz > 8 || sz == 0)
+		return false;
+
+	if (!IS_POWER_OF_TWO(sz))
+		return false;
+
+	size_modif_ = sz;
+	return true;
+}
+
 std::string builtin_ty::to_string() const
 {
 	std::string ret(str[static_cast<int>(ty_)]);
-	ret += "<" + std::to_string(size_) + ">";
+	if (size_modif_ != DEFAULT_SIZE)
+		ret += "<" + std::to_string(size_modif_) + ">";
 	return ret;
 }
 
-size_t builtin_ty::size() const { return size_; }
+size_t builtin_ty::size() const
+{
+	return size_modif_ == DEFAULT_SIZE ? size_ : size_modif_;
+}
 
 bool builtin_ty::assign_compat(const ty *t) const
 {
 	if (auto ft = dynamic_cast<const fun_ty *>(t))
-		return this->assign_compat(&ft->ret_ty_);
+		return ft->ret_ty_->assign_compat(this);
 	if (auto bt = dynamic_cast<const builtin_ty *>(t))
-		return ty_ == bt->ty_;
+		return ty_ == bt->ty_ && size() >= bt->size();
 	return false;
 }
 
@@ -341,13 +365,21 @@ utils::ref<ty> fun_ty::binop_compat(ops::binop, const ty *) const
 	return nullptr;
 }
 
-named_ty::named_ty(const symbol &name) : name_(name) {}
+named_ty::named_ty(const symbol &name, size_t sz) : name_(name), sz_(sz) {}
 
-std::string named_ty::to_string() const { return name_.get() + "_NAMED"; }
+std::string named_ty::to_string() const
+{
+	std::string repr(name_.get() + "_NAMED");
+	if (sz_ != DEFAULT_SIZE)
+		repr += "<" + std::to_string(sz_) + ">";
+	return repr;
+}
 
 bool named_ty::assign_compat(const ty *) const { return false; }
 utils::ref<ty> named_ty::binop_compat(ops::binop, const ty *) const
 {
 	return nullptr;
 }
+
+size_t named_ty::size() const { return sz_; }
 } // namespace types

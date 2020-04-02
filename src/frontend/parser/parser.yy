@@ -305,6 +305,7 @@ memberaccess:
 
 type:
 	ID { $$ = new types::named_ty($1); }
+|       ID "<" INT_LIT ">" { $$ = new types::named_ty($1, $3); }
 | 	type "*" { $$ = new types::pointer_ty($1); }
 |       type "[" INT_LIT "]" { $$ = new types::array_ty($1, $3); }
 ;

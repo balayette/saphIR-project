@@ -45,6 +45,12 @@ utils::ref<types::ty> tycheck_visitor::get_type(utils::ref<types::ty> t)
 	}
 
 	utils::ref<types::ty> ret = (*type)->clone();
+	if (!ret->size_modifier(nt->size())) {
+		std::cerr << "Can't set size of type '" << nt->name_ << "' to "
+			  << std::to_string(nt->size()) << "\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
 	if (pt) {
 		pt = pt->clone();
 		pt->ty_ = ret;
