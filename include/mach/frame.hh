@@ -128,7 +128,7 @@ std::string asm_string(utils::label lab, const std::string &str);
 
 struct frame {
 	frame(const symbol &s, const std::vector<bool> &args,
-	      std::vector<utils::ref<types::ty>> types);
+	      std::vector<utils::ref<types::ty>> types, bool has_return);
 
 	utils::ref<access> alloc_local(bool escapes, utils::ref<types::ty> ty);
 	utils::ref<access> alloc_local(bool escapes);
@@ -148,6 +148,7 @@ struct frame {
 	utils::ref<access> canary_;
 	// Defaults to true, overidden by frontend::sema::frame_visitor
 	bool leaf_;
+	bool has_return_;
 };
 
 struct fragment {

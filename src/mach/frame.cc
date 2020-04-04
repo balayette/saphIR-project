@@ -183,9 +183,9 @@ std::ostream &global_acc::print(std::ostream &os) const
 
 
 frame::frame(const symbol &s, const std::vector<bool> &args,
-	     std::vector<utils::ref<types::ty>> types)
+	     std::vector<utils::ref<types::ty>> types, bool has_return)
     : s_(s), locals_size_(8), reg_count_(0), canary_(alloc_local(true)),
-      leaf_(true)
+      leaf_(true), has_return_(has_return)
 {
 	/*
 	 * This struct contains a view of where the args should be when
@@ -248,12 +248,18 @@ ir::tree::rstm frame::proc_entry_exit_1(ir::tree::rstm s, utils::label ret_lbl)
 
 void frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 {
-	std::vector<utils::temp> live(special_regs());
+	auto spec = special_regs();
+	std::vector<assem::temp> live;
+	live.insert(live.end(), spec.begin(), spec.end());
+
 	for (auto &r : callee_saved_regs())
 		live.push_back(r);
+	if (has_return_)
+		live.push_back(register_array[regs::RAX].label);
+
 	std::string repr("# sink:");
 	for (auto &r : live)
-		repr += " " + r.get();
+		repr += " " + r.temp_.get();
 	instrs.push_back(new assem::oper(repr, {}, live, {}));
 }
 
