@@ -5,7 +5,7 @@
 
 namespace backend
 {
-ifence_node::ifence_node(const utils::temp &t) : value_(t) {}
+ifence_node::ifence_node(const assem::temp &t) : value_(t) {}
 
 bool ifence_node::operator==(const ifence_node &rhs) const
 {
@@ -19,11 +19,11 @@ std::ostream &operator<<(std::ostream &os, const ifence_node &n)
 
 ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
 {
-	std::vector<utils::temp_set> in(cfg.size());
-	std::vector<utils::temp_set> out(cfg.size());
+	std::vector<assem::temp_set> in(cfg.size());
+	std::vector<assem::temp_set> out(cfg.size());
 
-	std::vector<utils::temp_set> new_in(cfg.size());
-	std::vector<utils::temp_set> new_out(cfg.size());
+	std::vector<assem::temp_set> new_in(cfg.size());
+	std::vector<assem::temp_set> new_out(cfg.size());
 
 	do {
 		for (utils::node_id n = 0; n < cfg.size(); n++) {
@@ -33,7 +33,7 @@ ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
 			auto *node = cfg.get(n);
 			in[n] = node->use + (out[n] - node->def);
 
-			utils::temp_set children_in;
+			assem::temp_set children_in;
 			for (auto s : cfg.nodes_[n].succ_)
 				children_in = children_in + in[s];
 			out[n] = children_in;

@@ -4,6 +4,7 @@
 #include "utils/temp.hh"
 #include "ass/instr.hh"
 #include "utils/uset.hh"
+#include "ass/instr.hh"
 #include <unordered_map>
 #include <optional>
 #include <iostream>
@@ -11,10 +12,10 @@
 namespace backend
 {
 struct cfgnode {
-	cfgnode(utils::temp_set def,
-		utils::temp_set use, bool is_move);
-	utils::temp_set def;
-	utils::temp_set use;
+	cfgnode(assem::temp_set def,
+		assem::temp_set use, bool is_move);
+	assem::temp_set def;
+	assem::temp_set use;
 	bool is_move;
 	std::string debug;
 };

@@ -172,7 +172,7 @@ void frame_visitor::visit_fundec(fundec &s)
 		types.push_back(arg->type_);
 	}
 
-	cframe_ = new mach::frame(s.name_, escaping, types);
+	cframe_ = new mach::frame(s.name_, escaping, types, s.has_return_);
 	for (unsigned i = 0; i < s.args_.size(); i++)
 		s.args_[i]->access_ = cframe_->formals_[i];
 

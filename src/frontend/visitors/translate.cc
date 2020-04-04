@@ -347,8 +347,9 @@ utils::ref<exp> translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 
 	// scalars
 	// XXX: functions can't return structs by value (it is ABI dependant)
-	if (types::is_scalar(&lhs->ty_))
+	if (types::is_scalar(&lhs->ty_)) {
 		return new nx(new ir::tree::move(lhs, rhs));
+	}
 
 	// lhs is a struct
 	// rhs is a struct
@@ -678,7 +679,7 @@ void translate_visitor::visit_decs(decs &s)
 
 	auto body = new ir::tree::seq(init_funs_);
 	utils::label ret_lbl = unique_label("init_vars_ret");
-	mach::frame frame(unique_label("init_vars"), {}, {});
+	mach::frame frame(unique_label("init_vars"), {}, {}, false);
 	init_fun_ = new mach::fun_fragment(
 		frame.proc_entry_exit_1(body, ret_lbl), frame, ret_lbl,
 		unique_label("init_vars_epi"));

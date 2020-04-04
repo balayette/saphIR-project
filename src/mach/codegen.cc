@@ -29,6 +29,8 @@ std::string label_to_asm(const utils::label &lbl)
 	return ret;
 }
 
+assem::temp reg_to_assem_temp(mach::regs t) { return reg_to_temp(t); }
+
 std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
 {
 	generator g;
@@ -48,7 +50,7 @@ std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
 
 void generator::visit_name(tree::name &n)
 {
-	utils::temp ret;
+	assem::temp ret;
 	EMIT(assem::lea(ret, label_to_asm(n.label_) + "(%rip)"));
 
 	ret_ = ret;
@@ -57,7 +59,7 @@ void generator::visit_name(tree::name &n)
 void generator::visit_call(tree::call &c)
 {
 	auto name = c.name().as<tree::name>()->label_;
-	std::vector<utils::temp> src;
+	std::vector<assem::temp> src;
 	auto cc = args_regs();
 	auto args = c.args();
 
@@ -89,14 +91,18 @@ void generator::visit_call(tree::call &c)
 
 	// XXX: This assumes no floating point parameters
 	if (c.variadic())
-		EMIT(assem::oper("xor `d0, `d0", {reg_to_temp(regs::RAX)}, {},
-				 {}));
+		EMIT(assem::oper("xor `d0, `d0", {reg_to_assem_temp(regs::RAX)},
+				 {}, {}));
 
 	std::string repr("call ");
 	repr += name.get() + "@PLT";
 
-	auto clobbered = mach::caller_saved_regs();
+	auto clobbered_regs = mach::caller_saved_regs();
 	auto args_regs = mach::args_regs();
+
+	std::vector<assem::temp> clobbered;
+	clobbered.insert(clobbered.end(), clobbered_regs.begin(),
+			 clobbered_regs.end());
 	clobbered.insert(clobbered.end(), args_regs.begin(), args_regs.end());
 
 	EMIT(assem::oper(repr, clobbered, src, {}));
@@ -105,8 +111,10 @@ void generator::visit_call(tree::call &c)
 					 + ", %rsp",
 				 {}, {}, {}));
 
-	utils::temp ret;
-	EMIT(assem::move({ret}, {reg_to_temp(regs::RAX)}));
+	auto fty = c.ty_.as<types::fun_ty>();
+	assem::temp ret(fty->ret_ty_->size());
+	std::cout << "ret size " << ret.size_ << '\n';
+	EMIT(assem::move({ret}, {reg_to_assem_temp(regs::RAX)}));
 
 	// XXX: The last move is not necessary if (sexp (call))
 	ret_ = ret;
@@ -189,7 +197,7 @@ bool is_reg_disp(tree::rexp e, bool check_ty = false)
 	return true;
 }
 
-std::pair<std::string, utils::temp> reg_deref_str(tree::rexp e,
+std::pair<std::string, assem::temp> reg_deref_str(tree::rexp e,
 						  std::string regstr)
 {
 	if (is_reg_disp(e)) {
@@ -207,12 +215,12 @@ std::pair<std::string, utils::temp> reg_deref_str(tree::rexp e,
 	UNREACHABLE("what");
 }
 
-std::pair<std::string, std::optional<utils::temp>>
+std::pair<std::string, std::optional<assem::temp>>
 simple_src_str(tree::rexp e, std::string regstr)
 {
 	auto reg = e.as<tree::temp>();
 	if (reg)
-		return {regstr, reg->temp_};
+		return {regstr, assem::temp(reg->temp_, e->ty_->size())};
 
 	auto cnst = e.as<tree::cnst>();
 	if (cnst)
@@ -258,13 +266,10 @@ bool is_mem_reg(tree::rexp e)
 
 void generator::visit_move(tree::move &mv)
 {
-	std::cout << "===== MOVE ======\n";
-	ir::ir_pretty_printer pir(std::cout);
-	mv.accept(pir);
-
 	if (is_reg(mv.lhs()) && is_simple_source(mv.rhs())) {
 		// mov %t2, %t1
-		auto t1 = mv.lhs().as<tree::temp>()->temp_;
+		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
+				      mv.lhs()->ty_->size());
 		auto [s, t2] = simple_src_str(mv.rhs(), "`s0");
 
 		/*
@@ -283,7 +288,9 @@ void generator::visit_move(tree::move &mv)
 	}
 	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs(), false)) {
 		// lea 3(%t2), %t1
-		auto t1 = mv.lhs().as<tree::temp>()->temp_;
+		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
+				      mv.lhs()->ty_->size());
+
 		auto [s, t2] = reg_deref_str(mv.rhs(), "`s0");
 
 		EMIT(assem::lea(t1, {s, t2}));
@@ -291,7 +298,8 @@ void generator::visit_move(tree::move &mv)
 	}
 	if (is_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
 		// mov 3(%t2), %t1
-		auto t1 = mv.lhs().as<tree::temp>()->temp_;
+		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
+				      mv.lhs()->ty_->size());
 
 		auto mem = mv.rhs().as<tree::mem>();
 		auto [s, t2] = reg_deref_str(mem->e(), "`s0");
@@ -318,7 +326,10 @@ void generator::visit_move(tree::move &mv)
 	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
 		// mov 4(%t2), %t3
 		// mov %t3, 3(%t1)
-		utils::temp t3;
+
+		// t3 is the same size as the destination
+		assem::temp t3(mv.lhs()->ty_->size());
+
 		auto mem1 = mv.rhs().as<tree::mem>();
 		auto [s1, t2] = reg_deref_str(mem1->e(), "`s0");
 		EMIT(assem::oper("mov " + s1 + ", `d0", {t3}, {t2}, {}));
@@ -329,7 +340,6 @@ void generator::visit_move(tree::move &mv)
 		return;
 	}
 
-	std::cout << "default\n";
 	if (auto lmem = mv.lhs().as<tree::mem>()) {
 		// (move (mem e1) e2)
 		// mov e2, (e1)
@@ -352,24 +362,7 @@ void generator::visit_move(tree::move &mv)
 
 void generator::visit_mem(tree::mem &mm)
 {
-	utils::temp dst;
-
-	if (auto binop = mm.e().as<tree::binop>()) {
-		if (auto reg = binop->lhs().as<tree::temp>()) {
-			if (mach::temp_map().count(reg->temp_)) {
-				if (auto n = binop->rhs().as<tree::cnst>()) {
-					std::string repr("mov ");
-					repr += std::to_string(n->value_);
-					repr += "(`s0), `d0";
-
-					EMIT(assem::oper(repr, {dst},
-							 {reg->temp_}, {}));
-					ret_ = dst;
-					return;
-				}
-			}
-		}
-	}
+	assem::temp dst(mm.ty_->size());
 
 	mm.e()->accept(*this);
 	EMIT(assem::oper("mov (`s0), `d0", {dst}, {ret_}, {}));
@@ -378,7 +371,8 @@ void generator::visit_mem(tree::mem &mm)
 
 void generator::visit_cnst(tree::cnst &c)
 {
-	utils::temp dst;
+	assem::temp dst;
+
 	std::string instr("mov $");
 	instr += std::to_string(c.value_);
 	instr += ", `d0";
@@ -404,9 +398,9 @@ bool generator::opt_mul(tree::binop &b)
 	repr += std::to_string(cnst->value_);
 	repr += ", `d0";
 
-	utils::temp dst;
-	EMIT(assem::move({dst}, {lhs}));
+	assem::temp dst;
 
+	EMIT(assem::move({dst}, {lhs}));
 	EMIT(assem::oper(repr, {dst}, {lhs}, {}));
 
 	ret_ = dst;
@@ -428,7 +422,7 @@ bool generator::opt_add(tree::binop &b)
 	repr += std::to_string(cnst->value_);
 	repr += ", `d0";
 
-	utils::temp dst;
+	assem::temp dst;
 	EMIT(assem::move({dst}, {lhs}));
 
 	if (cnst->value_ != 0)
@@ -446,12 +440,14 @@ void generator::visit_binop(tree::binop &b)
 	else if (b.op_ == ops::binop::MULT && opt_mul(b))
 		return;
 
+	// binary operations are performed on 8 bytes integers
 	b.lhs()->accept(*this);
-	auto lhs = ret_;
+	auto lhs = assem::temp(ret_, 8);
 	b.rhs()->accept(*this);
-	auto rhs = ret_;
+	auto rhs = assem::temp(ret_, 8);
 
-	utils::temp dst;
+	assem::temp dst;
+	assem::temp src;
 
 	if (b.op_ != ops::binop::MINUS)
 		EMIT(assem::move({dst}, {rhs}));
@@ -471,21 +467,24 @@ void generator::visit_binop(tree::binop &b)
 	else if (b.op_ == ops::binop::BITOR)
 		EMIT(assem::oper("or `s0, `d0", {dst}, {lhs, dst}, {}));
 	else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
-		EMIT(assem::move({reg_to_temp(regs::RAX)}, {lhs}));
-		EMIT(assem::oper(
-			"cqto",
-			{reg_to_temp(regs::RAX), reg_to_temp(regs::RDX)},
-			{reg_to_temp(regs::RAX)}, {}));
+		EMIT(assem::move({reg_to_assem_temp(regs::RAX)}, {lhs}));
+		EMIT(assem::oper("cqto",
+				 {reg_to_assem_temp(regs::RAX),
+				  reg_to_assem_temp(regs::RDX)},
+				 {reg_to_assem_temp(regs::RAX)}, {}));
 		// quotient in %rax, remainder in %rdx
-		EMIT(assem::oper(
-			"idivq `s0",
-			{reg_to_temp(regs::RAX), reg_to_temp(regs::RDX)},
-			{dst, reg_to_temp(regs::RAX), reg_to_temp(regs::RAX)},
-			{}));
+		EMIT(assem::oper("idivq `s0",
+				 {reg_to_assem_temp(regs::RAX),
+				  reg_to_assem_temp(regs::RDX)},
+				 {dst, reg_to_assem_temp(regs::RAX),
+				  reg_to_assem_temp(regs::RAX)},
+				 {}));
 		if (b.op_ == ops::binop::DIV)
-			EMIT(assem::move({dst}, {reg_to_temp(regs::RAX)}));
+			EMIT(assem::move({dst},
+					 {reg_to_assem_temp(regs::RAX)}));
 		else
-			EMIT(assem::move({dst}, {reg_to_temp(regs::RDX)}));
+			EMIT(assem::move({dst},
+					 {reg_to_assem_temp(regs::RDX)}));
 	} else
 		UNREACHABLE("Unimplemented binop");
 
@@ -494,7 +493,7 @@ void generator::visit_binop(tree::binop &b)
 
 void generator::emit(assem::rinstr ins)
 {
-	unsigned width = 50;
+	unsigned width = 80;
 	std::stringstream str;
 	str << ins->repr();
 

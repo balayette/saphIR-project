@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 				continue;
 			if (!i.as<assem::label>())
 				fout << '\t';
-			fout << i->to_string(mach::temp_map()) << '\n';
+			fout << i->to_string(mach::register_repr) << '\n';
 		}
 		fout << f.epilogue_;
 		fout << '\n';

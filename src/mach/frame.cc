@@ -7,22 +7,33 @@
 
 namespace mach
 {
-std::array<utils::temp, 16> reg_temp{
-	make_unique("rax"), make_unique("rbx"), make_unique("rcx"),
-	make_unique("rdx"), make_unique("rsi"), make_unique("rdi"),
-	make_unique("rsp"), make_unique("rbp"), make_unique("r8"),
-	make_unique("r9"),  make_unique("r10"), make_unique("r11"),
-	make_unique("r12"), make_unique("r13"), make_unique("r14"),
-	make_unique("r15"),
+struct reg {
+	utils::temp label;
+	std::array<std::string, 4> repr;
 };
 
-std::array<std::string, 16> reg_str{
-	"%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi", "%rsp", "%rbp",
-	"%r8",	"%r9",	"%r10", "%r11", "%r12", "%r13", "%r14", "%r15"};
+reg register_array[] = {
+	{make_unique("rax"), {"%rax", "%eax", "%ax", "%al"}},
+	{make_unique("rbx"), {"%rbx", "%ebx", "%bx", "%bl"}},
+	{make_unique("rcx"), {"%rcx", "%ecx", "%cx", "%cl"}},
+	{make_unique("rdx"), {"%rdx", "%edx", "%dx", "%dl"}},
+	{make_unique("rsi"), {"%rsi", "%esi", "%si", "%sil"}},
+	{make_unique("rdi"), {"%rdi", "%edi", "%di", "%dil"}},
+	{make_unique("rsp"), {"%rsp", "%esp", "%sp", "%spl"}},
+	{make_unique("rbp"), {"%rbp", "%ebp", "%bp", "%bpl"}},
+	{make_unique("r8"), {"%r8", "%r8d", "%r8w", "%r8b"}},
+	{make_unique("r9"), {"%r9", "%r9d", "%r9w", "%r9b"}},
+	{make_unique("r10"), {"%r10", "%r10d", "%r10w", "%r10b"}},
+	{make_unique("r11"), {"%r11", "%r11d", "%r11w", "%r11b"}},
+	{make_unique("r12"), {"%r12", "%r12d", "%r12w", "%r12b"}},
+	{make_unique("r13"), {"%r13", "%r13d", "%r13w", "%r13b"}},
+	{make_unique("r14"), {"%r14", "%r14d", "%r14w", "%r14b"}},
+	{make_unique("r15"), {"%r15", "%r15d", "%r15w", "%r15b"}},
+};
 
-utils::temp reg_to_temp(regs r) { return reg_temp[r]; }
+utils::temp reg_to_temp(regs r) { return register_array[r].label; }
 
-utils::temp reg_to_str(regs r) { return reg_str[r]; }
+utils::temp reg_to_str(regs r) { return register_array[r].repr[0]; }
 
 utils::temp_set registers()
 {
@@ -34,14 +45,33 @@ utils::temp_set registers()
 std::unordered_map<utils::temp, std::string> temp_map()
 {
 	std::unordered_map<utils::temp, std::string> ret;
-	for (unsigned i = 0; i < reg_temp.size(); i++)
-		ret.insert({reg_temp[i], reg_str[i]});
+	for (unsigned i = 0; i < 16; i++)
+		ret.insert(
+			{register_array[i].label, register_array[i].repr[0]});
 	return ret;
 }
 
-utils::temp fp() { return reg_temp[regs::RBP]; }
+std::string register_repr(utils::temp t, unsigned size)
+{
+	unsigned size_offt = 0;
+	if (size == 4)
+		size_offt = 1;
+	else if (size == 2)
+		size_offt = 2;
+	else if (size == 1)
+		size_offt = 3;
 
-utils::temp rv() { return reg_temp[regs::RAX]; }
+	for (unsigned i = 0; i < 16; i++) {
+		if (register_array[i].label == t)
+			return register_array[i].repr[size_offt];
+	}
+
+	UNREACHABLE("register not found");
+}
+
+utils::temp fp() { return register_array[regs::RBP].label; }
+
+utils::temp rv() { return register_array[regs::RAX].label; }
 
 utils::ref<types::ty> gpr_type() { return types::integer_type(); }
 

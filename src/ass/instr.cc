@@ -39,8 +39,8 @@ std::ostream &operator<<(std::ostream &os, const instr &ins)
 	return os << ins.repr();
 }
 
-instr::instr(const std::string &repr, std::vector<utils::temp> dst,
-	     std::vector<utils::temp> src, std::vector<utils::label> jmps)
+instr::instr(const std::string &repr, std::vector<assem::temp> dst,
+	     std::vector<assem::temp> src, std::vector<utils::label> jmps)
     : repr_(repr), dst_(dst), src_(src), jmps_(jmps)
 {
 }
@@ -74,18 +74,32 @@ instr::to_string(const std::unordered_map<utils::temp, std::string> &map) const
 	return format_repr(repr(), src, dst);
 }
 
-oper::oper(const std::string &repr, std::vector<utils::temp> dst,
-	   std::vector<utils::temp> src, std::vector<utils::label> jmps)
+std::string
+instr::to_string(std::function<std::string(utils::temp, unsigned)> f) const
+{
+	std::vector<std::string> src;
+	std::vector<std::string> dst;
+
+	for (auto &l : src_)
+		src.push_back(f(l.temp_, l.size_));
+	for (auto &l : dst_)
+		dst.push_back(f(l.temp_, l.size_));
+
+	return format_repr(repr(), src, dst);
+}
+
+oper::oper(const std::string &repr, std::vector<assem::temp> dst,
+	   std::vector<assem::temp> src, std::vector<utils::label> jmps)
     : instr(repr, dst, src, jmps)
 {
 }
 
-lea::lea(utils::temp dst, std::pair<std::string, utils::temp> src)
+lea::lea(assem::temp dst, std::pair<std::string, assem::temp> src)
     : oper("LEA", {dst}, {src.second}, {}), lhs_(src.first)
 {
 }
 
-lea::lea(utils::temp dst, std::string src)
+lea::lea(assem::temp dst, std::string src)
     : oper("LEA", {dst}, {}, {}), lhs_(src)
 {
 }
@@ -97,7 +111,7 @@ label::label(const std::string &repr, utils::label lab)
 {
 }
 
-move::move(std::vector<utils::temp> dst, std::vector<utils::temp> src)
+move::move(std::vector<assem::temp> dst, std::vector<assem::temp> src)
     : instr("mov `s0, `d0", dst, src, {})
 {
 }

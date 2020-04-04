@@ -5,20 +5,20 @@
 #include <vector>
 #include "utils/temp.hh"
 #include "backend/liveness.hh"
+#include "ass/instr.hh"
 
 namespace backend
 {
 namespace regalloc
 {
 struct coloring_out {
-	utils::temp_endomap allocation;
-	std::vector<utils::temp> spills;
-	utils::temp_set colored;
-	utils::temp_set coalesced;
+	assem::temp_endomap allocation;
+	std::vector<assem::temp> spills;
+	assem::temp_set colored;
+	assem::temp_set coalesced;
 };
 
-coloring_out color(backend::ifence_graph &ifence,
-		   utils::temp_set initial);
+coloring_out color(backend::ifence_graph &ifence, assem::temp_set initial);
 } // namespace regalloc
 } // namespace backend
 

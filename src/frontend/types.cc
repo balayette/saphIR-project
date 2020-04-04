@@ -62,6 +62,10 @@ builtin_ty::builtin_ty(type t, size_t size) : ty_(t), size_modif_(DEFAULT_SIZE)
 	else
 		size_ = size;
 }
+builtin_ty::builtin_ty(type t, size_t size, size_t size_modif)
+    : ty_(t), size_(size), size_modif_(size_modif)
+{
+}
 
 bool builtin_ty::size_modifier(size_t sz)
 {
@@ -77,6 +81,7 @@ bool builtin_ty::size_modifier(size_t sz)
 	if (!IS_POWER_OF_TWO(sz))
 		return false;
 
+	std::cout << "size modif ok, new size " << sz << '\n';
 	size_modif_ = sz;
 	return true;
 }
@@ -99,7 +104,7 @@ bool builtin_ty::assign_compat(const ty *t) const
 	if (auto ft = dynamic_cast<const fun_ty *>(t))
 		return ft->ret_ty_->assign_compat(this);
 	if (auto bt = dynamic_cast<const builtin_ty *>(t))
-		return ty_ == bt->ty_ && size() >= bt->size();
+		return ty_ == bt->ty_;
 	return false;
 }
 

@@ -34,7 +34,7 @@ struct ty {
 	virtual size_t size() const
 	{
 		UNREACHABLE("size() on type with no size");
-	};
+	}
 };
 
 bool operator==(const ty *ty, const type &t);
@@ -53,7 +53,7 @@ struct builtin_ty : public ty {
 
 	virtual builtin_ty *clone() const override
 	{
-		return new builtin_ty(ty_, size_);
+		return new builtin_ty(ty_, size_, size_modif_);
 	}
 
 	size_t size() const override;
@@ -62,6 +62,8 @@ struct builtin_ty : public ty {
 	type ty_;
 
       private:
+	builtin_ty(type t, size_t size, size_t size_modif);
+
 	size_t size_;
 	size_t size_modif_;
 };

@@ -12,9 +12,9 @@ namespace regalloc
 {
 // Replace all uses of spilling temps by memory loads and stores
 void rewrite(std::vector<assem::rinstr> &instrs,
-	     std::vector<utils::temp> spills, mach::frame &f)
+	     std::vector<assem::temp> spills, mach::frame &f)
 {
-	std::unordered_map<utils::temp, utils::ref<mach::access>> temp_to_acc;
+	std::unordered_map<assem::temp, utils::ref<mach::access>> temp_to_acc;
 
 	for (auto &spill : spills) {
 		auto acc = f.alloc_local(true);
@@ -44,7 +44,7 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 			    == spills.end())
 				continue;
 
-			auto vi = utils::temp(unique_temp());
+			auto vi = assem::temp(unique_temp());
 			ir::tree::rstm mv = new ir::tree::move(
 				temp_to_acc[dst]->exp(),
 				new ir::tree::temp(
@@ -66,7 +66,7 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 // At this point, all temps are mapped to registers, so we just replace
 // them in src_ and dst_
 void replace_allocation(std::vector<assem::rinstr> &instrs,
-			utils::temp_endomap &allocation)
+			assem::temp_endomap &allocation)
 {
 	for (auto &inst : instrs) {
 		if (inst.as<assem::label>())
@@ -76,14 +76,15 @@ void replace_allocation(std::vector<assem::rinstr> &instrs,
 			auto it = allocation.find(dst);
 			ASSERT(it != allocation.end(), "No allocation");
 
-			dst = it->second;
+			// don't overwrite the size
+			dst.temp_ = it->second;
 		}
 
 		for (auto &src : inst->src_) {
 			auto it = allocation.find(src);
 			ASSERT(it != allocation.end(), "No allocation");
 
-			src = it->second;
+			src.temp_ = it->second;
 		}
 	}
 
@@ -100,7 +101,7 @@ void replace_allocation(std::vector<assem::rinstr> &instrs,
 	instrs = filterd;
 }
 
-void allocate(std::vector<assem::rinstr> &instrs, utils::temp_set initial,
+void allocate(std::vector<assem::rinstr> &instrs, assem::temp_set initial,
 	      mach::fun_fragment &f)
 {
 	backend::cfg cfg(instrs, f.body_lbl_);
@@ -118,7 +119,7 @@ void allocate(std::vector<assem::rinstr> &instrs, utils::temp_set initial,
 void alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
 {
 	auto precolored = mach::temp_map();
-	utils::temp_set initial;
+	assem::temp_set initial;
 
 	for (auto &inst : instrs) {
 		if (inst.as<assem::label>())

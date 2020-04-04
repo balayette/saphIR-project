@@ -28,7 +28,7 @@
 namespace mach
 {
 enum regs {
-	RAX,
+	RAX = 0,
 	RBX,
 	RCX,
 	RDX,
@@ -52,13 +52,12 @@ utils::temp_set registers();
 
 utils::temp reg_to_temp(regs r);
 
-utils::temp reg_to_str(regs r);
-
 utils::temp fp();
 
 utils::temp rv();
 
 std::unordered_map<utils::temp, std::string> temp_map();
+std::string register_repr(utils::temp t, unsigned size);
 
 std::vector<utils::temp> caller_saved_regs();
 std::vector<utils::temp> callee_saved_regs();

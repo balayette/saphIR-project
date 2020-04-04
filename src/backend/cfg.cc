@@ -3,7 +3,7 @@
 
 namespace backend
 {
-cfgnode::cfgnode(utils::temp_set def, utils::temp_set use, bool is_move)
+cfgnode::cfgnode(assem::temp_set def, assem::temp_set use, bool is_move)
     : def(def), use(use), is_move(is_move)
 {
 }
@@ -43,8 +43,8 @@ void cfg::build(unsigned idx, std::optional<utils::node_id> pred)
 		return;
 	}
 
-	utils::temp_set def(instrs_[idx]->dst_);
-	utils::temp_set use(instrs_[idx]->src_);
+	assem::temp_set def(instrs_[idx]->dst_);
+	assem::temp_set use(instrs_[idx]->src_);
 	bool is_move = instrs_[idx].as<assem::move>() != nullptr;
 
 	cfgnode nn(def, use, is_move);

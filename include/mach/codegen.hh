@@ -25,7 +25,7 @@ struct generator : public ir::default_ir_visitor {
 	void visit_label(ir::tree::label &) override;
 
 	std::vector<assem::rinstr> instrs_;
-	utils::temp ret_;
+	assem::temp ret_;
 
       private:
 	bool opt_add(ir::tree::binop &add);
