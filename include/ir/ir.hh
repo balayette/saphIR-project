@@ -62,6 +62,7 @@ struct exp : public ir_node {
 	exp(utils::ref<types::ty> ty) : ty_(ty) {}
 
 	utils::ref<types::ty> ty_;
+	size_t size() const { return ty_->size(); }
 };
 
 struct stm : public ir_node {
@@ -152,8 +153,12 @@ struct call : public exp {
 	{
 		children_.emplace_back(name);
 		children_.insert(children_.end(), args.begin(), args.end());
-		ASSERT(ty_.as<types::fun_ty>(), "Type is not a fun_ty");
+		auto fty = ty_.as<types::fun_ty>();
+		ASSERT(fty, "Type is not a fun_ty");
+		ty_ = fty->ret_ty_;
+		variadic_ = fty->variadic_;
 	}
+
 	TREE_KIND(call)
 
 	rexp name() { return children_[0].as<exp>(); }
@@ -167,11 +172,10 @@ struct call : public exp {
 		return args;
 	}
 
-	bool variadic()
-	{
-		auto ft = ty_.as<types::fun_ty>();
-		return ft->variadic_;
-	}
+	bool variadic() { return variadic_; }
+
+      private:
+	bool variadic_;
 };
 
 struct eseq : public exp {

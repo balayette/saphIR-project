@@ -159,13 +159,15 @@ void tycheck_visitor::visit_ret(ret &s)
 {
 	default_visitor::visit_ret(s);
 
+	auto fty = s.fdec_->type_.as<types::fun_ty>();
+
 	/* return; in void function */
 	if (s.e_ == nullptr)
-		CHECK_TYPE_ERROR(&types::void_type(), &s.fdec_->type_,
+		CHECK_TYPE_ERROR(&types::void_type(), &fty->ret_ty_,
 				 "function '" << s.fdec_->name_
 					      << "' return statement");
 	else
-		CHECK_TYPE_ERROR(&s.e_->ty_, &s.fdec_->type_,
+		CHECK_TYPE_ERROR(&fty->ret_ty_, &s.e_->ty_,
 				 "function '" << s.fdec_->name_
 					      << "' return statement");
 }
@@ -258,7 +260,8 @@ void tycheck_visitor::visit_call(call &e)
 {
 	default_visitor::visit_call(e);
 
-	e.ty_ = e.fdec_->type_;
+	auto fty = e.fdec_->type_.as<types::fun_ty>();
+	e.ty_ = get_type(fty->ret_ty_);
 
 	for (size_t i = 0; i < e.fdec_->args_.size(); i++) {
 		CHECK_TYPE_ERROR(&e.fdec_->args_[i]->type_, &e.args_[i]->ty_,
