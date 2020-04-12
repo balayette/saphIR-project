@@ -9,14 +9,21 @@
 
 namespace assem
 {
+std::string size_str(unsigned sz);
+
 struct temp {
 	temp(const utils::temp &t, unsigned size = 8) : temp_(t), size_(size) {}
 	temp(unsigned size = 8) : temp_(utils::temp()), size_(size) {}
 
 	operator utils::temp &() { return temp_; }
 	operator const utils::temp &() const { return temp_; }
-	operator std::string() const { return temp_; }
+	operator std::string() const
+	{
+		return std::string(temp_) + size_str(size_);
+	}
 
+	// == and != are used by the register allocator, and do not take the
+	// size into account
 	bool operator==(const temp &rhs) const { return temp_ == rhs.temp_; }
 	bool operator!=(const temp &rhs) const { return temp_ != rhs.temp_; }
 
@@ -65,6 +72,25 @@ struct oper : public instr {
 	     std::vector<assem::temp> src, std::vector<utils::label> jmps);
 };
 
+struct jump : public oper {
+	jump(const std::string &repr, std::vector<assem::temp> src,
+	     std::vector<utils::label> jumps);
+};
+
+struct sized_oper : public oper {
+	sized_oper(const std::string &oper_str, const std::string &op,
+		   std::vector<assem::temp> dst, std::vector<assem::temp> src,
+		   unsigned sz = 8);
+
+	virtual std::string
+	to_string(std::function<std::string(utils::temp, unsigned)> f)
+		const override;
+
+	std::string oper_str_;
+	std::string op_;
+	unsigned sz_;
+};
+
 struct lea : public oper {
 	lea(assem::temp dst, std::pair<std::string, assem::temp> src);
 	lea(assem::temp dst, std::string src);
@@ -79,7 +105,47 @@ struct label : public instr {
 };
 
 struct move : public instr {
-	move(std::vector<assem::temp> dst, std::vector<assem::temp> src);
+	move(const std::string &dst_str, const std::string &src_str,
+	     std::vector<assem::temp> dst, std::vector<assem::temp> src);
+
+	virtual std::string
+	to_string(std::function<std::string(utils::temp, unsigned)> f)
+		const override;
+
+	std::string dst_str_;
+	std::string src_str_;
+};
+
+// a simple move is a reg2reg move
+struct simple_move : public move {
+	simple_move(assem::temp dst, assem::temp src);
+
+	bool removable() const
+	{
+		return dst() == src() && dst().size_ <= src().size_;
+	}
+
+	assem::temp dst() const { return dst_[0]; }
+	assem::temp src() const { return src_[0]; }
+};
+
+/*
+ * a complex move is a reg2mem, mem2reg, imm2reg, imm2mem move
+ * mem accesses go through registers with known sizes (assem::temps in the src
+ * and dst vectors), but we also need the size of the data accessed or written
+ * by the mem access.
+ */
+struct complex_move : public move {
+	complex_move(const std::string &dst_str, const std::string &src_str,
+		     std::vector<assem::temp> dst, std::vector<assem::temp> src,
+		     unsigned dst_sz, unsigned src_sz);
+
+	virtual std::string
+	to_string(std::function<std::string(utils::temp, unsigned)> f)
+		const override;
+
+	unsigned dst_sz_;
+	unsigned src_sz_;
 };
 } // namespace assem
 

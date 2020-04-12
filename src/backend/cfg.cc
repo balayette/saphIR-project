@@ -45,7 +45,7 @@ void cfg::build(unsigned idx, std::optional<utils::node_id> pred)
 
 	assem::temp_set def(instrs_[idx]->dst_);
 	assem::temp_set use(instrs_[idx]->src_);
-	bool is_move = instrs_[idx].as<assem::move>() != nullptr;
+	bool is_move = instrs_[idx].as<assem::simple_move>() != nullptr;
 
 	cfgnode nn(def, use, is_move);
 	nn.debug = instrs_[idx]->to_string();

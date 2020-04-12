@@ -33,8 +33,15 @@ struct ty {
 
 	virtual size_t size() const
 	{
-		UNREACHABLE("size() on type with no size");
+		UNREACHABLE("size() on type " + to_string() + " with no size");
 	}
+
+	/*
+	 * Structs and arrays have a size which is different from the size
+	 * that the codegen uses to manipulate them: they're actually
+	 * pointers
+	 */
+	virtual size_t assem_size() const { return size(); }
 };
 
 bool operator==(const ty *ty, const type &t);
@@ -119,6 +126,8 @@ struct array_ty : public composite_ty {
 		return new array_ty(ty_, n_);
 	}
 
+	virtual size_t assem_size() const override { return 8; }
+
 	utils::ref<types::ty> ty_;
 	size_t n_;
 };
@@ -154,6 +163,8 @@ struct struct_ty : public composite_ty {
 	{
 		return new struct_ty(name_, names_, types_);
 	}
+
+	virtual size_t assem_size() const override { return 8; }
 
 	std::optional<size_t> member_index(const symbol &name);
 	size_t member_offset(const symbol &name);

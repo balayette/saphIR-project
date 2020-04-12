@@ -652,10 +652,13 @@ void translate_visitor::visit_ret(ret &s)
 						 {ret_lbl_}));
 		return;
 	}
+
+	auto fty = s.fdec_->type_.as<types::fun_ty>();
+
 	s.e_->accept(*this);
 	auto lhs = ret_->un_ex();
 	ret_ = new nx(new ir::tree::seq({
-		new ir::tree::move(new ir::tree::temp(mach::rv(), lhs->ty_),
+		new ir::tree::move(new ir::tree::temp(mach::rv(), fty->ret_ty_),
 				   lhs),
 		new ir::tree::jump(new ir::tree::name(ret_lbl_), {ret_lbl_}),
 	}));

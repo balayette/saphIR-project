@@ -11,7 +11,7 @@ fun mult(pair* p) int {
 }
 
 fun print_pair(pair* p) void {
-        printf("{%lld, %lld}", p->a, p->b);
+        printf("{%zu, %zu}", p->a, p->b);
 }
 
 fun fact(int<4> n) int {
@@ -20,15 +20,15 @@ fun fact(int<4> n) int {
                 let pair p = {ret, i};
                 print_pair(&p);
                 ret = mult(&p);
-                printf(" => %lld\n", ret);
+                printf(" => %zu\n", ret);
         rof
-        printf("fact => %lld\n", ret);
+        printf("fact => %zu\n", ret);
         return ret;
 }
 
 fun main(int<4> a) int {
         for (let int<4> i = 0; i != a; i = i + 1)
-                printf("%lld\n", fact(i));
+                printf("%zu\n", fact(i));
         rof
 
         return a;

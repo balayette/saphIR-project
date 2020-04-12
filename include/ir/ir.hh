@@ -63,6 +63,7 @@ struct exp : public ir_node {
 
 	utils::ref<types::ty> ty_;
 	size_t size() const { return ty_->size(); }
+	size_t assem_size() const { return ty_->assem_size(); }
 };
 
 struct stm : public ir_node {

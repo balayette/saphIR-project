@@ -94,6 +94,36 @@ oper::oper(const std::string &repr, std::vector<assem::temp> dst,
 {
 }
 
+sized_oper::sized_oper(const std::string &oper_str, const std::string &op,
+		       std::vector<assem::temp> dst,
+		       std::vector<assem::temp> src, unsigned sz)
+    : oper(oper_str + " " + op, dst, src, {}), oper_str_(oper_str), op_(op),
+      sz_(sz)
+{
+}
+
+std::string
+sized_oper::to_string(std::function<std::string(utils::temp, unsigned)> f) const
+{
+	std::string repr = oper_str_ + size_str(sz_);
+
+	std::vector<std::string> src;
+	std::vector<std::string> dst;
+
+	for (auto &l : src_)
+		src.push_back(f(l.temp_, l.size_));
+	for (auto &d : dst_)
+		dst.push_back(f(d.temp_, d.size_));
+
+	return format_repr(repr + " " + op_, src, dst);
+}
+
+jump::jump(const std::string &repr, std::vector<assem::temp> src,
+	   std::vector<utils::label> jumps)
+    : oper(repr, {}, src, jumps)
+{
+}
+
 lea::lea(assem::temp dst, std::pair<std::string, assem::temp> src)
     : oper("LEA", {dst}, {src.second}, {}), lhs_(src.first)
 {
@@ -111,8 +141,92 @@ label::label(const std::string &repr, utils::label lab)
 {
 }
 
-move::move(std::vector<assem::temp> dst, std::vector<assem::temp> src)
-    : instr("mov `s0, `d0", dst, src, {})
+move::move(const std::string &dst_str, const std::string &src_str,
+	   std::vector<assem::temp> dst, std::vector<assem::temp> src)
+    : instr("mov " + src_str + ", " + dst_str, dst, src, {}), dst_str_(dst_str),
+      src_str_(src_str)
 {
+}
+
+std::string size_str(unsigned sz)
+{
+	if (sz == 1)
+		return "b";
+	else if (sz == 2)
+		return "w";
+	else if (sz == 4)
+		return "l";
+	else if (sz == 8)
+		return "q";
+	else
+		UNREACHABLE("Size != 1, 2, 4, 8");
+}
+
+std::string
+move::to_string(std::function<std::string(utils::temp, unsigned)> f) const
+{
+	assem::temp src = src_[0];
+	assem::temp dst = dst_[0];
+	unsigned ssize = src.size_;
+	unsigned dsize = dst.size_;
+	std::string move_kind = "mov";
+
+	std::cout << "to_string " << src_str_ << ", " << dst_str_ << " "
+		  << ssize << " -> " << dsize << '\n';
+
+	if (ssize > dsize)
+		ssize = dsize; // mov %rax, %ebx => mov %eax, %ebx
+
+	if (ssize == dsize)
+		move_kind += size_str(ssize);
+	else if (ssize < dsize)
+		move_kind += "s" + size_str(ssize) + size_str(dsize);
+
+	return format_repr(move_kind + " " + src_str_ + ", " + dst_str_,
+			   {f(src.temp_, ssize)}, {f(dst.temp_, dsize)});
+}
+
+simple_move::simple_move(assem::temp dst, assem::temp src)
+    : move("`d0", "`s0", {dst}, {src})
+{
+}
+
+complex_move::complex_move(const std::string &dst_str,
+			   const std::string &src_str,
+			   std::vector<assem::temp> dst,
+			   std::vector<assem::temp> src, unsigned dst_sz,
+			   unsigned src_sz)
+    : move(dst_str, src_str, dst, src), dst_sz_(dst_sz), src_sz_(src_sz)
+{
+}
+
+std::string complex_move::to_string(
+	std::function<std::string(utils::temp, unsigned)> f) const
+{
+	unsigned ssize = src_sz_;
+	unsigned dsize = dst_sz_;
+	std::string move_kind = "mov";
+
+	std::cout << "to_string " << src_str_ << ", " << dst_str_ << " "
+		  << ssize << " -> " << dsize << '\n';
+
+	if (ssize == dsize)
+		move_kind += size_str(ssize);
+	else if (ssize < dsize)
+		move_kind += "s" + size_str(ssize) + size_str(dsize);
+	else
+		move_kind += size_str(dsize);
+
+
+	std::vector<std::string> src;
+	std::vector<std::string> dst;
+
+	for (auto &l : src_)
+		src.push_back(f(l.temp_, l.size_));
+	for (auto &d : dst_)
+		dst.push_back(f(d.temp_, d.size_));
+
+	return format_repr(move_kind + " " + src_str_ + ", " + dst_str_, src,
+			   dst);
 }
 } // namespace assem

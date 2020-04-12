@@ -30,20 +30,20 @@ std::string label_to_asm(const utils::label &lbl)
 }
 
 assem::temp reg_to_assem_temp(mach::regs t) { return reg_to_temp(t); }
+assem::temp reg_to_assem_temp(mach::regs t, unsigned sz)
+{
+	auto tmp = reg_to_assem_temp(t);
+	tmp.size_ = sz;
+	return tmp;
+}
 
 std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
 {
 	generator g;
 	(void)f;
 
-	for (auto &i : instrs) {
-		/*
-		ir::ir_pretty_printer p(std::cout);
-		std::cout << "#####\n";
-		i->accept(p);
-		*/
+	for (auto &i : instrs)
 		i->accept(g);
-	}
 
 	return g.instrs_;
 }
@@ -82,11 +82,12 @@ void generator::visit_call(tree::call &c)
 		src.push_back(ret_);
 		EMIT(assem::oper("push `s0", {}, {ret_}, {}));
 	}
+
 	// Move registers params to the correct registers.
 	for (size_t i = 0; i < reg_args_count; i++) {
 		args[i]->accept(*this);
 		src.push_back(ret_);
-		EMIT(assem::move({cc[i]}, {ret_}));
+		EMIT(assem::simple_move(cc[i], ret_));
 	}
 
 	// XXX: This assumes no floating point parameters
@@ -111,23 +112,32 @@ void generator::visit_call(tree::call &c)
 					 + ", %rsp",
 				 {}, {}, {}));
 
-	auto fty = c.ty_.as<types::fun_ty>();
-	assem::temp ret(fty->ret_ty_->size());
-	std::cout << "ret size " << ret.size_ << '\n';
-	EMIT(assem::move({ret}, {reg_to_assem_temp(regs::RAX)}));
+	assem::temp ret;
 
-	// XXX: The last move is not necessary if (sexp (call))
+	if (ret.size_ != 0)
+		EMIT(assem::simple_move(ret, reg_to_assem_temp(regs::RAX)));
+
+	// XXX: The temp is not initialized if the function doesn't return
+	// a value, but sema makes sure that void function results aren't used
 	ret_ = ret;
 }
 
 void generator::visit_cjump(tree::cjump &cj)
 {
+	auto cmp_sz = std::max(cj.lhs()->assem_size(), cj.rhs()->assem_size());
+
 	cj.lhs()->accept(*this);
 	auto lhs = ret_;
 	cj.rhs()->accept(*this);
 	auto rhs = ret_;
 
-	EMIT(assem::oper("cmp `s0, `s1", {}, {rhs, lhs}, {}));
+	assem::temp cmpr(cmp_sz);
+	assem::temp cmpl(cmp_sz);
+
+	EMIT(assem::simple_move(cmpr, rhs));
+	EMIT(assem::simple_move(cmpl, lhs));
+
+	EMIT(assem::sized_oper("cmp", "`s0, `s1", {}, {cmpr, cmpl}, cmp_sz));
 	std::string repr;
 	if (cj.op_ == ops::cmpop::EQ)
 		repr += "je ";
@@ -220,7 +230,7 @@ simple_src_str(tree::rexp e, std::string regstr)
 {
 	auto reg = e.as<tree::temp>();
 	if (reg)
-		return {regstr, assem::temp(reg->temp_, e->ty_->size())};
+		return {regstr, assem::temp(reg->temp_, e->ty_->assem_size())};
 
 	auto cnst = e.as<tree::cnst>();
 	if (cnst)
@@ -266,30 +276,10 @@ bool is_mem_reg(tree::rexp e)
 
 void generator::visit_move(tree::move &mv)
 {
-	if (is_reg(mv.lhs()) && is_simple_source(mv.rhs())) {
-		// mov %t2, %t1
-		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
-				      mv.lhs()->ty_->size());
-		auto [s, t2] = simple_src_str(mv.rhs(), "`s0");
-
-		/*
-		 * Technically, this isn't necessary, because not doing it
-		 * would generate
-		 * mov $x, ntemp
-		 * mov temp, t1
-		 * Which the register allocator easily optimizes, but I am
-		 * leaving it here for good measure.
-		 */
-		if (t2 == std::nullopt)
-			EMIT(assem::oper("mov " + s + ", `d0", {t1}, {}, {}));
-		else
-			EMIT(assem::move({t1}, {*t2}));
-		return;
-	}
-	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs(), false)) {
+	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs(), true)) {
 		// lea 3(%t2), %t1
 		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
-				      mv.lhs()->ty_->size());
+				      mv.lhs()->ty_->assem_size());
 
 		auto [s, t2] = reg_deref_str(mv.rhs(), "`s0");
 
@@ -299,12 +289,14 @@ void generator::visit_move(tree::move &mv)
 	if (is_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
 		// mov 3(%t2), %t1
 		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
-				      mv.lhs()->ty_->size());
+				      mv.lhs()->ty_->assem_size());
 
 		auto mem = mv.rhs().as<tree::mem>();
 		auto [s, t2] = reg_deref_str(mem->e(), "`s0");
 
-		EMIT(assem::oper("mov " + s + ", `d0", {t1}, {t2}, {}));
+		EMIT(assem::complex_move("`d0", s, {t1}, {t2},
+					 mv.lhs()->assem_size(),
+					 mv.rhs()->assem_size()));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_simple_source(mv.rhs())) {
@@ -316,11 +308,13 @@ void generator::visit_move(tree::move &mv)
 			mem->e(), t2 == std::nullopt ? "`s0" : "`s1");
 
 		if (t2 == std::nullopt)
-			EMIT(assem::oper("movq " + s1 + ", " + s2, {}, {t1},
-					 {}));
+			EMIT(assem::complex_move(s2, s1, {}, {t1},
+						 mv.lhs()->assem_size(),
+						 mv.rhs()->assem_size()));
 		else
-			EMIT(assem::oper("movq " + s1 + ", " + s2, {},
-					 {*t2, t1}, {}));
+			EMIT(assem::complex_move(s2, s1, {}, {*t2, t1},
+						 mv.lhs()->assem_size(),
+						 mv.rhs()->assem_size()));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
@@ -328,15 +322,19 @@ void generator::visit_move(tree::move &mv)
 		// mov %t3, 3(%t1)
 
 		// t3 is the same size as the destination
-		assem::temp t3(mv.lhs()->ty_->size());
+		assem::temp t3(mv.lhs()->ty_->assem_size());
 
 		auto mem1 = mv.rhs().as<tree::mem>();
 		auto [s1, t2] = reg_deref_str(mem1->e(), "`s0");
-		EMIT(assem::oper("mov " + s1 + ", `d0", {t3}, {t2}, {}));
+		EMIT(assem::complex_move("`d0", s1, {t3}, {t2},
+					 mv.lhs()->assem_size(),
+					 mv.rhs()->assem_size()));
 
 		auto mem2 = mv.lhs().as<tree::mem>();
 		auto [s2, t1] = reg_deref_str(mem2->e(), "`s1");
-		EMIT(assem::oper("mov `s0, " + s2, {}, {t3, t1}, {}));
+		EMIT(assem::complex_move(s2, "`s0", {}, {t3, t1},
+					 mv.lhs()->assem_size(),
+					 mv.rhs()->assem_size()));
 		return;
 	}
 
@@ -348,24 +346,27 @@ void generator::visit_move(tree::move &mv)
 		mv.rhs()->accept(*this);
 		auto rhs = ret_;
 
-		EMIT(assem::oper("mov `s0, (`s1)", {}, {rhs, lhs}, {}));
+		EMIT(assem::complex_move("(`s1)", "`s0", {}, {rhs, lhs},
+					 mv.lhs()->assem_size(),
+					 mv.rhs()->assem_size()));
 		return;
 	}
 
 	mv.lhs()->accept(*this);
-	auto lhs = ret_;
+	auto lhs = assem::temp(ret_, mv.lhs()->assem_size());
 	mv.rhs()->accept(*this);
-	auto rhs = ret_;
+	auto rhs = assem::temp(ret_, mv.rhs()->assem_size());
 
-	EMIT(assem::move({lhs}, {rhs}));
+	EMIT(assem::simple_move(lhs, rhs));
 }
 
 void generator::visit_mem(tree::mem &mm)
 {
-	assem::temp dst(mm.ty_->size());
+	assem::temp dst(mm.ty_->assem_size());
 
 	mm.e()->accept(*this);
-	EMIT(assem::oper("mov (`s0), `d0", {dst}, {ret_}, {}));
+	EMIT(assem::complex_move("`d0", "(`s0)", {dst}, {ret_},
+				 mm.ty_->assem_size(), mm.ty_->assem_size()));
 	ret_ = dst;
 }
 
@@ -373,11 +374,8 @@ void generator::visit_cnst(tree::cnst &c)
 {
 	assem::temp dst;
 
-	std::string instr("mov $");
-	instr += std::to_string(c.value_);
-	instr += ", `d0";
-
-	EMIT(assem::oper(instr, {dst}, {}, {}));
+	EMIT(assem::complex_move("`d0", "$" + std::to_string(c.value_), {dst},
+				 {}, 8, 8));
 
 	ret_ = dst;
 }
@@ -394,14 +392,14 @@ bool generator::opt_mul(tree::binop &b)
 	b.lhs()->accept(*this);
 	auto lhs = ret_;
 
-	std::string repr("imulq $");
+	std::string repr("$");
 	repr += std::to_string(cnst->value_);
 	repr += ", `d0";
 
 	assem::temp dst;
 
-	EMIT(assem::move({dst}, {lhs}));
-	EMIT(assem::oper(repr, {dst}, {lhs}, {}));
+	EMIT(assem::simple_move(dst, lhs));
+	EMIT(assem::sized_oper("imul", repr, {dst}, {lhs}, 8));
 
 	ret_ = dst;
 
@@ -418,15 +416,14 @@ bool generator::opt_add(tree::binop &b)
 	b.lhs()->accept(*this);
 	auto lhs = ret_;
 
-	std::string repr("add $");
+	std::string repr("$");
 	repr += std::to_string(cnst->value_);
 	repr += ", `d0";
 
 	assem::temp dst;
-	EMIT(assem::move({dst}, {lhs}));
-
+	EMIT(assem::simple_move(dst, lhs));
 	if (cnst->value_ != 0)
-		EMIT(assem::oper(repr, {dst}, {lhs}, {}));
+		EMIT(assem::sized_oper("add", repr, {dst}, {lhs}, 8));
 
 	ret_ = dst;
 
@@ -440,34 +437,46 @@ void generator::visit_binop(tree::binop &b)
 	else if (b.op_ == ops::binop::MULT && opt_mul(b))
 		return;
 
-	// binary operations are performed on 8 bytes integers
-	b.lhs()->accept(*this);
-	auto lhs = assem::temp(ret_, 8);
-	b.rhs()->accept(*this);
-	auto rhs = assem::temp(ret_, 8);
+	auto oper_sz = std::max(b.lhs()->assem_size(), b.rhs()->assem_size());
+	if (b.op_ == ops::binop::MULT)
+		oper_sz = std::max(oper_sz, 2ul); // imul starts at r16
 
-	assem::temp dst;
-	assem::temp src;
+	b.lhs()->accept(*this);
+	auto lhs = assem::temp(oper_sz);
+	EMIT(assem::simple_move(lhs, ret_));
+
+	b.rhs()->accept(*this);
+	auto rhs = assem::temp(oper_sz);
+	EMIT(assem::simple_move(rhs, ret_));
+
+	assem::temp dst(oper_sz);
+	assem::temp src(oper_sz);
 
 	if (b.op_ != ops::binop::MINUS)
-		EMIT(assem::move({dst}, {rhs}));
+		EMIT(assem::simple_move(dst, rhs));
 	else
-		EMIT(assem::move({dst}, {lhs}));
+		EMIT(assem::simple_move(dst, lhs));
 
 	if (b.op_ == ops::binop::PLUS)
-		EMIT(assem::oper("add `s0, `d0", {dst}, {lhs, dst}, {}));
+		EMIT(assem::sized_oper("add", "`s0, `d0", {dst}, {lhs, dst},
+				       oper_sz));
 	else if (b.op_ == ops::binop::MINUS)
-		EMIT(assem::oper("sub `s0, `d0", {dst}, {rhs, dst}, {}));
+		EMIT(assem::sized_oper("sub", "`s0, `d0", {dst}, {rhs, dst},
+				       oper_sz));
 	else if (b.op_ == ops::binop::MULT)
-		EMIT(assem::oper("imulq `s0, `d0", {dst}, {lhs}, {}));
+		EMIT(assem::sized_oper("imul", "`s0, `d0", {dst}, {lhs},
+				       oper_sz));
 	else if (b.op_ == ops::binop::BITXOR)
-		EMIT(assem::oper("xor `s0, `d0", {dst}, {lhs, dst}, {}));
+		EMIT(assem::sized_oper("xor", "`s0, `d0", {dst}, {lhs, dst},
+				       oper_sz));
 	else if (b.op_ == ops::binop::BITAND)
-		EMIT(assem::oper("and `s0, `d0", {dst}, {lhs, dst}, {}));
+		EMIT(assem::sized_oper("and", "`s0, `d0", {dst}, {lhs, dst},
+				       oper_sz));
 	else if (b.op_ == ops::binop::BITOR)
-		EMIT(assem::oper("or `s0, `d0", {dst}, {lhs, dst}, {}));
+		EMIT(assem::sized_oper("or", "`s0, `d0", {dst}, {lhs, dst},
+				       oper_sz));
 	else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
-		EMIT(assem::move({reg_to_assem_temp(regs::RAX)}, {lhs}));
+		EMIT(assem::simple_move(reg_to_assem_temp(regs::RAX), lhs));
 		EMIT(assem::oper("cqto",
 				 {reg_to_assem_temp(regs::RAX),
 				  reg_to_assem_temp(regs::RDX)},
@@ -480,11 +489,11 @@ void generator::visit_binop(tree::binop &b)
 				  reg_to_assem_temp(regs::RAX)},
 				 {}));
 		if (b.op_ == ops::binop::DIV)
-			EMIT(assem::move({dst},
-					 {reg_to_assem_temp(regs::RAX)}));
+			EMIT(assem::simple_move(
+				dst, reg_to_assem_temp(regs::RAX, oper_sz)));
 		else
-			EMIT(assem::move({dst},
-					 {reg_to_assem_temp(regs::RDX)}));
+			EMIT(assem::simple_move(
+				dst, reg_to_assem_temp(regs::RDX, oper_sz)));
 	} else
 		UNREACHABLE("Unimplemented binop");
 
