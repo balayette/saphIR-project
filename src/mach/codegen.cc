@@ -439,6 +439,8 @@ void generator::visit_binop(tree::binop &b)
 	auto oper_sz = std::max(b.lhs()->assem_size(), b.rhs()->assem_size());
 	if (b.op_ == ops::binop::MULT)
 		oper_sz = std::max(oper_sz, 2ul); // imul starts at r16
+	if (b.op_ == ops::binop::BITLSHIFT || b.op_ == ops::binop::BITRSHIFT)
+		oper_sz = b.lhs()->assem_size();
 
 	b.lhs()->accept(*this);
 	auto lhs = assem::temp(oper_sz);
@@ -449,9 +451,9 @@ void generator::visit_binop(tree::binop &b)
 	EMIT(assem::simple_move(rhs, ret_));
 
 	assem::temp dst(oper_sz);
-	assem::temp src(oper_sz);
 
-	if (b.op_ != ops::binop::MINUS)
+	if (b.op_ != ops::binop::MINUS && b.op_ != ops::binop::BITLSHIFT
+	    && b.op_ != ops::binop::BITRSHIFT)
 		EMIT(assem::simple_move(dst, rhs));
 	else
 		EMIT(assem::simple_move(dst, lhs));
@@ -474,7 +476,23 @@ void generator::visit_binop(tree::binop &b)
 	else if (b.op_ == ops::binop::BITOR)
 		EMIT(assem::sized_oper("or", "`s0, `d0", {dst}, {lhs, dst},
 				       oper_sz));
-	else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
+	else if (b.op_ == ops::binop::BITLSHIFT) {
+		/*
+		 * shlX %cl, %reg is the only encoding for all sizes of reg
+		 */
+		auto cl = reg_to_assem_temp(regs::RCX, 1);
+		EMIT(assem::simple_move(cl, rhs));
+		EMIT(assem::sized_oper("shl", "`s0, `d0", {dst}, {cl, dst},
+				       oper_sz));
+	} else if (b.op_ == ops::binop::BITRSHIFT) {
+		/*
+		 * shrX %cl, %reg is the only encoding for all sizes of reg
+		 */
+		auto cl = reg_to_assem_temp(regs::RCX, 1);
+		EMIT(assem::simple_move(cl, rhs));
+		EMIT(assem::sized_oper("shr", "`s0, `d0", {dst}, {cl, dst},
+				       oper_sz));
+	} else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
 		EMIT(assem::simple_move(reg_to_assem_temp(regs::RAX), lhs));
 		EMIT(assem::oper("cqto",
 				 {reg_to_assem_temp(regs::RAX),
