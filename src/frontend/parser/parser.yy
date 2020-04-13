@@ -46,7 +46,8 @@
 	AMPERSAND "&"
 	BITOR "|"
         BITXOR "^"
-        BITNOT "~"
+        BITRSHIFT ">>"
+        BITLSHIFT "<<"
         AND "&&"
 	OR "||"
 	LPAREN "("
@@ -127,6 +128,8 @@
 %nonassoc ASSIGN
 %nonassoc SMLR GRTR SMLR_EQ GRTR_EQ
 %nonassoc EQ NEQ
+
+%left BITLSHIFT BITRSHIFT
 
 %left PLUS MINUS
 %left MULT DIV MOD
@@ -271,7 +274,8 @@ exp:
 |       exp AMPERSAND exp      %prec BITAND { $$ = new bin(binop::BITAND, $1, $3); }
 | 	exp BITOR exp 		{ $$ = new bin(binop::BITOR, $1, $3); }
 | 	exp BITXOR exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
-| 	exp BITNOT exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
+| 	exp BITLSHIFT exp 		{ $$ = new bin(binop::BITLSHIFT, $1, $3); }
+| 	exp BITRSHIFT exp 		{ $$ = new bin(binop::BITRSHIFT, $1, $3); }
 
 | 	exp OR exp 		{ $$ = new bin(binop::OR, $1, $3); }
 | 	exp AND exp 		{ $$ = new bin(binop::AND, $1, $3); }
