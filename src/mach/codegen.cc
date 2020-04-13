@@ -343,7 +343,7 @@ void generator::visit_move(tree::move &mv)
 		lmem->e()->accept(*this);
 		auto lhs = ret_;
 		mv.rhs()->accept(*this);
-		auto rhs = ret_;
+		auto rhs = assem::temp(ret_, mv.rhs()->assem_size());
 
 		EMIT(assem::complex_move("(`s1)", "`s0", {}, {rhs, lhs},
 					 mv.lhs()->assem_size(),
@@ -379,7 +379,10 @@ void generator::visit_cnst(tree::cnst &c)
 	ret_ = dst;
 }
 
-void generator::visit_temp(tree::temp &t) { ret_ = t.temp_; }
+void generator::visit_temp(tree::temp &t)
+{
+	ret_ = assem::temp(t.temp_, t.assem_size());
+}
 
 bool generator::opt_mul(tree::binop &b)
 {
