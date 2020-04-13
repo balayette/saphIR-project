@@ -22,6 +22,7 @@
 
 id 	[a-zA-Z][a-zA-Z_0-9]*
 int 	-?[0-9]+
+hexint 	0x-?[0-9A-Fa-f]+
 blank 	[ \t\r]
 strlit \"[^"]*\"
 
@@ -72,6 +73,7 @@ strlit \"[^"]*\"
 "struct"        return TOKEN(STRUCT);
 
 {int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
+{hexint} 	return TOKEN_VAL(INT_LIT, std::strtol(yytext, NULL, 16));
 {id} 		return TOKEN_VAL(ID, symbol(yytext));
 {strlit} 	{return TOKEN_VAL(STR_LIT, /* Remove quotes */
 			std::string(yytext + 1, strlen(yytext + 1) - 1)); }
