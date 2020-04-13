@@ -79,15 +79,14 @@ void generator::visit_call(tree::call &c)
 	// Push stack parameters RTL
 	for (size_t i = 0; i < stack_args_count; i++) {
 		args[args.size() - 1 - i]->accept(*this);
-		src.push_back(ret_);
-		EMIT(assem::oper("push `s0", {}, {ret_}, {}));
+		EMIT(assem::oper("push `s0", {}, {assem::temp(ret_, 8)}, {}));
 	}
 
 	// Move registers params to the correct registers.
 	for (size_t i = 0; i < reg_args_count; i++) {
 		args[i]->accept(*this);
-		src.push_back(ret_);
-		EMIT(assem::simple_move(cc[i], ret_));
+		src.push_back(cc[i]);
+		EMIT(assem::simple_move(assem::temp(cc[i], ret_.size_), ret_));
 	}
 
 	// XXX: This assumes no floating point parameters
