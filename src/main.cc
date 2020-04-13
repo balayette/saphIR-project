@@ -136,7 +136,8 @@ int main(int argc, char *argv[])
 
 	for (auto &glob : drv.prog_->decs_) {
 		if (glob.as<globaldec>())
-			fout << "\t.lcomm .L_" << glob->name_ << ", 8\n";
+			fout << "\t.lcomm .L_" << glob->name_ << ", "
+			     << glob->type_->size() << "\n";
 	}
 	fout << "\n";
 
