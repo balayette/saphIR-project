@@ -70,8 +70,8 @@ struct xor_pass : public pass {
 		(void)end;
 
 		std::string repr = format_output(output_[0], matches);
-		auto instr = new assem::oper(repr, (*beg)->dst_, (*beg)->src_,
-					     (*beg)->jmps_);
+		auto instr = new assem::sized_oper("xor", repr, (*beg)->dst_,
+						   {}, (*beg)->dst_[0].size_);
 		return {instr};
 	}
 };
@@ -79,7 +79,7 @@ struct xor_pass : public pass {
 #define R(X) std::regex(X)
 
 std::vector<pass *> passes{
-	new xor_pass("xor reg, reg", {R("mov \\$0, (`d0)")}, {"xor \\0, \\0"}),
+	new xor_pass("xor reg, reg", {R("mov \\$0, (`d0)")}, {"\\0, \\0"}),
 };
 
 void peephole(std::vector<assem::rinstr> &instrs)
