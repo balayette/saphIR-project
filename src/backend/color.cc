@@ -210,6 +210,7 @@ struct allocator {
 		coalesced_nodes_ += v;
 		alias_[v] = u;
 		move_list_[u] += move_list_[v];
+		enable_moves(assem::temp_set({v}));
 
 		for (auto &t : adjacent(v)) {
 			add_edge(t, u);
