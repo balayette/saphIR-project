@@ -9,6 +9,8 @@
 #include "ir/visitors/ir-pretty-printer.hh"
 #include "ir/visitors/ir-binop-optimizer.hh"
 #include "ir/visitors/ir-arith-optimizer.hh"
+#include "ir/visitors/ir-cloner-visitor.hh"
+#include "ir/visitors/ir-cnst-obfuscator.hh"
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
@@ -76,6 +78,9 @@ int main(int argc, char *argv[])
 
 		ir::ir_binop_optimizer opt;
 		frag.body_ = opt.perform(frag.body_);
+
+		ir::ir_cnst_obfuscator obf;
+		frag.body_ = obf.perform(frag.body_);
 	}
 
 	if (trans.init_fun_)
