@@ -78,7 +78,7 @@ struct cnst : public exp {
 
 	TREE_KIND(cnst)
 
-	int value_;
+	int64_t value_;
 };
 
 struct braceinit : public exp {

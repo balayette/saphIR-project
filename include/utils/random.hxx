@@ -9,10 +9,12 @@ namespace utils
 {
 template <typename T> T rand(T low, T high)
 {
-	ASSERT(low <= high, "Incorrect range");
-
+        // XXX: Making this static somehow breaks register allocation...
 	std::mt19937 gen(1);
+
 	std::uniform_int_distribution<T> dis(low, high);
+
+	ASSERT(low <= high, "Incorrect range");
 
 	auto ret = dis(gen);
 

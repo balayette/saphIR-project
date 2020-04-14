@@ -73,14 +73,14 @@ struct cmp : public exp {
 };
 
 struct num : public exp {
-	num(int value) : value_(value)
+	num(int64_t value) : value_(value)
 	{
 		ty_ = new types::builtin_ty(types::type::INT, 4);
 	}
 
 	ACCEPT(num)
 
-	int value_;
+	int64_t value_;
 };
 
 struct ref : public exp {

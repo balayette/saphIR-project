@@ -343,11 +343,11 @@ void generator::visit_move(tree::move &mv)
 		lmem->e()->accept(*this);
 		auto lhs = ret_;
 		mv.rhs()->accept(*this);
-		auto rhs = assem::temp(ret_, mv.rhs()->assem_size());
+		auto rhs = assem::temp(ret_, mv.lhs()->assem_size());
 
 		EMIT(assem::complex_move("(`s1)", "`s0", {}, {rhs, lhs},
 					 mv.lhs()->assem_size(),
-					 mv.rhs()->assem_size()));
+					 mv.lhs()->assem_size()));
 		return;
 	}
 
