@@ -86,13 +86,20 @@ void generator::visit_call(tree::call &c)
 	for (size_t i = 0; i < reg_args_count; i++) {
 		args[i]->accept(*this);
 		src.push_back(cc[i]);
-		EMIT(assem::simple_move(assem::temp(cc[i], ret_.size_), ret_));
+		/*
+		 * Function parameters < 32 bits must be extended to 32 bits,
+		 * according to GCC. This is not necessary according to the
+		 * System V ABI, but GCC is all that matters anyways...
+		 */
+		EMIT(assem::simple_move(
+			assem::temp(cc[i], std::max(ret_.size_, 4u)), ret_));
 	}
 
-	// XXX: This assumes no floating point parameters
+	// XXX: %al holds the number of floating point variadic parameters.
+	// This assumes no floating point parameters
 	if (c.variadic())
-		EMIT(assem::oper("xor `d0, `d0", {reg_to_assem_temp(regs::RAX)},
-				 {}, {}));
+		EMIT(assem::oper("xor `d0, `d0",
+				 {reg_to_assem_temp(regs::RAX, 1)}, {}, {}));
 
 	std::string repr("call ");
 	repr += name.get() + "@PLT";
