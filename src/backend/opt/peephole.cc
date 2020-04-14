@@ -1,5 +1,6 @@
 #include "backend/opt/peephole.hh"
 #include "utils/assert.hh"
+#include "utils/ref.hh"
 #include <vector>
 #include <regex>
 
@@ -43,6 +44,7 @@ struct pass {
 	    : name_(name), pattern_(pattern), output_(output)
 	{
 	}
+	virtual ~pass() = default;
 
 	virtual std::vector<assem::rinstr>
 	process_patt(std::vector<assem::rinstr>::iterator beg,
@@ -78,7 +80,7 @@ struct xor_pass : public pass {
 
 #define R(X) std::regex(X)
 
-std::vector<pass *> passes{
+std::vector<utils::ref<pass>> passes{
 	new xor_pass("xor reg, reg", {R("mov \\$0, (`d0)")}, {"\\0, \\0"}),
 };
 
