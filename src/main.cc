@@ -10,6 +10,8 @@
 #include "ir/visitors/ir-pretty-printer.hh"
 #include "ir/visitors/ir-binop-optimizer.hh"
 #include "ir/visitors/ir-arith-optimizer.hh"
+#include "ir/visitors/ir-cloner-visitor.hh"
+#include "ir/visitors/ir-cnst-obfuscator.hh"
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
@@ -97,6 +99,13 @@ int main(int argc, char *argv[])
 			  << " - Return label : " << frag.ret_lbl_ << '\n';
 
 		frags.push_back(frag);
+	}
+
+	if (obfuscate) {
+		for (auto &frag : frags) {
+			ir::ir_cnst_obfuscator obf;
+			frag.body_ = obf.perform(frag.body_);
+		}
 	}
 
 	if (optimize) {

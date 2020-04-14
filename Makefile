@@ -41,6 +41,7 @@ OBJ = \
       src/ir/visitors/ir-cloner-visitor.o \
       src/ir/visitors/ir-binop-optimizer.o \
       src/ir/visitors/ir-arith-optimizer.o \
+      src/ir/visitors/ir-cnst-obfuscator.o \
       src/ass/instr.o \
       src/mach/codegen.o \
       src/backend/cfg.o \
