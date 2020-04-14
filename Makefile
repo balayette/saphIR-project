@@ -38,6 +38,7 @@ OBJ = \
       src/ir/canon/trace.o \
       src/ir/visitors/default-ir-visitor.o \
       src/ir/visitors/ir-pretty-printer.o \
+      src/ir/visitors/ir-cloner-visitor.o \
       src/ass/instr.o \
       src/mach/codegen.o \
       src/backend/cfg.o \

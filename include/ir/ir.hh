@@ -156,6 +156,7 @@ struct call : public exp {
 		children_.insert(children_.end(), args.begin(), args.end());
 		auto fty = ty_.as<types::fun_ty>();
 		ASSERT(fty, "Type is not a fun_ty");
+		fun_ty_ = fty;
 		ty_ = fty->ret_ty_;
 		variadic_ = fty->variadic_;
 	}
@@ -174,6 +175,8 @@ struct call : public exp {
 	}
 
 	bool variadic() { return variadic_; }
+
+	utils::ref<types::fun_ty> fun_ty_;
 
       private:
 	bool variadic_;
