@@ -7,6 +7,8 @@
 #include "frontend/sema/tycheck.hh"
 #include "frontend/visitors/translate.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
+#include "ir/visitors/ir-binop-optimizer.hh"
+#include "ir/visitors/ir-arith-optimizer.hh"
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
@@ -64,7 +66,16 @@ int main(int argc, char *argv[])
 	for (auto &frag : trans.funs_) {
 		std::cout << "Function: " << frag.frame_.s_
 			  << " - Return label : " << frag.ret_lbl_ << '\n';
+
 		frags.push_back(frag);
+	}
+
+	for (auto &frag : frags) {
+		ir::ir_arith_optimizer arith_opt;
+		frag.body_ = arith_opt.perform(frag.body_);
+
+		ir::ir_binop_optimizer opt;
+		frag.body_ = opt.perform(frag.body_);
 	}
 
 	if (trans.init_fun_)

@@ -21,6 +21,13 @@ cmpop invert_cmpop(cmpop op)
 					  - idx);
 }
 
+bool is_binop_commutative(binop op)
+{
+	return op == binop::MULT || op == binop::PLUS || op == binop::AND
+	       || op == binop::OR || op == binop::BITOR || op == binop::BITAND
+	       || op == binop::BITXOR;
+}
+
 const std::string &binop_to_string(binop op)
 {
 	return binop_str[static_cast<int>(op)];
