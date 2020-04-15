@@ -99,7 +99,6 @@ int main(int argc, char *argv[])
 		frags.push_back(frag);
 	}
 
-	(void)obfuscate;
 	if (optimize) {
 		for (auto &frag : frags) {
 			ir::ir_arith_optimizer arith_opt;
