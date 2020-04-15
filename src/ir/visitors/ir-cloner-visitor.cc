@@ -1,4 +1,5 @@
 #include "ir/visitors/ir-cloner-visitor.hh"
+#include "ir/visitors/ir-pretty-printer.hh"
 #include "utils/assert.hh"
 
 #define REC(C)                                                                 \
@@ -17,7 +18,7 @@ void ir_cloner_visitor::visit_braceinit(tree::braceinit &n)
 
 	std::vector<tree::rexp> nchildren;
 	for (auto &e : n.exps()) {
-		auto ne = recurse(e);
+		auto ne = recurse<tree::exp>(e);
 		nchildren.push_back(ne);
 	}
 
@@ -46,7 +47,8 @@ void ir_cloner_visitor::visit_temp(tree::temp &n)
 
 void ir_cloner_visitor::visit_binop(tree::binop &n)
 {
-	auto b = new tree::binop(n.op_, recurse(n.lhs()), recurse(n.rhs()));
+	auto b = new tree::binop(n.op_, recurse<tree::exp>(n.lhs()),
+				 recurse<tree::exp>(n.rhs()));
 	b->ty_ = n.ty_->clone();
 
 	ret_ = b;
@@ -54,7 +56,7 @@ void ir_cloner_visitor::visit_binop(tree::binop &n)
 
 void ir_cloner_visitor::visit_mem(tree::mem &n)
 {
-	auto e = recurse(n.e());
+	auto e = recurse<tree::exp>(n.e());
 	e->ty_ = e->ty_->clone();
 
 	ret_ = new tree::mem(e);
@@ -65,35 +67,39 @@ void ir_cloner_visitor::visit_call(tree::call &n)
 	std::vector<tree::rexp> nargs;
 
 	for (auto e : n.args())
-		nargs.push_back(recurse(e));
+		nargs.push_back(recurse<tree::exp>(e));
 
-	ret_ = new tree::call(recurse(n.name()), nargs, n.fun_ty_->clone());
+	ret_ = new tree::call(recurse<tree::exp>(n.name()), nargs,
+			      n.fun_ty_->clone());
 }
 
 void ir_cloner_visitor::visit_eseq(tree::eseq &n)
 {
-	ret_ = new tree::eseq(recurse(n.lhs()), recurse(n.rhs()));
+	ret_ = new tree::eseq(recurse<tree::stm>(n.lhs()),
+			      recurse<tree::exp>(n.rhs()));
 }
 
 void ir_cloner_visitor::visit_move(tree::move &n)
 {
-	ret_ = new tree::move(recurse(n.lhs()), recurse(n.rhs()));
+	ret_ = new tree::move(recurse<tree::exp>(n.lhs()),
+			      recurse<tree::exp>(n.rhs()));
 }
 
 void ir_cloner_visitor::visit_sexp(tree::sexp &n)
 {
-	ret_ = new tree::sexp(recurse(n.e()));
+	ret_ = new tree::sexp(recurse<tree::exp>(n.e()));
 }
 
 void ir_cloner_visitor::visit_jump(tree::jump &n)
 {
-	ret_ = new tree::jump(recurse(n.dest()), n.avlbl_dests_);
+	ret_ = new tree::jump(recurse<tree::exp>(n.dest()), n.avlbl_dests_);
 }
 
 void ir_cloner_visitor::visit_cjump(tree::cjump &n)
 {
-	ret_ = new tree::cjump(n.op_, recurse(n.lhs()), recurse(n.rhs()),
-			       n.ltrue_, n.lfalse_);
+	ret_ = new tree::cjump(n.op_, recurse<tree::exp>(n.lhs()),
+			       recurse<tree::exp>(n.rhs()), n.ltrue_,
+			       n.lfalse_);
 }
 
 void ir_cloner_visitor::visit_seq(tree::seq &n)
@@ -101,7 +107,7 @@ void ir_cloner_visitor::visit_seq(tree::seq &n)
 	std::vector<tree::rstm> nbody;
 
 	for (auto e : n.body())
-		nbody.push_back(recurse(e));
+		nbody.push_back(recurse<tree::stm>(e));
 
 	ret_ = new tree::seq(nbody);
 }

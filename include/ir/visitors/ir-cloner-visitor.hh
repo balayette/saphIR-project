@@ -25,7 +25,8 @@ class ir_cloner_visitor : public ir_visitor
 	virtual void visit_label(tree::label &) override;
 
       protected:
-	template <typename T> utils::ref<T> recurse(const utils::ref<T> &n);
+	template <typename U, typename T>
+	utils::ref<U> recurse(const utils::ref<T> &n);
 
 	tree::rnode ret_;
 };
