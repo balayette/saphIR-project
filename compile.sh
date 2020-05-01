@@ -10,9 +10,9 @@ fi
 tmp=$(mktemp --suffix=.cpp.jit)
 cpp -ftrack-macro-expansion=0 -P "$1" > "$tmp"
 if [ "$#" -eq 4 ]; then
-        ./jit "$tmp" "$2"
+        ./jit -i "$tmp" -o "$2"
 else
-        ./jit "$tmp" "$2" > /dev/null
+        ./jit -i "$tmp" -o "$2" > /dev/null
 fi
 
 gcc "$2" -o "$3"

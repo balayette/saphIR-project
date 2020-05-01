@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <unistd.h>
 #include "driver/driver.hh"
 #include "frontend/visitors/pretty-printer.hh"
 #include "frontend/visitors/transforms.hh"
@@ -21,21 +22,49 @@
 
 int usage(char *pname)
 {
-	std::cerr << "usage: " << pname << " in.jit out.S\n";
+	std::cerr << "usage: " << pname << " -i in.jit -o out.S [-O] [-P]\n";
+	std::cerr << " -O : optimize\n";
+	std::cerr << " -P : obfuscate\n";
+	std::cerr << "Optimization removes some obfuscation techniques.\n";
 	return 1;
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc != 3)
+	bool help = false;
+	char *src_path = NULL;
+	char *dst_path = NULL;
+	bool optimize = false;
+	bool obfuscate = false;
+
+	int opt = 0;
+	while ((opt = getopt(argc, argv, "OPho:i:")) != -1 && !help) {
+		if (opt == 'h')
+			help = true;
+		else if (opt == 'o')
+			dst_path = optarg;
+		else if (opt == 'i')
+			src_path = optarg;
+		else if (opt == 'O')
+			optimize = true;
+		else if (opt == 'P')
+			obfuscate = true;
+		else {
+			std::cerr << "option '" << (char)opt
+				  << "' not recognized.\n";
+			help = true;
+		}
+	}
+
+	if (help || !src_path || !dst_path)
 		return usage(argv[0]);
 
 	driver drv;
-	if (drv.parse(argv[1])) {
+	if (drv.parse(src_path)) {
 		COMPILATION_ERROR(utils::cfail::PARSING);
 	}
 
-	std::ofstream fout(argv[2]);
+	std::ofstream fout(dst_path);
 
 	frontend::pretty_printer p(std::cout);
 	drv.prog_->accept(p);
@@ -70,12 +99,15 @@ int main(int argc, char *argv[])
 		frags.push_back(frag);
 	}
 
-	for (auto &frag : frags) {
-		ir::ir_arith_optimizer arith_opt;
-		frag.body_ = arith_opt.perform(frag.body_);
+	(void)obfuscate;
+	if (optimize) {
+		for (auto &frag : frags) {
+			ir::ir_arith_optimizer arith_opt;
+			frag.body_ = arith_opt.perform(frag.body_);
 
-		ir::ir_binop_optimizer opt;
-		frag.body_ = opt.perform(frag.body_);
+			ir::ir_binop_optimizer opt;
+			frag.body_ = opt.perform(frag.body_);
+		}
 	}
 
 	if (trans.init_fun_)
