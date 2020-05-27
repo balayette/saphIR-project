@@ -47,6 +47,7 @@
 	BITOR "|"
         BITXOR "^"
         BITRSHIFT ">>"
+        ARITHBITRSHIFT "|>>"
         BITLSHIFT "<<"
         AND "&&"
 	OR "||"
@@ -129,7 +130,7 @@
 %nonassoc SMLR GRTR SMLR_EQ GRTR_EQ
 %nonassoc EQ NEQ
 
-%left BITLSHIFT BITRSHIFT
+%left BITLSHIFT BITRSHIFT ARITHBITRSHIFT
 
 %left PLUS MINUS
 %left MULT DIV MOD
@@ -276,6 +277,7 @@ exp:
 | 	exp BITXOR exp 		{ $$ = new bin(binop::BITXOR, $1, $3); }
 | 	exp BITLSHIFT exp 		{ $$ = new bin(binop::BITLSHIFT, $1, $3); }
 | 	exp BITRSHIFT exp 		{ $$ = new bin(binop::BITRSHIFT, $1, $3); }
+| 	exp ARITHBITRSHIFT exp 		{ $$ = new bin(binop::ARITHBITRSHIFT, $1, $3); }
 
 | 	exp OR exp 		{ $$ = new bin(binop::OR, $1, $3); }
 | 	exp AND exp 		{ $$ = new bin(binop::AND, $1, $3); }

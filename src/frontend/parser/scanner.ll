@@ -48,6 +48,7 @@ strlit \"[^"]*\"
 "|"            return TOKEN(BITOR);
 "^"            return TOKEN(BITXOR);
 ">>"           return TOKEN(BITRSHIFT);
+"|>>"           return TOKEN(ARITHBITRSHIFT);
 "<<"           return TOKEN(BITLSHIFT);
 
 "&&"            return TOKEN(AND);

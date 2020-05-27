@@ -17,6 +17,7 @@ enum class binop {
 	BITXOR,
 	BITLSHIFT,
 	BITRSHIFT,
+	ARITHBITRSHIFT,
 };
 
 // The order of the cmpops matters, they must be ordered "symmetrically".
