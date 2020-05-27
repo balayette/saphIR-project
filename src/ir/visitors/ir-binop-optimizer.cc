@@ -96,6 +96,9 @@ void ir_binop_optimizer::visit_binop(tree::binop &n)
 	case ops::binop::BITRSHIFT:
 		value = (uint64_t)lhs->value_ >> rhs->value_;
 		break;
+	case ops::binop::ARITHBITRSHIFT:
+		value = (int64_t)lhs->value_ >> rhs->value_;
+		break;
 	}
 
 	auto ret = new tree::cnst(value);

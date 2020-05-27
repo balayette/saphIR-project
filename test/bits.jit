@@ -2,13 +2,22 @@
 
 fun main() void
 {
-        let int deadbeef = 3735928559;
-        let int badcoffee = 50159747054;
+	let int deadbeef = 3735928559;
+	let int badcoffee = 50159747054;
 
-        let int x1 = 49181180161;
-        let int x2 = 51538427887;
-        let int x3 = 2357247726;
-        printf("0x%x ^ 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee, deadbeef ^ badcoffee, x1);
-        printf("0x%x | 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee, deadbeef | badcoffee, x2);
-        printf("0x%x & 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee, deadbeef & badcoffee, x3);
+	let int x1 = 49181180161;
+	let int x2 = 51538427887;
+	let int x3 = 2357247726;
+	printf("0x%x ^ 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee,
+	       deadbeef ^ badcoffee, x1);
+	printf("0x%x | 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee,
+	       deadbeef | badcoffee, x2);
+	printf("0x%x & 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee,
+	       deadbeef & badcoffee, x3);
+
+	let int<4> a1 = -2048;
+
+	printf("Source        0x%016lx\n", a1);
+	printf("logical shift 0x%016lx\n", a1 >> 4);
+	printf("arith shift   0x%016lx\n", a1 |>> 4);
 }
