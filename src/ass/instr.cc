@@ -177,10 +177,27 @@ move::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 	if (ssize > dsize)
 		ssize = dsize; // mov %rax, %ebx => mov %eax, %ebx
 
+	/*
+	 * amd64 is weird, and writing to the lower half of a register zeroes
+	 * the upper half.
+	 * Thus, there is no movzlq instruction, which is better written
+	 * as movl %reg, %reg
+	 */
+	if (dst.is_signed_ == types::signedness::UNSIGNED && dsize == 8
+	    && ssize == 4)
+		dsize = 4;
+
 	if (ssize == dsize)
 		move_kind += size_str(ssize);
-	else if (ssize < dsize)
-		move_kind += "s" + size_str(ssize) + size_str(dsize);
+	else if (ssize < dsize) {
+		ASSERT(dst.is_signed_ != types::signedness::INVALID,
+		       "Invalid signedness");
+		if (dst.is_signed_ == types::signedness::SIGNED)
+			move_kind += "s";
+		else
+			move_kind += "z";
+		move_kind += size_str(ssize) + size_str(dsize);
+	}
 
 	return format_repr(move_kind + " " + src_str_ + ", " + dst_str_,
 			   {f(src.temp_, ssize)}, {f(dst.temp_, dsize)});
@@ -195,8 +212,9 @@ complex_move::complex_move(const std::string &dst_str,
 			   const std::string &src_str,
 			   std::vector<assem::temp> dst,
 			   std::vector<assem::temp> src, unsigned dst_sz,
-			   unsigned src_sz)
-    : move(dst_str, src_str, dst, src), dst_sz_(dst_sz), src_sz_(src_sz)
+			   unsigned src_sz, types::signedness sign)
+    : move(dst_str, src_str, dst, src), dst_sz_(dst_sz), src_sz_(src_sz),
+      sign_(sign)
 {
 }
 
@@ -212,9 +230,15 @@ std::string complex_move::to_string(
 
 	if (ssize == dsize)
 		move_kind += size_str(ssize);
-	else if (ssize < dsize)
-		move_kind += "s" + size_str(ssize) + size_str(dsize);
-	else
+	else if (ssize < dsize) {
+		ASSERT(sign_ != types::signedness::INVALID,
+		       "Invalid signedness");
+		if (sign_ == types::signedness::SIGNED)
+			move_kind += "s";
+		else
+			move_kind += "z";
+		move_kind += size_str(ssize) + size_str(dsize);
+	} else
 		move_kind += size_str(dsize);
 
 

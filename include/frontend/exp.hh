@@ -15,7 +15,11 @@ struct vardec;
 
 struct exp {
       protected:
-	exp() : ty_(new types::builtin_ty(types::type::INVALID)) {}
+	exp()
+	    : ty_(new types::builtin_ty(types::type::INVALID,
+					types::signedness::INVALID))
+	{
+	}
 	exp(const exp &rhs) = default;
 	exp &operator=(const exp &rhs) = default;
 
@@ -62,7 +66,8 @@ struct cmp : public exp {
 	cmp(ops::cmpop op, utils::ref<exp> lhs, utils::ref<exp> rhs)
 	    : op_(op), lhs_(lhs), rhs_(rhs)
 	{
-		ty_ = new types::builtin_ty(types::type::INT);
+		ty_ = new types::builtin_ty(types::type::INT, 4,
+					    types::signedness::UNSIGNED);
 	}
 
 	ACCEPT(cmp)
@@ -75,7 +80,8 @@ struct cmp : public exp {
 struct num : public exp {
 	num(int64_t value) : value_(value)
 	{
-		ty_ = new types::builtin_ty(types::type::INT, 4);
+		ty_ = new types::builtin_ty(types::type::INT, 4,
+					    types::signedness::SIGNED);
 	}
 
 	ACCEPT(num)
@@ -126,7 +132,8 @@ struct call : public exp {
 struct str_lit : public exp {
 	str_lit(const std::string &str) : str_(str)
 	{
-		ty_ = new types::builtin_ty(types::type::STRING);
+		ty_ = new types::builtin_ty(types::type::STRING,
+					    types::signedness::INVALID);
 	}
 
 	ACCEPT(str_lit)

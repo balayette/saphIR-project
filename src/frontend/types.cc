@@ -9,14 +9,16 @@ const unsigned default_size[] = {8, 8, 0, 0};
 
 utils::ref<builtin_ty> integer_type()
 {
-	static auto t = std::make_shared<builtin_ty>(type::INT);
+	static auto t =
+		std::make_shared<builtin_ty>(type::INT, signedness::SIGNED);
 
 	return t;
 }
 
 utils::ref<builtin_ty> void_type()
 {
-	static auto t = std::make_shared<builtin_ty>(type::VOID);
+	static auto t =
+		std::make_shared<builtin_ty>(type::VOID, signedness::INVALID);
 
 	return t;
 }
@@ -53,17 +55,24 @@ utils::ref<ty> deref_pointer_type(utils::ref<ty> ty)
 	return ret;
 }
 
-builtin_ty::builtin_ty() : ty_(type::INVALID) {}
-builtin_ty::builtin_ty(type t) : builtin_ty(t, DEFAULT_SIZE) {}
-builtin_ty::builtin_ty(type t, size_t size) : ty_(t), size_modif_(DEFAULT_SIZE)
+builtin_ty::builtin_ty() : ty_(type::INVALID), is_signed_(signedness::INVALID)
+{
+}
+builtin_ty::builtin_ty(type t, signedness is_signed)
+    : builtin_ty(t, DEFAULT_SIZE, is_signed)
+{
+}
+builtin_ty::builtin_ty(type t, size_t size, signedness is_signed)
+    : ty_(t), size_modif_(DEFAULT_SIZE), is_signed_(is_signed)
 {
 	if (size == DEFAULT_SIZE)
 		size_ = default_size[static_cast<unsigned>(t)];
 	else
 		size_ = size;
 }
-builtin_ty::builtin_ty(type t, size_t size, size_t size_modif)
-    : ty_(t), size_(size), size_modif_(size_modif)
+builtin_ty::builtin_ty(type t, size_t size, size_t size_modif,
+		       signedness is_signed)
+    : ty_(t), size_(size), size_modif_(size_modif), is_signed_(is_signed)
 {
 }
 

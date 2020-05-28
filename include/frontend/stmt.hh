@@ -35,7 +35,9 @@ struct dec : public stmt {
 
 struct tydec : public dec {
 	tydec(symbol name)
-	    : dec(new types::builtin_ty(types::type::INVALID), name)
+	    : dec(new types::builtin_ty(types::type::INVALID,
+					types::signedness::INVALID),
+		  name)
 	{
 	}
 

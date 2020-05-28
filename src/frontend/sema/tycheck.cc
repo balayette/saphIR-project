@@ -15,9 +15,14 @@ namespace frontend::sema
 
 tycheck_visitor::tycheck_visitor()
 {
-	tmap_.add("int", new types::builtin_ty(types::type::INT));
-	tmap_.add("string", new types::builtin_ty(types::type::STRING));
-	tmap_.add("void", new types::builtin_ty(types::type::VOID));
+	tmap_.add("int", new types::builtin_ty(types::type::INT,
+					       types::signedness::SIGNED));
+	tmap_.add("uint", new types::builtin_ty(types::type::INT,
+						types::signedness::UNSIGNED));
+	tmap_.add("string", new types::builtin_ty(types::type::STRING,
+						  types::signedness::INVALID));
+	tmap_.add("void", new types::builtin_ty(types::type::VOID,
+						types::signedness::INVALID));
 }
 
 // get_type must be used everytime there can be a refernce to a type.

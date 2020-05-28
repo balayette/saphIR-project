@@ -6,20 +6,30 @@
 #include <utility>
 #include "utils/ref.hh"
 #include "utils/temp.hh"
+#include "frontend/types.hh"
 
 namespace assem
 {
 std::string size_str(unsigned sz);
 
 struct temp {
-	temp(const utils::temp &t, unsigned size = 8) : temp_(t), size_(size) {}
-	temp(unsigned size = 8) : temp_(utils::temp()), size_(size) {}
+	temp(const utils::temp &t, unsigned size = 8,
+	     types::signedness is_signed = types::signedness::SIGNED)
+	    : temp_(t), size_(size), is_signed_(is_signed)
+	{
+	}
+	temp(unsigned size = 8,
+	     types::signedness is_signed = types::signedness::SIGNED)
+	    : temp_(utils::temp()), size_(size), is_signed_(is_signed)
+	{
+	}
 
 	operator utils::temp &() { return temp_; }
 	operator const utils::temp &() const { return temp_; }
 	operator std::string() const
 	{
-		return std::string(temp_) + size_str(size_);
+		return std::string(temp_) + size_str(size_)
+		       + (is_signed_ == types::signedness::SIGNED ? "s" : "u");
 	}
 
 	// == and != are used by the register allocator, and do not take the
@@ -29,11 +39,12 @@ struct temp {
 
 	utils::temp temp_;
 	unsigned size_;
+	types::signedness is_signed_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const temp &t)
 {
-	return os << t.temp_ << std::to_string(t.size_);
+	return os << std::string(t);
 }
 
 using temp_endomap = std::unordered_map<temp, temp>;
@@ -138,7 +149,7 @@ struct simple_move : public move {
 struct complex_move : public move {
 	complex_move(const std::string &dst_str, const std::string &src_str,
 		     std::vector<assem::temp> dst, std::vector<assem::temp> src,
-		     unsigned dst_sz, unsigned src_sz);
+		     unsigned dst_sz, unsigned src_sz, types::signedness sign);
 
 	virtual std::string
 	to_string(std::function<std::string(utils::temp, unsigned)> f)
@@ -146,6 +157,8 @@ struct complex_move : public move {
 
 	unsigned dst_sz_;
 	unsigned src_sz_;
+
+	types::signedness sign_;
 };
 } // namespace assem
 

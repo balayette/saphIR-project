@@ -30,10 +30,13 @@ std::string label_to_asm(const utils::label &lbl)
 }
 
 assem::temp reg_to_assem_temp(mach::regs t) { return reg_to_temp(t); }
-assem::temp reg_to_assem_temp(mach::regs t, unsigned sz)
+assem::temp
+reg_to_assem_temp(mach::regs t, unsigned sz,
+		  types::signedness is_signed = types::signedness::SIGNED)
 {
 	auto tmp = reg_to_assem_temp(t);
 	tmp.size_ = sz;
+	tmp.is_signed_ = is_signed;
 	return tmp;
 }
 
@@ -91,8 +94,19 @@ void generator::visit_call(tree::call &c)
 		 * according to GCC. This is not necessary according to the
 		 * System V ABI, but GCC is all that matters anyways...
 		 */
-		EMIT(assem::simple_move(
-			assem::temp(cc[i], std::max(ret_.size_, 4u)), ret_));
+
+		// In a variadic function
+		if (i >= c.fun_ty_->arg_tys_.size()) {
+			EMIT(assem::simple_move(
+				assem::temp(cc[i], std::max(ret_.size_, 4u),
+					    types::signedness::SIGNED),
+				ret_));
+		} else
+			EMIT(assem::simple_move(
+				assem::temp(cc[i], std::max(ret_.size_, 4u),
+					    c.fun_ty_->arg_tys_[i]
+						    ->get_signedness()),
+				ret_));
 	}
 
 	// XXX: %al holds the number of floating point variadic parameters.
@@ -118,8 +132,7 @@ void generator::visit_call(tree::call &c)
 					 + ", %rsp",
 				 {}, {}, {}));
 
-	assem::temp ret;
-
+	assem::temp ret(c.ty_->assem_size());
 	if (ret.size_ != 0)
 		EMIT(assem::simple_move(ret, reg_to_assem_temp(regs::RAX)));
 
@@ -137,8 +150,8 @@ void generator::visit_cjump(tree::cjump &cj)
 	cj.rhs()->accept(*this);
 	auto rhs = ret_;
 
-	assem::temp cmpr(cmp_sz);
-	assem::temp cmpl(cmp_sz);
+	assem::temp cmpr(cmp_sz, lhs.is_signed_);
+	assem::temp cmpl(cmp_sz, rhs.is_signed_);
 
 	EMIT(assem::simple_move(cmpr, rhs));
 	EMIT(assem::simple_move(cmpl, lhs));
@@ -236,7 +249,8 @@ simple_src_str(tree::rexp e, std::string regstr)
 {
 	auto reg = e.as<tree::temp>();
 	if (reg)
-		return {regstr, assem::temp(reg->temp_, e->ty_->assem_size())};
+		return {regstr, assem::temp(reg->temp_, e->ty_->assem_size(),
+					    e->ty_->get_signedness())};
 
 	auto cnst = e.as<tree::cnst>();
 	if (cnst)
@@ -282,10 +296,12 @@ bool is_mem_reg(tree::rexp e)
 
 void generator::visit_move(tree::move &mv)
 {
+	auto signedness = mv.lhs()->ty_->get_signedness();
+
 	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs(), true)) {
 		// lea 3(%t2), %t1
 		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
-				      mv.lhs()->ty_->assem_size());
+				      mv.lhs()->ty_->assem_size(), signedness);
 
 		auto [s, t2] = reg_deref_str(mv.rhs(), "`s0");
 
@@ -295,14 +311,15 @@ void generator::visit_move(tree::move &mv)
 	if (is_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
 		// mov 3(%t2), %t1
 		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
-				      mv.lhs()->ty_->assem_size());
+				      mv.lhs()->ty_->assem_size(),
+				      mv.lhs()->ty_->get_signedness());
 
 		auto mem = mv.rhs().as<tree::mem>();
 		auto [s, t2] = reg_deref_str(mem->e(), "`s0");
 
 		EMIT(assem::complex_move("`d0", s, {t1}, {t2},
 					 mv.lhs()->assem_size(),
-					 mv.rhs()->assem_size()));
+					 mv.rhs()->assem_size(), signedness));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_simple_source(mv.rhs())) {
@@ -314,13 +331,13 @@ void generator::visit_move(tree::move &mv)
 			mem->e(), t2 == std::nullopt ? "`s0" : "`s1");
 
 		if (t2 == std::nullopt)
-			EMIT(assem::complex_move(s2, s1, {}, {t1},
-						 mv.lhs()->assem_size(),
-						 mv.rhs()->assem_size()));
+			EMIT(assem::complex_move(
+				s2, s1, {}, {t1}, mv.lhs()->assem_size(),
+				mv.rhs()->assem_size(), signedness));
 		else
-			EMIT(assem::complex_move(s2, s1, {}, {*t2, t1},
-						 mv.lhs()->assem_size(),
-						 mv.rhs()->assem_size()));
+			EMIT(assem::complex_move(
+				s2, s1, {}, {*t2, t1}, mv.lhs()->assem_size(),
+				mv.rhs()->assem_size(), signedness));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
@@ -334,13 +351,13 @@ void generator::visit_move(tree::move &mv)
 		auto [s1, t2] = reg_deref_str(mem1->e(), "`s0");
 		EMIT(assem::complex_move("`d0", s1, {t3}, {t2},
 					 mv.lhs()->assem_size(),
-					 mv.rhs()->assem_size()));
+					 mv.rhs()->assem_size(), signedness));
 
 		auto mem2 = mv.lhs().as<tree::mem>();
 		auto [s2, t1] = reg_deref_str(mem2->e(), "`s1");
 		EMIT(assem::complex_move(s2, "`s0", {}, {t3, t1},
 					 mv.lhs()->assem_size(),
-					 mv.rhs()->assem_size()));
+					 mv.rhs()->assem_size(), signedness));
 		return;
 	}
 
@@ -354,14 +371,14 @@ void generator::visit_move(tree::move &mv)
 
 		EMIT(assem::complex_move("(`s1)", "`s0", {}, {rhs, lhs},
 					 mv.lhs()->assem_size(),
-					 mv.lhs()->assem_size()));
+					 mv.lhs()->assem_size(), signedness));
 		return;
 	}
 
 	mv.lhs()->accept(*this);
-	auto lhs = assem::temp(ret_, mv.lhs()->assem_size());
+	auto lhs = assem::temp(ret_, mv.lhs()->assem_size(), signedness);
 	mv.rhs()->accept(*this);
-	auto rhs = assem::temp(ret_, mv.rhs()->assem_size());
+	auto rhs = assem::temp(ret_, mv.rhs()->assem_size(), signedness);
 
 	EMIT(assem::simple_move(lhs, rhs));
 }
@@ -372,7 +389,8 @@ void generator::visit_mem(tree::mem &mm)
 
 	mm.e()->accept(*this);
 	EMIT(assem::complex_move("`d0", "(`s0)", {dst}, {ret_},
-				 mm.ty_->assem_size(), mm.ty_->assem_size()));
+				 mm.ty_->assem_size(), mm.ty_->assem_size(),
+				 types::signedness::INVALID));
 	ret_ = dst;
 }
 
@@ -381,7 +399,7 @@ void generator::visit_cnst(tree::cnst &c)
 	assem::temp dst;
 
 	EMIT(assem::complex_move("`d0", "$" + std::to_string(c.value_), {dst},
-				 {}, 8, 8));
+				 {}, 8, 8, types::signedness::INVALID));
 
 	ret_ = dst;
 }

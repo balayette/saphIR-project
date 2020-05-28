@@ -12,6 +12,7 @@
 namespace types
 {
 enum class type { INT, STRING, VOID, INVALID };
+enum class signedness { INVALID, SIGNED, UNSIGNED };
 
 struct ty {
 	virtual ~ty() = default;
@@ -36,6 +37,11 @@ struct ty {
 		UNREACHABLE("size() on type " + to_string() + " with no size");
 	}
 
+	virtual signedness get_signedness() const
+	{
+		return signedness::INVALID;
+	}
+
 	/*
 	 * Structs and arrays have a size which is different from the size
 	 * that the codegen uses to manipulate them: they're actually
@@ -49,8 +55,8 @@ bool operator!=(const ty *ty, const type &t);
 
 struct builtin_ty : public ty {
 	builtin_ty();
-	builtin_ty(type t);
-	builtin_ty(type t, size_t size);
+	builtin_ty(type t, signedness is_signed);
+	builtin_ty(type t, size_t size, signedness is_signed);
 
 	std::string to_string() const override;
 
@@ -60,7 +66,7 @@ struct builtin_ty : public ty {
 
 	virtual builtin_ty *clone() const override
 	{
-		return new builtin_ty(ty_, size_, size_modif_);
+		return new builtin_ty(ty_, size_, size_modif_, is_signed_);
 	}
 
 	size_t size() const override;
@@ -68,11 +74,18 @@ struct builtin_ty : public ty {
 
 	type ty_;
 
+	virtual signedness get_signedness() const override
+	{
+		return is_signed_;
+	}
+
       private:
-	builtin_ty(type t, size_t size, size_t size_modif);
+	builtin_ty(type t, size_t size, size_t size_modif,
+		   signedness is_signed);
 
 	size_t size_;
 	size_t size_modif_;
+	signedness is_signed_;
 };
 
 struct pointer_ty : public ty {
@@ -91,6 +104,11 @@ struct pointer_ty : public ty {
 	virtual pointer_ty *clone() const override
 	{
 		return new pointer_ty(ty_, ptr_);
+	}
+
+	virtual signedness get_signedness() const override
+	{
+		return ty_->get_signedness();
 	}
 
 	size_t size() const override;
@@ -124,6 +142,11 @@ struct array_ty : public composite_ty {
 	virtual array_ty *clone() const override
 	{
 		return new array_ty(ty_, n_);
+	}
+
+	virtual signedness get_signedness() const override
+	{
+		return signedness::UNSIGNED;
 	}
 
 	virtual size_t assem_size() const override { return 8; }
@@ -172,6 +195,11 @@ struct struct_ty : public composite_ty {
 
 	size_t size() const override;
 
+	virtual signedness get_signedness() const override
+	{
+		return signedness::INVALID;
+	}
+
 	std::vector<utils::ref<types::ty>> types_;
 	symbol name_;
 	std::vector<symbol> names_;
@@ -194,6 +222,11 @@ struct fun_ty : public ty {
 	virtual fun_ty *clone() const override
 	{
 		return new fun_ty(ret_ty_, arg_tys_, variadic_);
+	}
+
+	virtual signedness get_signedness() const override
+	{
+		return signedness::INVALID;
 	}
 
 	utils::ref<types::ty> ret_ty_;
