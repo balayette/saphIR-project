@@ -9,7 +9,12 @@ const unsigned default_size[] = {8, 8, 0, 0};
 
 utils::ref<builtin_ty> integer_type()
 {
-        return std::make_shared<builtin_ty>(type::INT, signedness::SIGNED);
+	return std::make_shared<builtin_ty>(type::INT, signedness::SIGNED);
+}
+
+utils::ref<builtin_ty> boolean_type()
+{
+	return std::make_shared<builtin_ty>(type::INT, 1, signedness::UNSIGNED);
 }
 
 utils::ref<builtin_ty> void_type()
@@ -147,7 +152,9 @@ utils::ref<ty> builtin_ty::unaryop_type(ops::unaryop unaryop) const
 
 	switch (unaryop) {
 	case ops::unaryop::NOT:
-		return new types::builtin_ty(type::INT, 1, 1, signedness::SIGNED);
+		return boolean_type();
+	case ops::unaryop::NEG:
+		return this->clone();
 	default:
 		return nullptr;
 	}
@@ -205,7 +212,7 @@ utils::ref<ty> pointer_ty::unaryop_type(ops::unaryop unaryop) const
 {
 	switch (unaryop) {
 	case ops::unaryop::NOT:
-		return integer_type()->clone();
+		return boolean_type();
 	default:
 		return nullptr;
 	}
@@ -431,10 +438,7 @@ utils::ref<ty> named_ty::binop_compat(ops::binop, const ty *) const
 	return nullptr;
 }
 
-utils::ref<ty> named_ty::unaryop_type(ops::unaryop) const
-{
-	return nullptr;
-}
+utils::ref<ty> named_ty::unaryop_type(ops::unaryop) const { return nullptr; }
 
 size_t named_ty::size() const { return sz_; }
 } // namespace types

@@ -128,6 +128,7 @@ struct pointer_ty : public ty {
 // for each call
 utils::ref<builtin_ty> void_type();
 utils::ref<builtin_ty> integer_type();
+utils::ref<builtin_ty> boolean_type();
 
 bool is_scalar(const ty *ty);
 utils::ref<ty> deref_pointer_type(utils::ref<ty> ty);
