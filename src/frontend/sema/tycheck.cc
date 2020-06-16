@@ -217,6 +217,21 @@ void tycheck_visitor::visit_bin(bin &e)
 	e.ty_ = ty;
 }
 
+void tycheck_visitor::visit_unary(unary &e)
+{
+	default_visitor::visit_unary(e);
+
+	auto ty = e.e_->ty_->unaryop_type(e.op_);
+	if (!ty) {
+		std::cerr << "TypeError: Incompatible type '"
+			  << e.e_->ty_->to_string() << "' and unary operator '"
+			  << ops::unaryop_to_string(e.op_) << "'\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	e.ty_ = ty;
+}
+
 void tycheck_visitor::visit_braceinit(braceinit &e)
 {
 	default_visitor::visit_braceinit(e);

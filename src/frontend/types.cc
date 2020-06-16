@@ -146,6 +146,19 @@ utils::ref<ty> builtin_ty::binop_compat(ops::binop op, const ty *t) const
 	return nullptr;
 }
 
+utils::ref<ty> builtin_ty::unaryop_type(ops::unaryop unaryop) const
+{
+	if (ty_ != type::INT)
+		return nullptr;
+
+	switch (unaryop) {
+	case ops::unaryop::NOT:
+		return new types::builtin_ty(type::INT, 1, 1, signedness::SIGNED);
+	default:
+		return nullptr;
+	}
+}
+
 pointer_ty::pointer_ty(utils::ref<ty> ty, unsigned ptr) : ty_(ty), ptr_(ptr) {}
 
 pointer_ty::pointer_ty(utils::ref<ty> ty)
@@ -192,6 +205,16 @@ utils::ref<ty> pointer_ty::binop_compat(ops::binop op, const ty *t) const
 		return nullptr;
 
 	return this->clone();
+}
+
+utils::ref<ty> pointer_ty::unaryop_type(ops::unaryop unaryop) const
+{
+	switch (unaryop) {
+	case ops::unaryop::NOT:
+		return integer_type()->clone();
+	default:
+		return nullptr;
+	}
 }
 
 size_t pointer_ty::pointed_size() const
@@ -243,6 +266,11 @@ utils::ref<ty> braceinit_ty::binop_compat(ops::binop, const ty *) const
 	return nullptr;
 }
 
+utils::ref<ty> braceinit_ty::unaryop_type(ops::unaryop) const
+{
+	return nullptr;
+}
+
 struct_ty::struct_ty(const symbol &name, const std::vector<symbol> &names,
 		     const std::vector<utils::ref<types::ty>> &types)
     : types_(types), name_(name), names_(names)
@@ -284,6 +312,8 @@ utils::ref<ty> struct_ty::binop_compat(ops::binop, const ty *) const
 {
 	return nullptr;
 }
+
+utils::ref<ty> struct_ty::unaryop_type(ops::unaryop) const { return nullptr; }
 
 std::optional<size_t> struct_ty::member_index(const symbol &name)
 {
@@ -340,6 +370,16 @@ utils::ref<ty> array_ty::binop_compat(ops::binop, const ty *) const
 	return nullptr;
 }
 
+utils::ref<ty> array_ty::unaryop_type(ops::unaryop unaryop) const
+{
+	switch (unaryop) {
+	case ops::unaryop::NOT:
+		return integer_type()->clone();
+	default:
+		return nullptr;
+	}
+}
+
 size_t array_ty::size() const { return n_ * ty_->size(); }
 
 utils::ref<ty> struct_ty::member_ty(const symbol &name)
@@ -379,6 +419,8 @@ utils::ref<ty> fun_ty::binop_compat(ops::binop, const ty *) const
 	return nullptr;
 }
 
+utils::ref<ty> fun_ty::unaryop_type(ops::unaryop) const { return nullptr; }
+
 named_ty::named_ty(const symbol &name, size_t sz) : name_(name), sz_(sz) {}
 
 std::string named_ty::to_string() const
@@ -391,6 +433,11 @@ std::string named_ty::to_string() const
 
 bool named_ty::assign_compat(const ty *) const { return false; }
 utils::ref<ty> named_ty::binop_compat(ops::binop, const ty *) const
+{
+	return nullptr;
+}
+
+utils::ref<ty> named_ty::unaryop_type(ops::unaryop) const
 {
 	return nullptr;
 }

@@ -24,6 +24,7 @@ class tycheck_visitor : public default_visitor
 	virtual void visit_memberdec(memberdec &s) override;
 
 	virtual void visit_bin(bin &e) override;
+	virtual void visit_unary(unary &e) override;
 	virtual void visit_cmp(cmp &e) override;
 	virtual void visit_deref(deref &e) override;
 	virtual void visit_addrof(addrof &e) override;

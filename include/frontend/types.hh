@@ -28,6 +28,10 @@ struct ty {
 	virtual utils::ref<ty> binop_compat(ops::binop binop,
 					    const ty *t) const = 0;
 
+	// return the resulting type if UNARYOP this is correctly typed,
+	// nullptr otherwise.
+	virtual utils::ref<ty> unaryop_type(ops::unaryop unaryop) const = 0;
+
 	virtual ty *clone() const = 0;
 
 	virtual bool size_modifier(size_t sz) { return sz == DEFAULT_SIZE; }
@@ -63,6 +67,7 @@ struct builtin_ty : public ty {
 	bool assign_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
+	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
 
 	virtual builtin_ty *clone() const override
 	{
@@ -100,6 +105,7 @@ struct pointer_ty : public ty {
 	bool assign_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
+	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
 
 	virtual pointer_ty *clone() const override
 	{
@@ -138,6 +144,7 @@ struct array_ty : public composite_ty {
 	bool assign_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
+	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
 
 	virtual array_ty *clone() const override
 	{
@@ -163,6 +170,7 @@ struct braceinit_ty : public composite_ty {
 	bool assign_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
+	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
 
 	virtual braceinit_ty *clone() const override
 	{
@@ -181,6 +189,7 @@ struct struct_ty : public composite_ty {
 	bool assign_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
+	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
 
 	virtual struct_ty *clone() const override
 	{
@@ -218,6 +227,7 @@ struct fun_ty : public ty {
 	bool assign_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
+	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
 
 	virtual fun_ty *clone() const override
 	{
@@ -246,6 +256,7 @@ struct named_ty : public ty {
 	bool assign_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
+	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
 
 	virtual named_ty *clone() const override { return new named_ty(name_); }
 	size_t size() const override;
