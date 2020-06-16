@@ -123,8 +123,8 @@ struct temp : public exp {
 };
 
 struct binop : public exp {
-	// XXX: The type of the binop is the type of the lhs of the binop
-	binop(ops::binop op, rexp lhs, rexp rhs) : exp(lhs->ty_), op_(op)
+	binop(ops::binop op, rexp lhs, rexp rhs, utils::ref<types::ty> ty)
+	    : exp(ty), op_(op)
 	{
 		children_.emplace_back(lhs);
 		children_.emplace_back(rhs);

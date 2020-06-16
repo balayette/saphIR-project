@@ -9,18 +9,12 @@ const unsigned default_size[] = {8, 8, 0, 0};
 
 utils::ref<builtin_ty> integer_type()
 {
-	static auto t =
-		std::make_shared<builtin_ty>(type::INT, signedness::SIGNED);
-
-	return t;
+        return std::make_shared<builtin_ty>(type::INT, signedness::SIGNED);
 }
 
 utils::ref<builtin_ty> void_type()
 {
-	static auto t =
-		std::make_shared<builtin_ty>(type::VOID, signedness::INVALID);
-
-	return t;
+	return std::make_shared<builtin_ty>(type::VOID, signedness::INVALID);
 }
 
 bool is_scalar(const ty *ty)

@@ -124,8 +124,9 @@ struct pointer_ty : public ty {
 	unsigned ptr_;
 };
 
+// XXX: This should be arch dependant, and is allocates a chunk of memory
+// for each call
 utils::ref<builtin_ty> void_type();
-// XXX: This should be arch dependant
 utils::ref<builtin_ty> integer_type();
 
 bool is_scalar(const ty *ty);

@@ -167,9 +167,9 @@ ir::tree::rexp in_frame::addr(size_t offt) const
 	auto type = offt ? gpr_type() : ty_->clone();
 	type = new types::pointer_ty(type);
 
-	return new ir::tree::binop(ops::binop::PLUS,
-				   new ir::tree::temp(fp(), type),
-				   new ir::tree::cnst(offt_ + offt));
+	return new ir::tree::binop(
+		ops::binop::PLUS, new ir::tree::temp(fp(), type),
+		new ir::tree::cnst(offt_ + offt), type->clone());
 }
 
 std::ostream &in_frame::print(std::ostream &os) const
@@ -199,9 +199,9 @@ ir::tree::rexp global_acc::addr(size_t offt) const
 	type = new types::pointer_ty(type);
 
 	if (offt != 0)
-		return new ir::tree::binop(ops::binop::PLUS,
-					   new ir::tree::name(name_, type),
-					   new ir::tree::cnst(offt));
+		return new ir::tree::binop(
+			ops::binop::PLUS, new ir::tree::name(name_, type),
+			new ir::tree::cnst(offt), type->clone());
 	else
 		return new ir::tree::name(name_, type);
 }

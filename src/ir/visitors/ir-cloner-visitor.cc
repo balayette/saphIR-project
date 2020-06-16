@@ -47,11 +47,8 @@ void ir_cloner_visitor::visit_temp(tree::temp &n)
 
 void ir_cloner_visitor::visit_binop(tree::binop &n)
 {
-	auto b = new tree::binop(n.op_, recurse<tree::exp>(n.lhs()),
-				 recurse<tree::exp>(n.rhs()));
-	b->ty_ = n.ty_->clone();
-
-	ret_ = b;
+	ret_ = new tree::binop(n.op_, recurse<tree::exp>(n.lhs()),
+			       recurse<tree::exp>(n.rhs()), n.ty_->clone());
 }
 
 void ir_cloner_visitor::visit_unaryop(tree::unaryop &n)
