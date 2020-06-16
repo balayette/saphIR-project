@@ -84,6 +84,11 @@ void default_visitor::visit_bin(bin &e)
 	e.rhs_->accept(*this);
 }
 
+void default_visitor::visit_unary(unary &e)
+{
+        e.e_->accept(*this);
+}
+
 void default_visitor::visit_cmp(cmp &e)
 {
 	e.lhs_->accept(*this);

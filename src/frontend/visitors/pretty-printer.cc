@@ -195,6 +195,12 @@ void pretty_printer::visit_bin(bin &e)
 	e.rhs_->accept(*this);
 }
 
+void pretty_printer::visit_unary(unary &e)
+{
+        os_ << unaryop_to_string(e.op_);
+        e.e_->accept(*this);
+}
+
 void pretty_printer::visit_cmp(cmp &e)
 {
 	e.lhs_->accept(*this);

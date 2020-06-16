@@ -3,11 +3,15 @@
 namespace ops
 {
 const std::string binop_str[] = {
-	"-", "+", "*", "/", "%", "&&", "||", "&", "|", "^", "<<", ">>", "|>>"
+	"-", "+", "*", "/", "%", "&&", "||", "&", "|", "^", "<<", ">>", "|>>",
 };
 
 const std::string cmpop_str[] = {
 	"==", "<", ">", "<=", ">=", "!=",
+};
+
+const std::string unaryop_str[] = {
+	"!",
 };
 
 cmpop invert_cmpop(cmpop op)
@@ -36,5 +40,10 @@ const std::string &binop_to_string(binop op)
 const std::string &cmpop_to_string(cmpop op)
 {
 	return cmpop_str[static_cast<int>(op)];
+}
+
+const std::string &unaryop_to_string(unaryop op)
+{
+	return unaryop_str[static_cast<int>(op)];
 }
 } // namespace ops

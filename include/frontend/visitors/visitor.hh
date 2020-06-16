@@ -21,6 +21,7 @@ struct forstmt;
 struct paren;
 struct braceinit;
 struct bin;
+struct unary;
 struct ass;
 struct cmp;
 struct num;
@@ -61,6 +62,7 @@ class visitor
 	virtual void visit_paren(paren &e) = 0;
 	virtual void visit_braceinit(braceinit &e) = 0;
 	virtual void visit_bin(bin &e) = 0;
+	virtual void visit_unary(unary &e) = 0;
 	virtual void visit_cmp(cmp &e) = 0;
 	virtual void visit_num(num &e) = 0;
 	virtual void visit_ref(ref &e) = 0;

@@ -22,6 +22,7 @@ class default_visitor : public visitor
 	virtual void visit_paren(paren &e) override;
 	virtual void visit_braceinit(braceinit &e) override;
 	virtual void visit_bin(bin &e) override;
+	virtual void visit_unary(unary &e) override;
 	virtual void visit_cmp(cmp &e) override;
 	virtual void visit_num(num &) override;
 	virtual void visit_ref(ref &) override;

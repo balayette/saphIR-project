@@ -20,6 +20,10 @@ enum class binop {
 	ARITHBITRSHIFT,
 };
 
+enum class unaryop {
+        NOT,
+};
+
 // The order of the cmpops matters, they must be ordered "symmetrically".
 // See invert_cmpop
 enum class cmpop { EQ, SMLR, GRTR, SMLR_EQ, GRTR_EQ, NEQ };
@@ -30,4 +34,5 @@ bool is_binop_commutative(binop op);
 
 const std::string &binop_to_string(binop op);
 const std::string &cmpop_to_string(cmpop op);
+const std::string &unaryop_to_string(unaryop op);
 } // namespace ops

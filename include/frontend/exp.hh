@@ -62,6 +62,15 @@ struct bin : public exp {
 	utils::ref<exp> rhs_;
 };
 
+struct unary : public exp {
+	unary(ops::unaryop op, utils::ref<exp> e) : exp(), op_(op), e_(e) {}
+
+	void accept(visitor &visitor) override { visitor.visit_unary(*this); }
+
+	ops::unaryop op_;
+	utils::ref<exp> e_;
+};
+
 struct cmp : public exp {
 	cmp(ops::cmpop op, utils::ref<exp> lhs, utils::ref<exp> rhs)
 	    : op_(op), lhs_(lhs), rhs_(rhs)
