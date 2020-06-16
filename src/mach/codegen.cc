@@ -555,6 +555,32 @@ void generator::visit_binop(tree::binop &b)
 	ret_ = dst;
 }
 
+void generator::visit_unaryop(tree::unaryop &b)
+{
+	b.e()->accept(*this);
+	auto val = ret_;
+
+	if (b.op_ == ops::unaryop::NOT) {
+		/*
+		 * System V wants bools where the least significant bit
+		 * is 0/1 and all the other bits are 0. This means that
+		 * we need to zero the register before potentially
+		 * setting the least significant bit.
+		 * Zero'ing only the lowest byte of a register introduces
+		 * a dependency on the high bytes, so we zero the entire
+		 * register.
+		 */
+		assem::temp dst(4, types::signedness::UNSIGNED);
+		EMIT(assem::sized_oper("xor", "`d0, `d0", {dst}, {}, 4));
+		EMIT(assem::sized_oper("cmp", "$0x0, `s0", {}, {val},
+				       b.e()->assem_size()));
+                dst.size_ = 1;
+		EMIT(assem::oper("sete `d0", {dst}, {}, {}));
+		ret_ = dst;
+	} else
+		UNREACHABLE("Unimplemented unaryop\n");
+}
+
 void generator::emit(assem::rinstr ins)
 {
 	unsigned width = 80;

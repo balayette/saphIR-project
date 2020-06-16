@@ -16,6 +16,7 @@ struct generator : public ir::default_ir_visitor {
 	void visit_cnst(ir::tree::cnst &) override;
 	void visit_temp(ir::tree::temp &) override;
 	void visit_binop(ir::tree::binop &) override;
+	void visit_unaryop(ir::tree::unaryop &) override;
 	void visit_mem(ir::tree::mem &) override;
 	void visit_call(ir::tree::call &n) override;
 	void visit_move(ir::tree::move &) override;
