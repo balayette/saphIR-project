@@ -43,6 +43,7 @@
 	MOD "%"
 	MULT "*"
 	DIV "/"
+        NOT "!"
 	AMPERSAND "&"
 	BITOR "|"
         BITXOR "^"
@@ -137,6 +138,7 @@
 
 %left AMPERSAND
 %left DOT ARROW LBRACK RBRACK
+%right NOT
 
 %%
 
@@ -279,6 +281,7 @@ exp:
 | 	exp BITRSHIFT exp 		{ $$ = new bin(binop::BITRSHIFT, $1, $3); }
 | 	exp ARITHBITRSHIFT exp 		{ $$ = new bin(binop::ARITHBITRSHIFT, $1, $3); }
 
+|       NOT exp { $$ = new unary(unaryop::NOT, $2); }
 | 	exp OR exp 		{ $$ = new bin(binop::OR, $1, $3); }
 | 	exp AND exp 		{ $$ = new bin(binop::AND, $1, $3); }
 |       subscript { $$ = $1; }

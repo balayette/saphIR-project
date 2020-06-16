@@ -44,6 +44,7 @@ strlit \"[^"]*\"
 "/"	    	return TOKEN(DIV);
 "%"	    	return TOKEN(MOD);
 "&" 		return TOKEN(AMPERSAND);
+"!"             return TOKEN(NOT);
 
 "|"            return TOKEN(BITOR);
 "^"            return TOKEN(BITXOR);
