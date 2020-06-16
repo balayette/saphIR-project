@@ -282,6 +282,7 @@ exp:
 | 	exp ARITHBITRSHIFT exp 		{ $$ = new bin(binop::ARITHBITRSHIFT, $1, $3); }
 
 |       NOT exp { $$ = new unary(unaryop::NOT, $2); }
+|       MINUS exp { $$ = new unary(unaryop::NEG, $2); }
 | 	exp OR exp 		{ $$ = new bin(binop::OR, $1, $3); }
 | 	exp AND exp 		{ $$ = new bin(binop::AND, $1, $3); }
 |       subscript { $$ = $1; }
