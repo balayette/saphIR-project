@@ -19,6 +19,11 @@ void default_ir_visitor::visit_binop(tree::binop &n)
 	n.rhs()->accept(*this);
 }
 
+void default_ir_visitor::visit_unaryop(tree::unaryop &n)
+{
+	n.e()->accept(*this);
+}
+
 void default_ir_visitor::visit_mem(tree::mem &n) { n.e()->accept(*this); }
 
 void default_ir_visitor::visit_call(tree::call &n)

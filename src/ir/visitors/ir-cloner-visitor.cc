@@ -54,6 +54,12 @@ void ir_cloner_visitor::visit_binop(tree::binop &n)
 	ret_ = b;
 }
 
+void ir_cloner_visitor::visit_unaryop(tree::unaryop &n)
+{
+	ret_ = new tree::unaryop(n.op_, recurse<tree::exp>(n.e()),
+				 n.ty_->clone());
+}
+
 void ir_cloner_visitor::visit_mem(tree::mem &n)
 {
 	auto e = recurse<tree::exp>(n.e());

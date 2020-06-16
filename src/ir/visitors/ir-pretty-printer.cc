@@ -38,6 +38,15 @@ void ir_pretty_printer::visit_binop(tree::binop &n)
 	indent() << ")\n";
 }
 
+void ir_pretty_printer::visit_unaryop(tree::unaryop &n)
+{
+	indent() << "(unaryop " << ops::unaryop_to_string(n.op_) << "\n";
+	lvl_++;
+	n.e()->accept(*this);
+	lvl_--;
+	indent() << ")\n";
+}
+
 void ir_pretty_printer::visit_mem(tree::mem &n)
 {
 	indent() << "(mem\n";

@@ -28,6 +28,7 @@ enum class tree_kind {
 	name,
 	temp,
 	binop,
+	unaryop,
 	mem,
 	call,
 	eseq,
@@ -134,6 +135,19 @@ struct binop : public exp {
 	rexp rhs() { return children_[1].as<exp>(); }
 
 	ops::binop op_;
+};
+
+struct unaryop : public exp {
+	unaryop(ops::unaryop op, rexp e, utils::ref<types::ty> type)
+	    : exp(type), op_(op)
+	{
+		children_.emplace_back(e);
+	}
+	TREE_KIND(unaryop)
+
+	rexp e() { return children_[0].as<exp>(); }
+
+	ops::unaryop op_;
 };
 
 struct mem : public exp {

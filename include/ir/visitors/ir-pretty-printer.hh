@@ -15,6 +15,7 @@ class ir_pretty_printer : public default_ir_visitor
 	virtual void visit_name(tree::name &n) override;
 	virtual void visit_temp(tree::temp &n) override;
 	virtual void visit_binop(tree::binop &n) override;
+	virtual void visit_unaryop(tree::unaryop &n) override;
 	virtual void visit_mem(tree::mem &n) override;
 	virtual void visit_call(tree::call &n) override;
 	virtual void visit_eseq(tree::eseq &n) override;

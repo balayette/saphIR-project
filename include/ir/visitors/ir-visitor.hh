@@ -9,6 +9,7 @@ struct braceinit;
 struct name;
 struct temp;
 struct binop;
+struct unaryop;
 struct mem;
 struct call;
 struct eseq;
@@ -28,6 +29,7 @@ class ir_visitor
 	virtual void visit_name(tree::name &n) = 0;
 	virtual void visit_temp(tree::temp &n) = 0;
 	virtual void visit_binop(tree::binop &n) = 0;
+	virtual void visit_unaryop(tree::unaryop &n) = 0;
 	virtual void visit_mem(tree::mem &n) = 0;
 	virtual void visit_call(tree::call &n) = 0;
 	virtual void visit_eseq(tree::eseq &n) = 0;
