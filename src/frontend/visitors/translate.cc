@@ -516,6 +516,13 @@ void translate_visitor::visit_bin(bin &e)
 	ret_ = new ex(new ir::tree::binop(e.op_, left, right));
 }
 
+void translate_visitor::visit_unary(unary &e)
+{
+	e.e_->accept(*this);
+	ret_ = new ex(
+		new ir::tree::unaryop(e.op_, ret_->un_ex(), e.ty_->clone()));
+}
+
 void translate_visitor::visit_cmp(cmp &e)
 {
 	e.lhs_->accept(*this);
