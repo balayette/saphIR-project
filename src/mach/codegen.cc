@@ -99,7 +99,7 @@ void generator::visit_call(tree::call &c)
 		if (i >= c.fun_ty_->arg_tys_.size()) {
 			EMIT(assem::simple_move(
 				assem::temp(cc[i], std::max(ret_.size_, 4u),
-					    types::signedness::SIGNED),
+					    ret_.is_signed_),
 				ret_));
 		} else
 			EMIT(assem::simple_move(
@@ -406,7 +406,7 @@ void generator::visit_cnst(tree::cnst &c)
 
 void generator::visit_temp(tree::temp &t)
 {
-	ret_ = assem::temp(t.temp_, t.assem_size());
+	ret_ = assem::temp(t.temp_, t.assem_size(), t.ty_->get_signedness());
 }
 
 bool generator::opt_mul(tree::binop &b)
