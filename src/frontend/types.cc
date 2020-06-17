@@ -154,7 +154,17 @@ utils::ref<ty> builtin_ty::unaryop_type(ops::unaryop unaryop) const
 	case ops::unaryop::NOT:
 		return boolean_type();
 	case ops::unaryop::NEG:
-		return this->clone();
+		if (size() >= 4u)
+			return this->clone();
+		else
+			return new builtin_ty(type::INT, 4u,
+					      signedness::SIGNED);
+	case ops::unaryop::BITNOT:
+		if (size() >= 4u)
+			return this->clone();
+		else
+			return new builtin_ty(type::INT, 4u,
+					      signedness::SIGNED);
 	default:
 		return nullptr;
 	}

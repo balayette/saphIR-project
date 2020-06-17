@@ -578,9 +578,14 @@ void generator::visit_unaryop(tree::unaryop &b)
 		EMIT(assem::oper("sete `d0", {dst}, {}, {}));
 		ret_ = dst;
 	} else if (b.op_ == ops::unaryop::NEG) {
-		assem::temp dst(std::max(4u, val.size_), val.is_signed_);
+		assem::temp dst(b.ty_->size(), val.is_signed_);
 		EMIT(assem::simple_move(dst, val));
 		EMIT(assem::oper("neg `s0", {dst}, {dst}, {}));
+		ret_ = dst;
+	} else if (b.op_ == ops::unaryop::BITNOT) {
+		assem::temp dst(b.ty_->size(), val.is_signed_);
+		EMIT(assem::simple_move(dst, val));
+		EMIT(assem::oper("not `s0", {dst}, {dst}, {}));
 		ret_ = dst;
 	} else
 		UNREACHABLE("Unimplemented unaryop\n");
