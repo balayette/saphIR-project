@@ -44,6 +44,7 @@
 	MULT "*"
 	DIV "/"
         NOT "!"
+        TILDE "~"
 	AMPERSAND "&"
 	BITOR "|"
         BITXOR "^"
@@ -138,7 +139,7 @@
 
 %left AMPERSAND
 %left DOT ARROW LBRACK RBRACK
-%right NOT
+%right NOT TILDE
 
 %%
 
@@ -282,6 +283,7 @@ exp:
 | 	exp ARITHBITRSHIFT exp 		{ $$ = new bin(binop::ARITHBITRSHIFT, $1, $3); }
 
 |       NOT exp { $$ = new unary(unaryop::NOT, $2); }
+|       TILDE exp { $$ = new unary(unaryop::BITNOT, $2); }
 |       MINUS exp { $$ = new unary(unaryop::NEG, $2); }
 | 	exp OR exp 		{ $$ = new bin(binop::OR, $1, $3); }
 | 	exp AND exp 		{ $$ = new bin(binop::AND, $1, $3); }

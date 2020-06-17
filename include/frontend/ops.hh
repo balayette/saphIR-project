@@ -23,6 +23,7 @@ enum class binop {
 enum class unaryop {
         NOT,
         NEG,
+        BITNOT,
 };
 
 // The order of the cmpops matters, they must be ordered "symmetrically".

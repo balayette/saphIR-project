@@ -13,6 +13,7 @@ const std::string cmpop_str[] = {
 const std::string unaryop_str[] = {
 	"!",
 	"-",
+	"~",
 };
 
 cmpop invert_cmpop(cmpop op)
