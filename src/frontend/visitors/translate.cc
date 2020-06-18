@@ -524,6 +524,14 @@ void translate_visitor::visit_unary(unary &e)
 		new ir::tree::unaryop(e.op_, ret_->un_ex(), e.ty_->clone()));
 }
 
+void translate_visitor::visit_cast(cast &e)
+{
+	e.e_->accept(*this);
+	auto c = ret_->un_ex();
+	c->ty_ = e.ty_;
+	ret_ = new ex(c);
+}
+
 void translate_visitor::visit_cmp(cmp &e)
 {
 	e.lhs_->accept(*this);

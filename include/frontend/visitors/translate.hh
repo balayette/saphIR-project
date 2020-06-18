@@ -68,6 +68,7 @@ class translate_visitor : public default_visitor
 	void visit_ref(ref &e) override;
 	void visit_num(num &e) override;
 	void visit_call(call &e) override;
+	void visit_cast(cast &e) override;
 	void visit_bin(bin &e) override;
 	void visit_unary(unary &e) override;
 	void visit_cmp(cmp &e) override;
