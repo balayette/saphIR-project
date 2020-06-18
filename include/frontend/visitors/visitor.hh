@@ -19,6 +19,7 @@ struct forstmt;
 
 /* expressions */
 struct paren;
+struct cast;
 struct braceinit;
 struct bin;
 struct unary;
@@ -60,6 +61,7 @@ class visitor
 
 	/* expressions */
 	virtual void visit_paren(paren &e) = 0;
+	virtual void visit_cast(cast &e) = 0;
 	virtual void visit_braceinit(braceinit &e) = 0;
 	virtual void visit_bin(bin &e) = 0;
 	virtual void visit_unary(unary &e) = 0;

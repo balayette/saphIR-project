@@ -72,6 +72,8 @@ void default_visitor::visit_ass(ass &s)
 
 void default_visitor::visit_paren(paren &e) { e.e_->accept(*this); }
 
+void default_visitor::visit_cast(cast &e) { e.e_->accept(*this); }
+
 void default_visitor::visit_braceinit(braceinit &e)
 {
 	for (auto e : e.exps_)
@@ -84,10 +86,7 @@ void default_visitor::visit_bin(bin &e)
 	e.rhs_->accept(*this);
 }
 
-void default_visitor::visit_unary(unary &e)
-{
-        e.e_->accept(*this);
-}
+void default_visitor::visit_unary(unary &e) { e.e_->accept(*this); }
 
 void default_visitor::visit_cmp(cmp &e)
 {

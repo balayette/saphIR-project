@@ -20,6 +20,7 @@ struct exp {
 					types::signedness::INVALID))
 	{
 	}
+	exp(utils::ref<types::ty> &ty) : ty_(ty) {}
 	exp(const exp &rhs) = default;
 	exp &operator=(const exp &rhs) = default;
 
@@ -34,6 +35,14 @@ struct paren : public exp {
 	paren(utils::ref<exp> e) : exp(), e_(e) {}
 
 	void accept(visitor &visitor) override { visitor.visit_paren(*this); }
+
+	utils::ref<exp> e_;
+};
+
+struct cast : public exp {
+	cast(utils::ref<types::ty> ty, utils::ref<exp> e) : exp(ty), e_(e) {}
+
+	void accept(visitor &visitor) override { visitor.visit_cast(*this); }
 
 	utils::ref<exp> e_;
 };

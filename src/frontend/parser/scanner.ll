@@ -76,6 +76,8 @@ strlit \"[^"]*\"
 "variadic"      return TOKEN(VARIADIC);
 "struct"        return TOKEN(STRUCT);
 
+"__cast"        return TOKEN(CAST);
+
 {int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
 {hexint} 	return TOKEN_VAL(INT_LIT, std::strtol(yytext, NULL, 16));
 {id} 		return TOKEN_VAL(ID, symbol(yytext));

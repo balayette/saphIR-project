@@ -188,6 +188,13 @@ void pretty_printer::visit_paren(paren &e)
 	os_ << ')';
 }
 
+void pretty_printer::visit_cast(cast &e)
+{
+	os_ << "__cast(" << e.ty_->to_string() << ", ";
+	e.e_->accept(*this);
+	os_ << ')';
+}
+
 void pretty_printer::visit_bin(bin &e)
 {
 	e.lhs_->accept(*this);
@@ -197,8 +204,8 @@ void pretty_printer::visit_bin(bin &e)
 
 void pretty_printer::visit_unary(unary &e)
 {
-        os_ << unaryop_to_string(e.op_);
-        e.e_->accept(*this);
+	os_ << unaryop_to_string(e.op_);
+	e.e_->accept(*this);
 }
 
 void pretty_printer::visit_cmp(cmp &e)
@@ -275,8 +282,8 @@ void pretty_printer::visit_arrowaccess(arrowaccess &e)
 void pretty_printer::visit_subscript(subscript &e)
 {
 	e.base_->accept(*this);
-        os_ << '[';
-        e.index_->accept(*this);
-        os_ << ']';
+	os_ << '[';
+	e.index_->accept(*this);
+	os_ << ']';
 }
 } // namespace frontend

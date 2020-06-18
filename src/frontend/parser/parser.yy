@@ -73,6 +73,8 @@
         LET "let"
         VARIADIC "variadic"
         STRUCT "struct"
+
+        CAST "__cast"
 	EOF 0 "eof"
 
 %token <symbol> ID "id"
@@ -281,6 +283,7 @@ exp:
 | 	exp BITLSHIFT exp 		{ $$ = new bin(binop::BITLSHIFT, $1, $3); }
 | 	exp BITRSHIFT exp 		{ $$ = new bin(binop::BITRSHIFT, $1, $3); }
 | 	exp ARITHBITRSHIFT exp 		{ $$ = new bin(binop::ARITHBITRSHIFT, $1, $3); }
+|       "__cast" "(" type "," exp ")" { $$ = new cast($3, $5); }
 
 |       NOT exp { $$ = new unary(unaryop::NOT, $2); }
 |       TILDE exp { $$ = new unary(unaryop::BITNOT, $2); }

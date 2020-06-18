@@ -26,6 +26,7 @@ class pretty_printer : public default_visitor
 
 	/* expressions */
 	virtual void visit_paren(paren &e) override;
+	virtual void visit_cast(cast &e) override;
 	virtual void visit_braceinit(braceinit &e) override;
 	virtual void visit_bin(bin &e) override;
 	virtual void visit_unary(unary &e) override;
