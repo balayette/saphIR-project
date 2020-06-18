@@ -103,7 +103,7 @@ tree::rstm nx::un_cx(const utils::label &, const utils::label &)
  */
 static tree::rexp access_to_exp(mach::access &access)
 {
-	if (types::is_scalar(&access.ty_))
+	if (types::is_scalar(&access.ty_) && !access.ty_.as<types::fun_ty>())
 		return access.exp();
 
 	auto exp = access.addr();
@@ -381,8 +381,10 @@ void translate_visitor::visit_call(call &e)
 		args.emplace_back(ret_->un_ex());
 	}
 
-	auto *call = new ir::tree::call(new ir::tree::name(e.fdec_->name_),
-					args, e.fdec_->type_);
+	e.f_->accept(*this);
+	ir::ir_pretty_printer pir(std::cout);
+	ASSERT(e.fty_, "wtf");
+	auto *call = new ir::tree::call(ret_->un_ex(), args, e.fty_);
 
 	ret_ = new ex(call);
 }
