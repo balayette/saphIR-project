@@ -317,7 +317,7 @@ num: INT_LIT 	{ $$ = new num($1); };
 
 ref: ID 	{ $$ = new ref($1); };
 
-call: ID "(" exps_comma ")" 	{ $$ = new call($1, $3); };
+call: exp "(" exps_comma ")" 	{ $$ = new call($1, $3); };
 
 memberaccess:
             exp "." ID { $$ = new memberaccess($1, $3); }

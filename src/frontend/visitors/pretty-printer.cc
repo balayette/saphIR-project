@@ -241,10 +241,7 @@ void pretty_printer::visit_addrof(addrof &e)
 
 void pretty_printer::visit_call(call &e)
 {
-	if (e.fdec_)
-		os_ << e.fdec_->name_;
-	else
-		os_ << e.name_;
+	e.f_->accept(*this);
 	os_ << '(';
 
 	for (auto it = e.args_.begin(); it != e.args_.end(); it++) {

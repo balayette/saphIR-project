@@ -104,6 +104,7 @@ void default_visitor::visit_addrof(addrof &e) { e.e_->accept(*this); }
 
 void default_visitor::visit_call(call &e)
 {
+	e.f_->accept(*this);
 	for (auto a : e.args_)
 		a->accept(*this);
 }

@@ -135,17 +135,16 @@ struct addrof : public exp {
 };
 
 struct call : public exp {
-	call(symbol name, std::vector<utils::ref<exp>> args)
-	    : name_(name), args_(args), fdec_(nullptr)
+	call(utils::ref<exp> f, std::vector<utils::ref<exp>> args)
+	    : f_(f), args_(args)
 	{
 	}
 
 	ACCEPT(call)
 
-	symbol name_;
+	utils::ref<exp> f_;
 	std::vector<utils::ref<exp>> args_;
-
-	funprotodec *fdec_;
+	utils::ref<types::ty> fty_;
 };
 
 struct str_lit : public exp {
