@@ -112,7 +112,20 @@ bool builtin_ty::assign_compat(const ty *t) const
 	if (auto ft = dynamic_cast<const fun_ty *>(t))
 		return ft->ret_ty_->assign_compat(this);
 	if (auto bt = dynamic_cast<const builtin_ty *>(t))
-		return ty_ == bt->ty_;
+		return ty_ == bt->ty_ && size() >= bt->size();
+	return false;
+}
+
+/*
+ * builtin types can cast to themselves
+ * integers can be cast to pointers if they are the same size as pointers
+ */
+bool builtin_ty::cast_compat(const ty *t) const
+{
+	if (auto pt = dynamic_cast<const pointer_ty *>(t))
+		return ty_ == type::INT && size() == pt->size();
+	if (auto bt = dynamic_cast<const builtin_ty *>(t))
+		return bt->ty_ == ty_;
 	return false;
 }
 
@@ -200,6 +213,18 @@ bool pointer_ty::assign_compat(const ty *t) const
 	if (auto at = dynamic_cast<const array_ty *>(t))
 		return ptr_ == 1 && ty_->assign_compat(&at->ty_);
 
+	return false;
+}
+
+/*
+ * Pointers can be cast to pointers and large integers
+ */
+bool pointer_ty::cast_compat(const ty *t) const
+{
+	if (dynamic_cast<const pointer_ty *>(t))
+		return true;
+	if (auto bt = dynamic_cast<const builtin_ty *>(t))
+		return bt->cast_compat(this);
 	return false;
 }
 
@@ -373,6 +398,14 @@ bool array_ty::assign_compat(const ty *t) const
 	// compatible
 	auto at = dynamic_cast<const array_ty *>(t);
 	return at && n_ == at->n_ && ty_->assign_compat(&at->ty_);
+}
+
+/*
+ * Arrays can be cast to pointer
+ */
+bool array_ty::cast_compat(const ty *t) const
+{
+	return !!dynamic_cast<const pointer_ty *>(t);
 }
 
 // no binops on arrays

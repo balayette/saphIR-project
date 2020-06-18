@@ -76,6 +76,19 @@ void tycheck_visitor::visit_paren(paren &e)
 	e.ty_ = e.e_->ty_;
 }
 
+void tycheck_visitor::visit_cast(cast &e)
+{
+	default_visitor::visit_cast(e);
+
+	auto ty = get_type(e.ty_);
+	if (!e.e_->ty_->cast_compat(&ty)) {
+		std::cerr << "TypeError: '" << e.e_->ty_->to_string()
+			  << "' can't be cast to '" << ty->to_string() << "'\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+	e.ty_ = ty;
+}
+
 void tycheck_visitor::visit_globaldec(globaldec &s)
 {
 	default_visitor::visit_globaldec(s);

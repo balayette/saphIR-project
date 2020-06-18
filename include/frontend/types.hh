@@ -22,6 +22,9 @@ struct ty {
 	// t can be assigned to this
 	virtual bool assign_compat(const ty *t) const = 0;
 
+        // this can be cast to t
+	virtual bool cast_compat(const ty *) const { return false; }
+
 	// return the resulting type if this BINOP t is correctly typed,
 	// nullptr otherwise.
 	// TODO: This is where implicit type conversions would be handled
@@ -65,6 +68,7 @@ struct builtin_ty : public ty {
 	std::string to_string() const override;
 
 	bool assign_compat(const ty *t) const override;
+	bool cast_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
 	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
@@ -103,6 +107,7 @@ struct pointer_ty : public ty {
 	std::string to_string() const override;
 
 	bool assign_compat(const ty *t) const override;
+	bool cast_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
 	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
@@ -144,6 +149,7 @@ struct array_ty : public composite_ty {
 	size_t size() const override;
 
 	bool assign_compat(const ty *t) const override;
+	bool cast_compat(const ty *t) const override;
 	utils::ref<ty> binop_compat(ops::binop binop,
 				    const ty *t) const override;
 	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
