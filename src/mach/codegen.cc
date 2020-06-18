@@ -61,7 +61,6 @@ void generator::visit_name(tree::name &n)
 
 void generator::visit_call(tree::call &c)
 {
-	auto name = c.name().as<tree::name>()->label_;
 	std::vector<assem::temp> src;
 	auto cc = args_regs();
 	auto args = c.args();
@@ -115,9 +114,6 @@ void generator::visit_call(tree::call &c)
 		EMIT(assem::oper("xor `d0, `d0",
 				 {reg_to_assem_temp(regs::RAX, 1)}, {}, {}));
 
-	std::string repr("call ");
-	repr += name.get() + "@PLT";
-
 	auto clobbered_regs = mach::caller_saved_regs();
 	auto args_regs = mach::args_regs();
 
@@ -125,6 +121,15 @@ void generator::visit_call(tree::call &c)
 	clobbered.insert(clobbered.end(), clobbered_regs.begin(),
 			 clobbered_regs.end());
 	clobbered.insert(clobbered.end(), args_regs.begin(), args_regs.end());
+
+	std::string repr("call ");
+	if (auto name = c.f().as<tree::name>()) {
+		repr += name->label_.get() + "@PLT";
+	} else {
+		repr += "*`s0";
+		c.f()->accept(*this);
+		src.insert(src.begin(), ret_);
+	}
 
 	EMIT(assem::oper(repr, clobbered, src, {}));
 	if (total_stack_change)
