@@ -579,4 +579,15 @@ utils::ref<ty> concretize_type(utils::ref<ty> &t,
 		return concretize_named_ty(nt, tmap);
 	return t;
 }
+
+utils::ref<fun_ty> normalize_function_pointer(utils::ref<ty> ty)
+{
+	if (auto pt = ty.as<types::pointer_ty>()) {
+		auto ret = pt->ty_.as<types::fun_ty>();
+		ASSERT(ret, "Not a function pointer");
+		return ret;
+	} else if (auto ft = ty.as<types::fun_ty>())
+		return ft;
+	UNREACHABLE("Not a function pointer");
+}
 } // namespace types

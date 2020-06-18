@@ -19,7 +19,6 @@ class binding_visitor : public default_visitor
 	virtual void visit_forstmt(forstmt &s) override;
 
 	virtual void visit_ref(ref &e) override;
-	virtual void visit_call(call &e) override;
 
       private:
 	void new_scope();

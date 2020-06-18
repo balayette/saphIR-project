@@ -88,40 +88,6 @@ void binding_visitor::visit_ref(ref &e)
 	e.dec_ = *v;
 }
 
-void binding_visitor::visit_call(call &e)
-{
-	auto f = fmap_.get(e.name_);
-
-	if (f == std::nullopt) {
-		std::cerr << "call: Couldn't find a definition for fun '"
-			  << e.name_ << "'\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	if (!(*f)->variadic_) {
-		if (e.args_.size() != (*f)->args_.size()) {
-			std::cerr << "call: Wrong number of arguments for fun '"
-				  << e.name_ << "', expected "
-				  << (*f)->args_.size() << ", got "
-				  << e.args_.size() << '\n';
-			COMPILATION_ERROR(utils::cfail::SEMA);
-		}
-	} else {
-		if (e.args_.size() < (*f)->args_.size()) {
-			std::cerr
-				<< "call: Wrong number of arguments for variadic fun '"
-				<< e.name_
-				<< "', expected >=" << (*f)->args_.size()
-				<< ", got " << e.args_.size() << '\n';
-			COMPILATION_ERROR(utils::cfail::SEMA);
-		}
-	}
-
-	e.fdec_ = *f;
-
-	default_visitor::visit_call(e);
-}
-
 void binding_visitor::visit_ret(ret &s)
 {
 	default_visitor::visit_ret(s);

@@ -279,4 +279,6 @@ struct named_ty : public ty {
 utils::ref<ty> concretize_type(utils::ref<ty> &t,
 			       utils::scoped_map<symbol, utils::ref<ty>> tmap);
 
+
+utils::ref<fun_ty> normalize_function_pointer(utils::ref<ty> ty);
 } // namespace types

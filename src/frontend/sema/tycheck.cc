@@ -257,14 +257,16 @@ void tycheck_visitor::visit_call(call &e)
 {
 	default_visitor::visit_call(e);
 
-	auto fty = e.fdec_->type_.as<types::fun_ty>();
-	e.ty_ = get_type(fty->ret_ty_);
+	auto fty = get_type(types::normalize_function_pointer(e.f_->ty_))
+			   .as<types::fun_ty>();
+	ASSERT(fty, "Not a function pointer");
 
-	for (size_t i = 0; i < e.fdec_->args_.size(); i++) {
-		CHECK_TYPE_ERROR(&e.fdec_->args_[i]->type_, &e.args_[i]->ty_,
-				 "argument '" << e.fdec_->args_[i]->name_
-					      << "' of call to function '"
-					      << e.fdec_->name_ << "'");
+	e.fty_ = fty;
+	e.ty_ = fty->ret_ty_;
+
+	for (size_t i = 0; i < fty->arg_tys_.size(); i++) {
+		CHECK_TYPE_ERROR(fty->arg_tys_[i], &e.args_[i]->ty_,
+				 "argument of function call");
 	}
 }
 
