@@ -72,7 +72,7 @@ void ir_cloner_visitor::visit_call(tree::call &n)
 	for (auto e : n.args())
 		nargs.push_back(recurse<tree::exp>(e));
 
-	ret_ = new tree::call(recurse<tree::exp>(n.name()), nargs,
+	ret_ = new tree::call(recurse<tree::exp>(n.f()), nargs,
 			      n.fun_ty_->clone());
 }
 

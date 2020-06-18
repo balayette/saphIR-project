@@ -60,7 +60,7 @@ void ir_pretty_printer::visit_call(tree::call &n)
 {
 	indent() << "(call\n";
 	lvl_++;
-	n.name()->accept(*this);
+	n.f()->accept(*this);
 	for (auto a : n.args())
 		a->accept(*this);
 	lvl_--;

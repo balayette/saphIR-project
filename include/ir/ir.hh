@@ -60,7 +60,7 @@ using rnodevec = std::vector<rnode>;
 
 struct exp : public ir_node {
 	exp() = default;
-	exp(utils::ref<types::ty> ty) : ty_(ty) {}
+	exp(utils::ref<types::ty> ty) : ty_(ty) { ASSERT(ty, "Type is null"); }
 
 	utils::ref<types::ty> ty_;
 	size_t size() const { return ty_->size(); }
@@ -162,11 +162,11 @@ struct mem : public exp {
 };
 
 struct call : public exp {
-	call(const rexp &name, const std::vector<rexp> &args,
+	call(const rexp &f, const std::vector<rexp> &args,
 	     utils::ref<types::ty> type)
 	    : exp(type)
 	{
-		children_.emplace_back(name);
+		children_.emplace_back(f);
 		children_.insert(children_.end(), args.begin(), args.end());
 		auto fty = ty_.as<types::fun_ty>();
 		ASSERT(fty, "Type is not a fun_ty");
@@ -177,7 +177,7 @@ struct call : public exp {
 
 	TREE_KIND(call)
 
-	rexp name() { return children_[0].as<exp>(); }
+	rexp f() { return children_[0].as<exp>(); }
 
 	std::vector<rexp> args()
 	{

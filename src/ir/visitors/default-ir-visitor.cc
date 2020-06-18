@@ -28,6 +28,7 @@ void default_ir_visitor::visit_mem(tree::mem &n) { n.e()->accept(*this); }
 
 void default_ir_visitor::visit_call(tree::call &n)
 {
+	n.f()->accept(*this);
 	for (auto a : n.args())
 		a->accept(*this);
 }
