@@ -72,6 +72,12 @@ void binding_visitor::visit_forstmt(forstmt &s)
 void binding_visitor::visit_ref(ref &e)
 {
 	default_visitor::visit_ref(e);
+	auto f = fmap_.get(e.name_);
+	if (f != std::nullopt) {
+		e.dec_ = *f;
+		return;
+	}
+
 	auto v = vmap_.get(e.name_);
 
 	if (v == std::nullopt) {
@@ -158,9 +164,10 @@ void escapes_visitor::visit_locdec(locdec &e)
 		     || e.type_.as<types::struct_ty>() != nullptr;
 }
 
-void frame_visitor::visit_funprotodec(funprotodec &)
+void frame_visitor::visit_funprotodec(funprotodec &s)
 {
 	// Don't recurse.
+	s.access_ = new mach::global_acc(s.name_, s.type_);
 }
 
 void frame_visitor::visit_fundec(fundec &s)
@@ -183,6 +190,8 @@ void frame_visitor::visit_fundec(fundec &s)
 		std::cout << "frame: arg '" << s.args_[i]->name_ << "' "
 			  << cframe_->formals_[i] << '\n';
 	}
+
+	s.access_ = new mach::global_acc(s.name_, s.type_);
 	default_visitor::visit_fundec(s);
 	cframe_ = nullptr;
 }

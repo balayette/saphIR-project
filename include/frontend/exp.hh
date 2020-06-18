@@ -9,6 +9,7 @@
 
 namespace frontend
 {
+struct dec;
 struct fundec;
 struct funprotodec;
 struct vardec;
@@ -114,7 +115,7 @@ struct ref : public exp {
 
 	symbol name_;
 
-	vardec *dec_;
+	dec *dec_;
 };
 
 struct deref : public exp {

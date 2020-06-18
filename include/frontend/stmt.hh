@@ -22,7 +22,8 @@ struct stmt {
 };
 
 struct dec : public stmt {
-	dec(utils::ref<types::ty> type, symbol name) : type_(type), name_(name)
+	dec(utils::ref<types::ty> type, symbol name, bool escapes = false)
+	    : type_(type), name_(name), escapes_(escapes)
 	{
 	}
 
@@ -31,6 +32,7 @@ struct dec : public stmt {
 	utils::ref<types::ty> type_;
 	symbol name_;
 	utils::ref<mach::access> access_;
+	bool escapes_;
 };
 
 struct tydec : public dec {
@@ -68,12 +70,7 @@ struct structdec : public tydec {
 };
 
 struct vardec : public dec {
-	vardec(utils::ref<types::ty> type, symbol name)
-	    : dec(type, name), escapes_(false)
-	{
-	}
-
-	bool escapes_;
+	vardec(utils::ref<types::ty> type, symbol name) : dec(type, name) {}
 };
 
 struct globaldec : public vardec {
@@ -109,7 +106,7 @@ std::ostream &operator<<(std::ostream &os, const vardec &dec);
 struct funprotodec : public dec {
 	funprotodec(utils::ref<types::ty> ret_ty, symbol name,
 		    std::vector<utils::ref<locdec>> args, bool variadic = false)
-	    : dec(ret_ty, name), args_(args), variadic_(variadic)
+	    : dec(ret_ty, name, true), args_(args), variadic_(variadic)
 	{
 	}
 

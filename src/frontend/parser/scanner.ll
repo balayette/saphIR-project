@@ -77,6 +77,7 @@ strlit \"[^"]*\"
 "struct"        return TOKEN(STRUCT);
 
 "__cast"        return TOKEN(CAST);
+"__fptr"        return TOKEN(FPTR);
 
 {int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
 {hexint} 	return TOKEN_VAL(INT_LIT, std::strtol(yytext, NULL, 16));

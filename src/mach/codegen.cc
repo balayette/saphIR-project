@@ -54,7 +54,7 @@ std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
 void generator::visit_name(tree::name &n)
 {
 	assem::temp ret;
-	EMIT(assem::lea(ret, label_to_asm(n.label_) + "(%rip)"));
+	EMIT(assem::lea(ret, std::string(n.label_) + "(%rip)"));
 
 	ret_ = ret;
 }

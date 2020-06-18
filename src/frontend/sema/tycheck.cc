@@ -30,43 +30,7 @@ tycheck_visitor::tycheck_visitor()
 // local and global variables declarations, struct members declarations...
 utils::ref<types::ty> tycheck_visitor::get_type(utils::ref<types::ty> t)
 {
-	utils::ref<types::named_ty> nt;
-	auto pt = t.as<types::pointer_ty>();
-	auto at = t.as<types::array_ty>();
-	if (pt)
-		nt = pt->ty_.as<types::named_ty>();
-	else if (at)
-		nt = at->ty_.as<types::named_ty>();
-	else
-		nt = t.as<types::named_ty>();
-
-	if (!nt)
-		return t;
-
-	auto type = tmap_.get(nt->name_);
-	if (type == std::nullopt) {
-		std::cerr << "Type '" << nt->name_ << "' doesn't exist.\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	utils::ref<types::ty> ret = (*type)->clone();
-	if (!ret->size_modifier(nt->size())) {
-		std::cerr << "Can't set size of type '" << nt->name_ << "' to "
-			  << std::to_string(nt->size()) << "\n";
-		COMPILATION_ERROR(utils::cfail::SEMA);
-	}
-
-	if (pt) {
-		pt = pt->clone();
-		pt->ty_ = ret;
-		ret = pt;
-	} else if (at) {
-		at = at->clone();
-		at->ty_ = ret;
-		ret = at;
-	}
-
-	return ret;
+	return types::concretize_type(t, tmap_);
 }
 
 void tycheck_visitor::visit_paren(paren &e)

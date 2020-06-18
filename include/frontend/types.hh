@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "utils/assert.hh"
+#include "utils/scoped.hh"
 #include "frontend/ops.hh"
 #include "utils/symbol.hh"
 #include "utils/ref.hh"
@@ -22,7 +23,7 @@ struct ty {
 	// t can be assigned to this
 	virtual bool assign_compat(const ty *t) const = 0;
 
-        // this can be cast to t
+	// this can be cast to t
 	virtual bool cast_compat(const ty *) const { return false; }
 
 	// return the resulting type if this BINOP t is correctly typed,
@@ -274,4 +275,8 @@ struct named_ty : public ty {
       private:
 	int sz_;
 };
+
+utils::ref<ty> concretize_type(utils::ref<ty> &t,
+			       utils::scoped_map<symbol, utils::ref<ty>> tmap);
+
 } // namespace types

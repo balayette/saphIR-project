@@ -295,7 +295,7 @@ void frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 
 std::string asm_string(utils::label lab, const std::string &str)
 {
-	std::string ret(".L_" + lab.get() + ":\n\t.string \"" + str + "\"\n");
+	std::string ret(lab.get() + ":\n\t.string \"" + str + "\"\n");
 	return ret;
 }
 

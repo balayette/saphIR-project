@@ -75,6 +75,7 @@
         STRUCT "struct"
 
         CAST "__cast"
+        FPTR "__fptr"
 	EOF 0 "eof"
 
 %token <symbol> ID "id"
@@ -113,6 +114,9 @@
 %type <std::vector<utils::ref<exp>>> exps_comma
 %type <std::vector<utils::ref<exp>>> exps_commap
 
+%type <std::vector<utils::ref<types::ty>>> types_comma
+%type <std::vector<utils::ref<types::ty>>> types_commap
+
 %type <utils::ref<ass>> ass
 %type <utils::ref<num>> num
 %type <utils::ref<ref>> ref
@@ -142,6 +146,8 @@
 %left AMPERSAND
 %left DOT ARROW LBRACK RBRACK
 %right NOT TILDE
+
+%left LPAREN RPAREN
 
 %%
 
@@ -320,9 +326,22 @@ memberaccess:
 
 type:
 	ID { $$ = new types::named_ty($1); }
+|       "__fptr" "(" type ";" types_comma ")" {
+                $$ = new types::pointer_ty(new types::fun_ty($3, $5, false));
+}
 |       ID "<" INT_LIT ">" { $$ = new types::named_ty($1, $3); }
 | 	type "*" { $$ = new types::pointer_ty($1); }
 |       type "[" INT_LIT "]" { $$ = new types::array_ty($1, $3); }
+;
+
+types_comma:
+	%empty 			{ $$ = std::vector<utils::ref<types::ty>>(); }
+| 	types_commap		{ $$ = $1; }
+;
+
+types_commap:
+	type 			{ $$ = std::vector<utils::ref<types::ty>>(); $$.push_back($1); }
+| 	types_commap "," type 	{ $1.push_back($3); $$ = $1; }
 ;
 
 %%

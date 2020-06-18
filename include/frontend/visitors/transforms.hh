@@ -13,6 +13,5 @@ class unique_ids_visitor : public default_visitor
 	 * */
       public:
 	virtual void visit_locdec(locdec &s) override;
-	virtual void visit_globaldec(globaldec &s) override;
 };
 } // namespace frontend::transforms

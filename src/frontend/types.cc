@@ -112,7 +112,7 @@ bool builtin_ty::assign_compat(const ty *t) const
 	if (auto ft = dynamic_cast<const fun_ty *>(t))
 		return ft->ret_ty_->assign_compat(this);
 	if (auto bt = dynamic_cast<const builtin_ty *>(t))
-		return ty_ == bt->ty_ && size() >= bt->size();
+		return ty_ == bt->ty_;
 	return false;
 }
 
@@ -457,7 +457,24 @@ std::string fun_ty::to_string() const
 	return ret;
 }
 
-bool fun_ty::assign_compat(const ty *) const { return false; }
+/*
+ * XXX: This allows stuff such as f1 = f2...
+ */
+bool fun_ty::assign_compat(const ty *t) const
+{
+	auto ft = dynamic_cast<const fun_ty *>(t);
+	if (!ft)
+		return false;
+
+	if (!ret_ty_->assign_compat(&ft->ret_ty_))
+		return false;
+	for (size_t i = 0; i < arg_tys_.size(); i++) {
+		if (!arg_tys_[i]->assign_compat(&ft->arg_tys_[i]))
+			return false;
+	}
+	return true;
+}
+
 utils::ref<ty> fun_ty::binop_compat(ops::binop, const ty *) const
 {
 	return nullptr;
@@ -484,4 +501,82 @@ utils::ref<ty> named_ty::binop_compat(ops::binop, const ty *) const
 utils::ref<ty> named_ty::unaryop_type(ops::unaryop) const { return nullptr; }
 
 size_t named_ty::size() const { return sz_; }
+
+utils::ref<ty>
+concretize_pointer_ty(utils::ref<pointer_ty> &pt,
+		      utils::scoped_map<symbol, utils::ref<ty>> tmap)
+{
+	auto ret = pt->clone();
+	ret->ty_ = concretize_type(pt->ty_, tmap);
+	return ret;
+}
+
+utils::ref<ty>
+concretize_array_ty(utils::ref<array_ty> &at,
+		    utils::scoped_map<symbol, utils::ref<ty>> tmap)
+{
+	auto ret = at->clone();
+	ret->ty_ = concretize_type(at->ty_, tmap);
+	return ret;
+}
+
+utils::ref<ty>
+concretize_named_ty(utils::ref<named_ty> &nt,
+		    utils::scoped_map<symbol, utils::ref<ty>> tmap)
+{
+	auto type = tmap.get(nt->name_);
+	if (type == std::nullopt) {
+		std::cerr << "Type '" << nt->name_ << "' does not exist.\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	auto ret = (*type)->clone();
+	if (!ret->size_modifier(nt->size())) {
+		std::cerr << "Can't set size of type '" << nt->name_ << "' to "
+			  << std::to_string(nt->size()) << "\n";
+		COMPILATION_ERROR(utils::cfail::SEMA);
+	}
+
+	return ret;
+}
+
+utils::ref<ty>
+concretize_struct_ty(utils::ref<struct_ty> &st,
+		     utils::scoped_map<symbol, utils::ref<ty>> tmap)
+{
+	auto ret = st->clone();
+
+	for (size_t i = 0; i < ret->types_.size(); i++)
+		ret->types_[i] = concretize_type(ret->types_[i], tmap);
+
+	return ret;
+}
+
+utils::ref<ty> concretize_fun_ty(utils::ref<fun_ty> &ft,
+				 utils::scoped_map<symbol, utils::ref<ty>> tmap)
+{
+	auto ret = ft->clone();
+
+	for (size_t i = 0; i < ret->arg_tys_.size(); i++)
+		ret->arg_tys_[i] = concretize_type(ret->arg_tys_[i], tmap);
+	ret->ret_ty_ = concretize_type(ret->ret_ty_, tmap);
+
+	return ret;
+}
+
+utils::ref<ty> concretize_type(utils::ref<ty> &t,
+			       utils::scoped_map<symbol, utils::ref<ty>> tmap)
+{
+	if (auto pt = t.as<pointer_ty>())
+		return concretize_pointer_ty(pt, tmap);
+	if (auto at = t.as<array_ty>())
+		return concretize_array_ty(at, tmap);
+	if (auto ft = t.as<fun_ty>())
+		return concretize_fun_ty(ft, tmap);
+	if (auto st = t.as<struct_ty>())
+		return concretize_struct_ty(st, tmap);
+	if (auto nt = t.as<named_ty>())
+		return concretize_named_ty(nt, tmap);
+	return t;
+}
 } // namespace types
