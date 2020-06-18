@@ -156,7 +156,7 @@ void tycheck_visitor::visit_ret(ret &s)
 
 void tycheck_visitor::visit_ifstmt(ifstmt &s)
 {
-	s.cond_->accept(*this);
+	default_visitor::visit_ifstmt(s);
 
 	CHECK_TYPE_ERROR(&s.cond_->ty_, &types::integer_type(), "if condition");
 }
