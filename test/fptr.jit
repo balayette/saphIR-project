@@ -9,8 +9,10 @@ fun mul(int a, int b) int {
 }
 
 fun main() void {
-        let __fptr(int; int, int)[2] handlers = { &add, &mul };
+        let ((int, int) -> int)*[2] handlers = { &add, &mul };
+        let ((int, int) -> int)* xd = &add;
 
         printf("%d\n", handlers[0](3, 2));
         printf("%d\n", handlers[1](3, 2));
+        printf("%d\n", xd(1, 2));
 }

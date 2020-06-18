@@ -326,8 +326,8 @@ memberaccess:
 
 type:
 	ID { $$ = new types::named_ty($1); }
-|       "__fptr" "(" type ";" types_comma ")" {
-                $$ = new types::pointer_ty(new types::fun_ty($3, $5, false));
+|        "(" "(" types_comma ")" "->" type ")" {
+                $$ = new types::fun_ty($6, $3, false);
 }
 |       ID "<" INT_LIT ">" { $$ = new types::named_ty($1, $3); }
 | 	type "*" { $$ = new types::pointer_ty($1); }
