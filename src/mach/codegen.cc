@@ -187,6 +187,23 @@ void generator::visit_label(tree::label &l)
 	EMIT(assem::label(label_to_asm(l.name_) + std::string(":"), l.name_));
 }
 
+void generator::visit_asm_block(ir::tree::asm_block &s)
+{
+	std::vector<assem::temp> src, dst, clob;
+	for (const auto &t : s.reg_in_)
+		src.push_back(t);
+	for (const auto &t : s.reg_out_)
+		dst.push_back(t);
+	for (const auto &t : s.reg_clob_)
+		clob.push_back(t);
+	EMIT(assem::oper("", dst, src, {}));
+
+	for (const auto &l : s.lines_)
+		EMIT(assem::oper(l, {}, {}, {}));
+
+	EMIT(assem::oper("", clob, {}, {}));
+}
+
 void generator::visit_jump(tree::jump &j)
 {
 	if (auto dest = j.dest().as<tree::name>()) {
