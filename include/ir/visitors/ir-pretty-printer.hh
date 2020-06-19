@@ -25,6 +25,7 @@ class ir_pretty_printer : public default_ir_visitor
 	virtual void visit_cjump(tree::cjump &n) override;
 	virtual void visit_seq(tree::seq &n) override;
 	virtual void visit_label(tree::label &n) override;
+	virtual void visit_asm_block(tree::asm_block &n) override;
 
       private:
 	std::ostream &indent();

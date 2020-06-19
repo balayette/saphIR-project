@@ -22,5 +22,6 @@ class default_ir_visitor : public ir_visitor
 	virtual void visit_cjump(tree::cjump &n) override;
 	virtual void visit_seq(tree::seq &n) override;
 	virtual void visit_label(tree::label &) override;
+	virtual void visit_asm_block(tree::asm_block &) override;
 };
 } // namespace ir

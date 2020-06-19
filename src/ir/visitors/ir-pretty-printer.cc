@@ -132,6 +132,16 @@ void ir_pretty_printer::visit_label(tree::label &n)
 	indent() << "(label " << n.name_ << ")\n";
 }
 
+void ir_pretty_printer::visit_asm_block(tree::asm_block &n)
+{
+	indent() << "(asm_block\n";
+	lvl_++;
+	for (size_t i = 0; i < n.lines_.size(); i++)
+		indent() << n.lines_[i] << '\n';
+	lvl_--;
+	indent() << ")\n";
+}
+
 std::ostream &ir_pretty_printer::indent()
 {
 	for (unsigned i = 0; i < lvl_; i++)

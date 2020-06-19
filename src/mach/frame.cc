@@ -69,6 +69,18 @@ std::string register_repr(utils::temp t, unsigned size)
 	UNREACHABLE("register not found");
 }
 
+utils::temp repr_to_register(std::string repr)
+{
+	for (size_t i = 0; i < 16; i++) {
+		for (size_t j = 0; j < 4; j++) {
+			if (register_array[i].repr[j] == repr)
+				return register_array[i].label;
+		}
+	}
+
+	UNREACHABLE("Register does not exist");
+}
+
 utils::temp fp() { return register_array[regs::RBP].label; }
 
 utils::temp rv() { return register_array[regs::RAX].label; }

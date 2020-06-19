@@ -651,6 +651,42 @@ void translate_visitor::visit_ass(ass &s)
 	ret_ = copy(lhs->un_ex(), rhs->un_ex());
 }
 
+void translate_visitor::visit_inline_asm(inline_asm &s)
+{
+	std::vector<utils::temp> reg_in;
+	std::vector<utils::temp> reg_out;
+	std::vector<utils::temp> reg_clob;
+
+	auto pre = new tree::seq({});
+	for (auto &rm : s.reg_in_) {
+		auto reg = mach::repr_to_register(rm.regstr_);
+		reg_in.push_back(reg);
+
+		rm.e_->accept(*this);
+		pre->children_.push_back(new tree::move(
+			new tree::temp(reg, types::integer_type()),
+			ret_->un_ex()));
+	}
+
+	auto post = new tree::seq({});
+	for (auto &rm : s.reg_out_) {
+		auto reg = mach::repr_to_register(rm.regstr_);
+		reg_out.push_back(reg);
+
+		rm.e_->accept(*this);
+		post->children_.push_back(new tree::move(
+			ret_->un_ex(),
+			new tree::temp(reg, types::integer_type())));
+	}
+
+	for (auto &rm : s.reg_clob_)
+		reg_clob.push_back(mach::repr_to_register(rm));
+
+	ret_ = new nx(new tree::seq(
+		{pre, new tree::asm_block(s.lines_, reg_in, reg_out, reg_clob),
+		 post}));
+}
+
 void translate_visitor::visit_locdec(locdec &s)
 {
 	if (!s.rhs_)

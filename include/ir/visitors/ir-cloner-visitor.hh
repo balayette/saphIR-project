@@ -24,6 +24,7 @@ class ir_cloner_visitor : public ir_visitor
 	virtual void visit_cjump(tree::cjump &) override;
 	virtual void visit_seq(tree::seq &) override;
 	virtual void visit_label(tree::label &) override;
+	virtual void visit_asm_block(tree::asm_block &) override;
 
       protected:
 	template <typename U, typename T>

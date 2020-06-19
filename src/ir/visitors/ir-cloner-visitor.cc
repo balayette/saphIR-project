@@ -119,4 +119,10 @@ void ir_cloner_visitor::visit_label(tree::label &n)
 {
 	ret_ = new tree::label(n.name_);
 }
+
+void ir_cloner_visitor::visit_asm_block(tree::asm_block &s)
+{
+	ret_ = new tree::asm_block(s.lines_, s.reg_in_, s.reg_out_,
+				   s.reg_clob_);
+}
 } // namespace ir

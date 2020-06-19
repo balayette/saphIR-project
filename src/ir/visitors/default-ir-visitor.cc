@@ -62,4 +62,6 @@ void default_ir_visitor::visit_seq(tree::seq &n)
 }
 
 void default_ir_visitor::visit_label(tree::label &) {}
+
+void default_ir_visitor::visit_asm_block(tree::asm_block &) {}
 } // namespace ir

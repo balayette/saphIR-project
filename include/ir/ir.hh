@@ -37,7 +37,8 @@ enum class tree_kind {
 	jump,
 	cjump,
 	seq,
-	label
+	label,
+	asm_block,
 };
 
 struct ir_node {
@@ -269,5 +270,23 @@ struct label : public stm {
 	TREE_KIND(label)
 
 	utils::label name_;
+};
+
+struct asm_block : public stm {
+	asm_block(const std::vector<std::string> &lines,
+		  const std::vector<utils::temp> &reg_in,
+		  const std::vector<utils::temp> &reg_out,
+		  const std::vector<utils::temp> &reg_clob)
+	    : lines_(lines), reg_in_(reg_in), reg_out_(reg_out),
+	      reg_clob_(reg_clob)
+	{
+	}
+
+	TREE_KIND(asm_block)
+
+	std::vector<std::string> lines_;
+	std::vector<utils::temp> reg_in_;
+	std::vector<utils::temp> reg_out_;
+	std::vector<utils::temp> reg_clob_;
 };
 } // namespace ir::tree

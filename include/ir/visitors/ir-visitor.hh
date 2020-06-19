@@ -19,6 +19,7 @@ struct jump;
 struct cjump;
 struct seq;
 struct label;
+struct asm_block;
 } // namespace tree
 
 class ir_visitor
@@ -39,5 +40,6 @@ class ir_visitor
 	virtual void visit_cjump(tree::cjump &n) = 0;
 	virtual void visit_seq(tree::seq &n) = 0;
 	virtual void visit_label(tree::label &n) = 0;
+	virtual void visit_asm_block(tree::asm_block &n) = 0;
 };
 } // namespace ir
