@@ -177,6 +177,28 @@ void tycheck_visitor::visit_ass(ass &s)
 	CHECK_TYPE_ERROR(&s.lhs_->ty_, &s.rhs_->ty_, "assignment");
 }
 
+void tycheck_visitor::visit_inline_asm(inline_asm &s)
+{
+	default_visitor::visit_inline_asm(s);
+
+	for (const auto &rm : s.reg_in_) {
+		if (!types::is_scalar(&rm.e_->ty_)) {
+			std::cerr << "TypeError: Can't pass type '"
+				  << rm.e_->ty_->to_string()
+				  << "' to an ASM register.";
+			COMPILATION_ERROR(utils::cfail::SEMA);
+		}
+	}
+	for (const auto &rm : s.reg_out_) {
+		if (!types::is_scalar(&rm.e_->ty_)) {
+			std::cerr << "TypeError: Can't pass type '"
+				  << rm.e_->ty_->to_string()
+				  << "' to an ASM register.";
+			COMPILATION_ERROR(utils::cfail::SEMA);
+		}
+	}
+}
+
 void tycheck_visitor::visit_bin(bin &e)
 {
 	default_visitor::visit_bin(e);

@@ -20,6 +20,7 @@ class tycheck_visitor : public default_visitor
 	virtual void visit_forstmt(forstmt &s) override;
 	virtual void visit_ret(ret &s) override;
 	virtual void visit_ass(ass &s) override;
+	virtual void visit_inline_asm(inline_asm &s) override;
 	virtual void visit_structdec(structdec &s) override;
 	virtual void visit_memberdec(memberdec &s) override;
 
