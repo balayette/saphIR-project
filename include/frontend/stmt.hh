@@ -220,4 +220,33 @@ struct ass : public stmt {
 	utils::ref<dec> dec_;
 };
 
+struct asm_reg_map {
+	asm_reg_map() = default;
+	asm_reg_map(const std::string &regstr, utils::ref<exp> e)
+	    : regstr_(regstr), e_(e)
+	{
+	}
+
+	std::string regstr_;
+	utils::ref<exp> e_;
+};
+
+struct inline_asm : public stmt {
+	inline_asm(const std::vector<asm_reg_map> &reg_in,
+		   const std::vector<asm_reg_map> &reg_out,
+		   const std::vector<std::string> &reg_clob,
+		   const std::vector<std::string> &lines)
+	    : reg_in_(reg_in), reg_out_(reg_out), reg_clob_(reg_clob),
+	      lines_(lines)
+	{
+	}
+
+	ACCEPT(inline_asm)
+
+	std::vector<asm_reg_map> reg_in_;
+	std::vector<asm_reg_map> reg_out_;
+	std::vector<std::string> reg_clob_;
+	std::vector<std::string> lines_;
+};
+
 } // namespace frontend

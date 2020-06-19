@@ -78,6 +78,9 @@ strlit \"[^"]*\"
 
 "__cast"        return TOKEN(CAST);
 "__fptr"        return TOKEN(FPTR);
+"__asm"         return TOKEN(ASM);
+
+":"             return TOKEN(COLON);
 
 {int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
 {hexint} 	return TOKEN_VAL(INT_LIT, std::strtol(yytext, NULL, 16));

@@ -168,6 +168,64 @@ void pretty_printer::visit_ass(ass &s)
 		os_ << ";";
 }
 
+void pretty_printer::visit_inline_asm(inline_asm &s)
+{
+	indent();
+	os_ << "__asm(\n";
+	lvl_++;
+
+	new_line_ = true;
+	indent();
+	os_ << '(';
+	for (size_t i = 0; i < s.reg_in_.size(); i++) {
+		os_ << '"' << s.reg_in_[i].regstr_ << "\": ";
+		s.reg_in_[i].e_->accept(*this);
+		if (i != s.reg_in_.size() - 1)
+			os_ << ", ";
+	}
+	os_ << "),\n";
+
+	new_line_ = true;
+	indent();
+	os_ << '(';
+	for (size_t i = 0; i < s.reg_out_.size(); i++) {
+		os_ << '"' << s.reg_out_[i].regstr_ << "\": ";
+		s.reg_out_[i].e_->accept(*this);
+		if (i != s.reg_out_.size() - 1)
+			os_ << ", ";
+	}
+	os_ << "),\n";
+
+	new_line_ = true;
+	indent();
+	os_ << '(';
+	for (size_t i = 0; i < s.reg_clob_.size(); i++) {
+		os_ << '"' << s.reg_clob_[i] << '"';
+		if (i != s.reg_out_.size() - 1)
+			os_ << ", ";
+	}
+	os_ << "),\n";
+
+	new_line_ = true;
+	lvl_--;
+	indent();
+	os_ << "{\n";
+
+	lvl_++;
+	for (size_t i = 0; i < s.lines_.size(); i++) {
+		new_line_ = true;
+		indent();
+		os_ << '"' << s.lines_[i] << '"';
+		if (i != s.lines_.size())
+			os_ << ",\n";
+	}
+
+	new_line_ = true;
+	lvl_--;
+	indent();
+	os_ << "};";
+}
+
 /* expressions */
 void pretty_printer::visit_braceinit(braceinit &e)
 {

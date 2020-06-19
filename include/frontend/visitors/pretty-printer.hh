@@ -23,6 +23,7 @@ class pretty_printer : public default_visitor
 	virtual void visit_ifstmt(ifstmt &s) override;
 	virtual void visit_forstmt(forstmt &s) override;
 	virtual void visit_ass(ass &s) override;
+	virtual void visit_inline_asm(inline_asm &s) override;
 
 	/* expressions */
 	virtual void visit_paren(paren &e) override;

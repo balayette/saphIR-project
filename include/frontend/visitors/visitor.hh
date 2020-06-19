@@ -16,6 +16,7 @@ struct sexp;
 struct ret;
 struct ifstmt;
 struct forstmt;
+struct inline_asm;
 
 /* expressions */
 struct paren;
@@ -58,6 +59,7 @@ class visitor
 	virtual void visit_ifstmt(ifstmt &s) = 0;
 	virtual void visit_forstmt(forstmt &s) = 0;
 	virtual void visit_ass(ass &s) = 0;
+	virtual void visit_inline_asm(inline_asm &s) = 0;
 
 	/* expressions */
 	virtual void visit_paren(paren &e) = 0;

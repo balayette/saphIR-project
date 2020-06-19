@@ -70,6 +70,14 @@ void default_visitor::visit_ass(ass &s)
 	s.rhs_->accept(*this);
 }
 
+void default_visitor::visit_inline_asm(inline_asm &s)
+{
+	for (const auto &rm : s.reg_in_)
+		rm.e_->accept(*this);
+	for (const auto &rm : s.reg_out_)
+		rm.e_->accept(*this);
+}
+
 void default_visitor::visit_paren(paren &e) { e.e_->accept(*this); }
 
 void default_visitor::visit_cast(cast &e) { e.e_->accept(*this); }

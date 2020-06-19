@@ -76,6 +76,9 @@
 
         CAST "__cast"
         FPTR "__fptr"
+        ASM "__asm"
+
+        COLON ":"
 	EOF 0 "eof"
 
 %token <symbol> ID "id"
@@ -125,6 +128,15 @@
 %type <utils::ref<subscript>> subscript
 
 %type <utils::ref<types::ty>> type
+
+%type <std::vector<std::string>> string_comma
+%type <std::vector<std::string>> string_commap
+
+%type <asm_reg_map> asm_reg_map
+%type <std::vector<asm_reg_map>> asm_reg_map_comma
+%type <std::vector<asm_reg_map>> asm_reg_map_commap
+
+%type <utils::ref<inline_asm>> asm
 
 %left OR
 %left AND
@@ -214,6 +226,7 @@ stmt:
     	stmt_body SEMI 	{ $$ = $1; }
 | 	ifstmt  { $$ = $1; }
 | 	forstmt { $$ = $1; }
+|       asm { $$ = $1; }
 ;
 
 stmt_body: 
@@ -258,6 +271,16 @@ forstmt:
 | 	FOR "(" stmt_body SEMI exp SEMI ass ")" stmts ROF {
 		$$ = new forstmt($3, $5, $7, $9);
 	}
+;
+
+string_comma:
+        %empty      { $$ = std::vector<std::string>(); }
+|       string_commap   { $$ = $1; }
+;
+
+string_commap:
+        STR_LIT     { $$ = std::vector<std::string>(); $$.push_back($1); }
+|       string_commap "," STR_LIT { $1.push_back($3); $$ = $1; }
 ;
 
 exp:
@@ -343,6 +366,21 @@ types_commap:
 	type 			{ $$ = std::vector<utils::ref<types::ty>>(); $$.push_back($1); }
 | 	types_commap "," type 	{ $1.push_back($3); $$ = $1; }
 ;
+
+asm_reg_map: STR_LIT ":" exp { $$ = asm_reg_map($1, $3); }
+
+asm_reg_map_comma:
+        %empty                  { $$ = std::vector<asm_reg_map>(); }
+|       asm_reg_map_commap      { $$ = $1; }
+;
+
+asm_reg_map_commap:
+        asm_reg_map             { $$ = std::vector<asm_reg_map>(); $$.push_back($1); }
+|       asm_reg_map_commap "," asm_reg_map { $1.push_back($3); $$ = $1; }
+;
+
+asm:
+        "__asm" "(" "(" asm_reg_map_comma ")" "," "(" asm_reg_map_comma ")" "," "(" string_comma ")" ")" "{" string_comma "}" ";"  { $$ = new inline_asm($4, $8, $12, $16); }
 
 %%
 
