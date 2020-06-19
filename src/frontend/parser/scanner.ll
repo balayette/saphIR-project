@@ -60,7 +60,7 @@ strlit \"[^"]*\"
 "{"	    	return TOKEN(LBRACE);
 "}"	    	return TOKEN(RBRACE);
 ";"	    	return TOKEN(SEMI);
-","	    	return TOKEN(COLON);
+","	    	return TOKEN(COMMA);
 "."             return TOKEN(DOT);
 "->"            return TOKEN(ARROW);
 "["             return TOKEN(LBRACK);

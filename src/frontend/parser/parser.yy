@@ -60,7 +60,7 @@
         LBRACK "["
         RBRACK "]"
 	SEMI ";"
-	COLON ","
+	COMMA ","
         DOT "."
         ARROW "->"
 	FUN "fun"
