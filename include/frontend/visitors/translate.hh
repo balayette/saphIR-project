@@ -4,6 +4,7 @@
 #include "default-visitor.hh"
 #include "utils/scoped.hh"
 #include "frontend/ops.hh"
+#include "mach/target.hh"
 #include <unordered_map>
 #include <vector>
 
@@ -65,6 +66,7 @@ class nx : public exp
 class translate_visitor : public default_visitor
 {
       public:
+	translate_visitor(mach::target &target) : target_(target) {}
 	void visit_ref(ref &e) override;
 	void visit_num(num &e) override;
 	void visit_call(call &e) override;
@@ -109,6 +111,8 @@ class translate_visitor : public default_visitor
 	std::vector<mach::fun_fragment> funs_;
 	std::vector<ir::tree::rstm> init_funs_;
 	utils::ref<mach::fun_fragment> init_fun_;
+
+        mach::target& target_;
 };
 
 } // namespace frontend::translate

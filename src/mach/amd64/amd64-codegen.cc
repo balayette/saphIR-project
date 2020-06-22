@@ -1,12 +1,29 @@
-#include "mach/codegen.hh"
+#include "mach/amd64/amd64-codegen.hh"
+#include "amd64-common.hh"
 #include "utils/assert.hh"
-#include "ir/visitors/ir-pretty-printer.hh"
 #include "utils/misc.hh"
 
-#include <algorithm>
 #include <sstream>
 
 using namespace ir;
+
+namespace mach::amd64
+{
+assem::temp amd64_generator::codegen(ir::tree::rnode instr)
+{
+	instr->accept(g_);
+	return g_.ret_;
+}
+
+void amd64_generator::codegen(ir::tree::rnodevec instrs)
+{
+	for (auto &i : instrs)
+		i->accept(g_);
+}
+
+void amd64_generator::emit(assem::rinstr &i) { g_.emit(i); }
+
+std::vector<assem::rinstr> amd64_generator::output() { return g_.instrs_; }
 
 /*
  * The generator heavily relies on the register allocator to remove redundant
@@ -18,20 +35,9 @@ using namespace ir;
 		emit(new x);                                                   \
 	} while (0)
 
-namespace mach
-{
-
-std::string label_to_asm(const utils::label &lbl)
-{
-	std::string ret(".L_");
-	ret += lbl;
-
-	return ret;
-}
-
-assem::temp reg_to_assem_temp(mach::regs t) { return reg_to_temp(t); }
+assem::temp reg_to_assem_temp(regs t) { return reg_to_temp(t); }
 assem::temp
-reg_to_assem_temp(mach::regs t, unsigned sz,
+reg_to_assem_temp(regs t, unsigned sz,
 		  types::signedness is_signed = types::signedness::SIGNED)
 {
 	auto tmp = reg_to_assem_temp(t);
@@ -40,15 +46,12 @@ reg_to_assem_temp(mach::regs t, unsigned sz,
 	return tmp;
 }
 
-std::vector<assem::rinstr> codegen(mach::frame &f, tree::rnodevec instrs)
+std::string label_to_asm(const utils::label &lbl)
 {
-	generator g;
-	(void)f;
+	std::string ret(".L_");
+	ret += lbl;
 
-	for (auto &i : instrs)
-		i->accept(g);
-
-	return g.instrs_;
+	return ret;
 }
 
 void generator::visit_name(tree::name &n)
@@ -114,13 +117,12 @@ void generator::visit_call(tree::call &c)
 		EMIT(assem::oper("xor `d0, `d0",
 				 {reg_to_assem_temp(regs::RAX, 1)}, {}, {}));
 
-	auto clobbered_regs = mach::caller_saved_regs();
-	auto args_regs = mach::args_regs();
+	auto clobbered_regs = caller_saved_regs();
 
 	std::vector<assem::temp> clobbered;
 	clobbered.insert(clobbered.end(), clobbered_regs.begin(),
 			 clobbered_regs.end());
-	clobbered.insert(clobbered.end(), args_regs.begin(), args_regs.end());
+	clobbered.insert(clobbered.end(), cc.begin(), cc.end());
 
 	std::string repr("call ");
 	if (auto name = c.f().as<tree::name>()) {
@@ -635,4 +637,4 @@ void generator::emit(assem::rinstr ins)
 
 	instrs_.push_back(ins);
 }
-} // namespace mach
+} // namespace mach::amd64

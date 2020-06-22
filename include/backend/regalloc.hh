@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "mach/frame.hh"
+#include "mach/target.hh"
 #include "ass/instr.hh"
 #include "backend/liveness.hh"
 #include "backend/cfg.hh"

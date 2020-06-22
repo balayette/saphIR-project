@@ -133,7 +133,7 @@ void escapes_visitor::visit_locdec(locdec &e)
 void frame_visitor::visit_funprotodec(funprotodec &s)
 {
 	// Don't recurse.
-	s.access_ = new mach::global_acc(s.name_, s.type_);
+	s.access_ = target_.alloc_global(s.name_, s.type_);
 }
 
 void frame_visitor::visit_fundec(fundec &s)
@@ -145,26 +145,23 @@ void frame_visitor::visit_fundec(fundec &s)
 		types.push_back(arg->type_);
 	}
 
-	cframe_ = new mach::frame(s.name_, escaping, types, s.has_return_);
+	cframe_ = target_.make_frame(s.name_, escaping, types, s.has_return_);
+        auto formals = cframe_->formals();
 	for (unsigned i = 0; i < s.args_.size(); i++)
-		s.args_[i]->access_ = cframe_->formals_[i];
+		s.args_[i]->access_ = formals[i];
 
 	s.frame_ = cframe_;
 	std::cout << "frame: fun '" << s.name_ << "' at label " << cframe_->s_
 		  << '\n';
-	for (size_t i = 0; i < s.args_.size(); i++) {
-		std::cout << "frame: arg '" << s.args_[i]->name_ << "' "
-			  << cframe_->formals_[i] << '\n';
-	}
 
-	s.access_ = new mach::global_acc(s.name_, s.type_);
+	s.access_ = target_.alloc_global(s.name_, s.type_);
 	default_visitor::visit_fundec(s);
 	cframe_ = nullptr;
 }
 
 void frame_visitor::visit_globaldec(globaldec &s)
 {
-	s.access_ = new mach::global_acc(s.name_, s.type_);
+	s.access_ = target_.alloc_global(s.name_, s.type_);
 	std::cout << "global var: '" << s.name_ << "' " << s.access_ << '\n';
 	default_visitor::visit_globaldec(s);
 }

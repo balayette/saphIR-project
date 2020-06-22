@@ -19,7 +19,8 @@
 #include "backend/liveness.hh"
 #include "backend/regalloc.hh"
 #include "backend/opt/peephole.hh"
-#include "mach/codegen.hh"
+#include "mach/target.hh"
+#include "mach/amd64/amd64-target.hh"
 #include "utils/assert.hh"
 
 int usage(char *pname)
@@ -38,6 +39,8 @@ int main(int argc, char *argv[])
 	char *dst_path = NULL;
 	bool optimize = false;
 	bool obfuscate = false;
+
+	auto target = new mach::amd64::amd64_target();
 
 	int opt = 0;
 	while ((opt = getopt(argc, argv, "OPho:i:")) != -1 && !help) {
@@ -83,19 +86,19 @@ int main(int argc, char *argv[])
 	frontend::sema::escapes_visitor e;
 	drv.prog_->accept(e);
 
-	frontend::sema::frame_visitor f;
+	frontend::sema::frame_visitor f(*target);
 	drv.prog_->accept(f);
 
 	drv.prog_->accept(p);
 
-	frontend::translate::translate_visitor trans;
+	frontend::translate::translate_visitor trans(*target);
 	drv.prog_->accept(trans);
 
 	ir::ir_pretty_printer pir(std::cout);
 
 	std::vector<mach::fun_fragment> frags;
 	for (auto &frag : trans.funs_) {
-		std::cout << "Function: " << frag.frame_.s_
+		std::cout << "Function: " << frag.frame_->s_
 			  << " - Return label : " << frag.ret_lbl_ << '\n';
 
 		frags.push_back(frag);
@@ -153,20 +156,22 @@ int main(int argc, char *argv[])
 		std::cout << "-------------------------------------\n";
 
 		std::cout << "==========\n";
-		auto instrs = mach::codegen(frag.frame_, trace);
+		auto generator = target->make_asm_generator();
+		generator->codegen(trace);
+		auto instrs = generator->output();
 
-		frag.frame_.proc_entry_exit_2(instrs);
-		frag.frame_.proc_entry_exit_3(instrs, frag.body_lbl_,
-					      frag.ret_lbl_);
+		frag.frame_->proc_entry_exit_2(instrs);
+		frag.frame_->proc_entry_exit_3(instrs, frag.body_lbl_,
+					       frag.ret_lbl_);
 
 		backend::cfg cfg(instrs, frag.body_lbl_);
-		std::ofstream cfg_out(std::string("cfg") + frag.frame_.s_.get()
+		std::ofstream cfg_out(std::string("cfg") + frag.frame_->s_.get()
 				      + std::string(".dot"));
 		cfg.cfg_.dump_dot(cfg_out);
 
 		backend::ifence_graph ifence(cfg.cfg_);
 		std::ofstream ifence_out(std::string("ifence")
-					 + frag.frame_.s_.get()
+					 + frag.frame_->s_.get()
 					 + std::string(".dot"));
 		ifence.graph_.dump_dot(ifence_out, false);
 
@@ -174,15 +179,15 @@ int main(int argc, char *argv[])
 
 		backend::regalloc::alloc(instrs, frag);
 		backend::opt::peephole(instrs);
-		auto f = frag.frame_.proc_entry_exit_3(instrs, frag.body_lbl_,
-						       frag.epi_lbl_);
+		auto f = frag.frame_->proc_entry_exit_3(instrs, frag.body_lbl_,
+							frag.epi_lbl_);
 
 		funs.push_back(f);
 	}
 
 	fout << "\t.section .rodata\n";
 	for (auto [lab, s] : trans.str_lits_)
-		fout << mach::asm_string(lab, s.str_);
+		fout << target->asm_string(lab, s.str_);
 	fout << '\n';
 
 	for (auto &glob : drv.prog_->decs_) {
@@ -194,7 +199,7 @@ int main(int argc, char *argv[])
 
 	if (trans.init_fun_) {
 		fout << "\t.section .init_array\n";
-		fout << "\t.quad " << trans.init_fun_->frame_.s_ << "\n";
+		fout << "\t.quad " << trans.init_fun_->frame_->s_ << "\n";
 		fout << "\n";
 	}
 
@@ -206,7 +211,9 @@ int main(int argc, char *argv[])
 				continue;
 			if (!i.as<assem::label>())
 				fout << '\t';
-			fout << i->to_string(mach::register_repr) << '\n';
+			fout << i->to_string([&](utils::temp t, unsigned sz) {
+				return target->register_repr(t, sz);
+			}) << '\n';
 		}
 		fout << f.epilogue_;
 		fout << '\n';

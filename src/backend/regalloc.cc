@@ -21,7 +21,7 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 		temp_to_acc.insert({spill, f.alloc_local(true)});
 	}
 
-	mach::generator cgen;
+	auto cgen = f.target_.make_asm_generator();
 
 	for (auto &inst : instrs) {
 		bool emitted = false;
@@ -30,11 +30,10 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 			    == spills.end())
 				continue;
 
-			temp_to_acc[src]->exp()->accept(cgen);
-			auto rhs = cgen.ret_;
+			auto rhs = cgen->codegen(temp_to_acc[src]->exp());
 
 			src = rhs;
-			cgen.emit(inst);
+			cgen->emit(inst);
 
 			emitted = true;
 		}
@@ -51,16 +50,16 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 					vi, temp_to_acc[dst]->exp()->ty_));
 
 			dst = vi;
-			cgen.emit(inst);
-			mv->accept(cgen);
+			cgen->emit(inst);
+			cgen->codegen(mv);
 			emitted = true;
 		}
 
 		if (!emitted) // labels, or instrs with no spills
-			cgen.emit(inst);
+			cgen->emit(inst);
 	}
 
-	instrs = cgen.instrs_;
+	instrs = cgen->output();
 }
 
 // At this point, all temps are mapped to registers, so we just replace
@@ -107,18 +106,18 @@ void allocate(std::vector<assem::rinstr> &instrs, assem::temp_set initial,
 	backend::cfg cfg(instrs, f.body_lbl_);
 	backend::ifence_graph ifence(cfg.cfg_);
 
-	coloring_out co = color(ifence, initial);
+	coloring_out co = color(f.frame_->target_, ifence, initial);
 	if (co.spills.size() == 0)
 		replace_allocation(instrs, co.allocation);
 	else {
-		rewrite(instrs, co.spills, f.frame_);
+		rewrite(instrs, co.spills, *f.frame_);
 		alloc(instrs, f);
 	}
 }
 
 void alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
 {
-	auto precolored = mach::temp_map();
+	auto precolored = f.frame_->target_.temp_map();
 	assem::temp_set initial;
 
 	for (auto &inst : instrs) {

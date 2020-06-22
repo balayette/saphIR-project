@@ -5,7 +5,7 @@
 #include "frontend/visitors/visitor.hh"
 #include "types.hh"
 #include "exp.hh"
-#include "mach/frame.hh"
+#include "mach/target.hh"
 #include "utils/ref.hh"
 
 namespace frontend

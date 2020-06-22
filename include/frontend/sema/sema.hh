@@ -2,6 +2,7 @@
 #include "frontend/visitors/default-visitor.hh"
 #include "utils/scoped.hh"
 #include "utils/symbol.hh"
+#include "mach/target.hh"
 #include "frontend/stmt.hh"
 #include "frontend/exp.hh"
 
@@ -39,6 +40,7 @@ class escapes_visitor : public default_visitor
 class frame_visitor : public default_visitor
 {
       public:
+	frame_visitor(mach::target &target) : target_(target) {}
 	virtual void visit_funprotodec(funprotodec &s) override;
 	virtual void visit_fundec(fundec &s) override;
 	virtual void visit_globaldec(globaldec &s) override;
@@ -46,6 +48,7 @@ class frame_visitor : public default_visitor
 	virtual void visit_call(call &s) override;
 
       private:
-	mach::frame *cframe_;
+        utils::ref<mach::frame> cframe_;
+	mach::target &target_;
 };
 } // namespace frontend::sema

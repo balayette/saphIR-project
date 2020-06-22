@@ -32,7 +32,12 @@ OBJ = \
       src/frontend/visitors/transforms.o \
       src/frontend/visitors/translate.o \
       src/frontend/visitors/default-visitor.o \
-      src/mach/frame.o \
+      src/mach/amd64/amd64-access.o \
+      src/mach/amd64/amd64-target.o \
+      src/mach/amd64/amd64-common.o \
+      src/mach/amd64/amd64-codegen.o \
+      src/mach/access.o \
+      src/mach/target.o \
       src/ir/canon/linearize.o \
       src/ir/canon/bb.o \
       src/ir/canon/trace.o \
@@ -43,7 +48,6 @@ OBJ = \
       src/ir/visitors/ir-arith-optimizer.o \
       src/ir/visitors/ir-cnst-obfuscator.o \
       src/ass/instr.o \
-      src/mach/codegen.o \
       src/backend/cfg.o \
       src/backend/liveness.o \
       src/backend/regalloc.o \

@@ -1,8 +1,8 @@
 #include "backend/color.hh"
-#include "mach/frame.hh"
 #include <climits>
 #include <utility>
 #include "utils/assert.hh"
+#include "mach/target.hh"
 #include "utils/random.hh"
 #include "utils/algo.hh"
 
@@ -12,9 +12,10 @@ namespace regalloc
 {
 struct allocator {
 	allocator(
+		mach::target &target,
 		std::unordered_map<assem::temp, assem::temp_pair_set> move_list,
 		assem::temp_pair_set worklist_moves)
-	    : move_list_(move_list), moves_wkl_(worklist_moves)
+	    : target_(target), move_list_(move_list), moves_wkl_(worklist_moves)
 	{
 	}
 
@@ -26,7 +27,7 @@ struct allocator {
 		adjacency_set_.insert({u, v});
 		adjacency_set_.insert({v, u});
 
-		auto precolored = mach::temp_map();
+		auto precolored = target_.temp_map();
 		if (precolored.find(u) == precolored.end()) {
 			adjacency_list_[u] += v;
 			degree_[u] += 1;
@@ -50,7 +51,7 @@ struct allocator {
 		for (auto n : initial) {
 			unsigned degree = degree_[n];
 
-			if (degree >= mach::reg_count())
+			if (degree >= target_.reg_count())
 				spill_wkl_ += n;
 			else if (move_related(n))
 				freeze_wkl_ += n;
@@ -70,7 +71,7 @@ struct allocator {
 				add_edge(temp, nodes[succ]->value_);
 		}
 
-		for (auto [t, _] : mach::temp_map())
+		for (auto [t, _] : target_.temp_map())
 			degree_[t] = UINT_MAX;
 	}
 
@@ -98,7 +99,7 @@ struct allocator {
 	{
 		ASSERT(degree_[m] > 0, "Can't decrement 0");
 		auto d = degree_[m]--;
-		if (d == mach::reg_count()) {
+		if (d == target_.reg_count()) {
 			enable_moves(adjacent(m) + m);
 			spill_wkl_ -= m;
 			if (move_related(m))
@@ -139,7 +140,7 @@ struct allocator {
 			frozen_moves_ += m;
 
 			if (node_moves(v).size() == 0
-			    && degree_[v] < mach::reg_count()) {
+			    && degree_[v] < target_.reg_count()) {
 				freeze_wkl_ -= v;
 				simplify_wkl_ += v;
 			}
@@ -170,8 +171,8 @@ struct allocator {
 
 	void add_work_list(assem::temp u)
 	{
-		if (mach::temp_map().count(u) == 0 && !move_related(u)
-		    && degree_[u] < mach::reg_count()) {
+		if (target_.temp_map().count(u) == 0 && !move_related(u)
+		    && degree_[u] < target_.reg_count()) {
 			freeze_wkl_ -= u;
 			simplify_wkl_ += u;
 		}
@@ -179,8 +180,8 @@ struct allocator {
 
 	bool ok(assem::temp t, assem::temp r)
 	{
-		return degree_[t] < mach::reg_count()
-		       || mach::temp_map().count(t)
+		return degree_[t] < target_.reg_count()
+		       || target_.temp_map().count(t)
 		       || adjacency_set_.count(std::pair(t, r));
 	}
 
@@ -188,10 +189,10 @@ struct allocator {
 	{
 		unsigned k = 0;
 		for (auto &n : nodes) {
-			if (degree_[n] >= mach::reg_count())
+			if (degree_[n] >= target_.reg_count())
 				k++;
 		}
-		return k < mach::reg_count();
+		return k < target_.reg_count();
 	}
 
 	void combine(assem::temp u, assem::temp v)
@@ -217,7 +218,7 @@ struct allocator {
 			decrement_degree(t);
 		}
 
-		if (degree_[u] >= mach::reg_count() && freeze_wkl_.count(u)) {
+		if (degree_[u] >= target_.reg_count() && freeze_wkl_.count(u)) {
 			freeze_wkl_ -= u;
 			simplify_wkl_ += u;
 			freeze_moves(u);
@@ -232,7 +233,7 @@ struct allocator {
 			x = get_alias(x);
 			y = get_alias(y);
 
-			auto precolored = mach::temp_map();
+			auto precolored = target_.temp_map();
 			auto [u, v] = precolored.count(y) ? std::pair(y, x)
 							  : std::pair(x, y);
 
@@ -266,7 +267,7 @@ struct allocator {
 	assem::temp_endomap assign_colors()
 	{
 		assem::temp_endomap colors;
-		auto precolored = mach::temp_map();
+		auto precolored = target_.temp_map();
 		assem::temp_set precolored_set;
 
 		for (auto [t, _] : precolored) {
@@ -279,7 +280,7 @@ struct allocator {
 			select_stack_.pop_back();
 
 			assem::temp_set ok_colors;
-			for (auto r : mach::registers())
+			for (auto r : target_.registers())
 				ok_colors += r;
 
 			for (auto &w : adjacency_list_[n]) {
@@ -327,6 +328,8 @@ struct allocator {
 		return assign_colors();
 	}
 
+	mach::target &target_;
+
 	std::unordered_map<assem::temp, assem::temp_pair_set> move_list_;
 	assem::temp_pair_set moves_wkl_;
 	assem::temp_pair_set constrained_moves_;
@@ -350,13 +353,11 @@ struct allocator {
 	std::unordered_map<assem::temp, assem::temp_set> adjacency_list_;
 };
 
-coloring_out color(backend::ifence_graph &ifence, assem::temp_set initial)
+coloring_out color(mach::target &target, backend::ifence_graph &ifence,
+		   assem::temp_set initial)
 {
-	(void)ifence;
-	(void)initial;
-
 	auto nodes = ifence.graph_.nodes_;
-	allocator allo(ifence.move_list_, ifence.worklist_moves_);
+	allocator allo(target, ifence.move_list_, ifence.worklist_moves_);
 
 	auto allocation = allo.allocate(initial, nodes);
 	return {

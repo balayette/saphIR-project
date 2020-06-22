@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include "utils/uset.hh"
+#include "mach/target.hh"
 #include <vector>
 #include "utils/temp.hh"
 #include "backend/liveness.hh"
@@ -18,7 +19,7 @@ struct coloring_out {
 	assem::temp_set coalesced;
 };
 
-coloring_out color(backend::ifence_graph &ifence, assem::temp_set initial);
+coloring_out color(mach::target& target, backend::ifence_graph &ifence, assem::temp_set initial);
 } // namespace regalloc
 } // namespace backend
 

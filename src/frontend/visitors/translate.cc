@@ -11,7 +11,6 @@
 
 namespace frontend::translate
 {
-
 using namespace ir;
 
 cx::cx(ops::cmpop op, tree::rexp l, tree::rexp r) : op_(op), l_(l), r_(r)
@@ -659,7 +658,7 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 
 	auto pre = new tree::seq({});
 	for (auto &rm : s.reg_in_) {
-		auto reg = mach::repr_to_register(rm.regstr_);
+		auto reg = target_.repr_to_register(rm.regstr_);
 		reg_in.push_back(reg);
 
 		rm.e_->accept(*this);
@@ -670,7 +669,7 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 
 	auto post = new tree::seq({});
 	for (auto &rm : s.reg_out_) {
-		auto reg = mach::repr_to_register(rm.regstr_);
+		auto reg = target_.repr_to_register(rm.regstr_);
 		reg_out.push_back(reg);
 
 		rm.e_->accept(*this);
@@ -680,7 +679,7 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 	}
 
 	for (auto &rm : s.reg_clob_)
-		reg_clob.push_back(mach::repr_to_register(rm));
+		reg_clob.push_back(target_.repr_to_register(rm));
 
 	ret_ = new nx(new tree::seq(
 		{pre, new tree::asm_block(s.lines_, reg_in, reg_out, reg_clob),
@@ -712,8 +711,8 @@ void translate_visitor::visit_ret(ret &s)
 	s.e_->accept(*this);
 	auto lhs = ret_->un_ex();
 	ret_ = new nx(new ir::tree::seq({
-		new ir::tree::move(new ir::tree::temp(mach::rv(), fty->ret_ty_),
-				   lhs),
+		new ir::tree::move(
+			new ir::tree::temp(target_.rv(), fty->ret_ty_), lhs),
 		new ir::tree::jump(new ir::tree::name(ret_lbl_), {ret_lbl_}),
 	}));
 }
@@ -736,9 +735,10 @@ void translate_visitor::visit_decs(decs &s)
 
 	auto body = new ir::tree::seq(init_funs_);
 	utils::label ret_lbl = unique_label("init_vars_ret");
-	mach::frame frame(unique_label("init_vars"), {}, {}, false);
+	auto frame =
+		target_.make_frame(unique_label("init_vars"), {}, {}, false);
 	init_fun_ = new mach::fun_fragment(
-		frame.proc_entry_exit_1(body, ret_lbl), frame, ret_lbl,
+		frame->proc_entry_exit_1(body, ret_lbl), frame, ret_lbl,
 		unique_label("init_vars_epi"));
 }
 
@@ -766,7 +766,7 @@ void translate_visitor::visit_fundec(fundec &s)
 	auto body = new ir::tree::seq(stms);
 
 	funs_.emplace_back(s.frame_->proc_entry_exit_1(body, ret_lbl_),
-			   *s.frame_, ret_lbl_,
+			   s.frame_, ret_lbl_,
 			   unique_label(s.name_.get() + "_epi"));
 
 	ret_lbl_.leave();
