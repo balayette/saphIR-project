@@ -36,12 +36,7 @@ struct dec : public stmt {
 };
 
 struct tydec : public dec {
-	tydec(symbol name)
-	    : dec(new types::builtin_ty(types::type::INVALID,
-					types::signedness::INVALID),
-		  name)
-	{
-	}
+	tydec(symbol name);
 
 	virtual void accept(visitor &visitor) = 0;
 };

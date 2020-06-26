@@ -75,8 +75,7 @@ using rexp = utils::ref<exp>;
 using rstm = utils::ref<stm>;
 
 struct cnst : public exp {
-	// XXX: Constants are all 8 bytes integer at the moment
-	cnst(int value) : exp(types::integer_type()), value_(value) {}
+	cnst(int value);
 
 	TREE_KIND(cnst)
 
@@ -157,6 +156,7 @@ struct mem : public exp {
 		ty_ = types::deref_pointer_type(e->ty_);
 		children_.emplace_back(e);
 	}
+
 	TREE_KIND(mem)
 
 	rexp e() { return children_[0].as<exp>(); }

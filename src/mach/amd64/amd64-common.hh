@@ -37,8 +37,6 @@ std::unordered_map<utils::temp, std::string> temp_map();
 std::string register_repr(utils::temp t, unsigned size);
 utils::temp repr_to_register(std::string repr);
 
-utils::ref<types::ty> gpr_type();
-
 utils::temp reg_to_temp(regs r);
 utils::temp reg_to_str(regs r);
 } // namespace mach::amd64

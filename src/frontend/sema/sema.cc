@@ -146,7 +146,7 @@ void frame_visitor::visit_fundec(fundec &s)
 	}
 
 	cframe_ = target_.make_frame(s.name_, escaping, types, s.has_return_);
-        auto formals = cframe_->formals();
+	auto formals = cframe_->formals();
 	for (unsigned i = 0; i < s.args_.size(); i++)
 		s.args_[i]->access_ = formals[i];
 

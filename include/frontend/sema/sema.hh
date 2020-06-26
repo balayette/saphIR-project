@@ -48,7 +48,7 @@ class frame_visitor : public default_visitor
 	virtual void visit_call(call &s) override;
 
       private:
-        utils::ref<mach::frame> cframe_;
+	utils::ref<mach::frame> cframe_;
 	mach::target &target_;
 };
 } // namespace frontend::sema

@@ -10,6 +10,11 @@
 
 #define DEFAULT_SIZE (42)
 
+namespace mach
+{
+struct target;
+}
+
 namespace types
 {
 enum class type { INT, STRING, VOID, INVALID };
@@ -17,6 +22,7 @@ enum class signedness { INVALID, SIGNED, UNSIGNED };
 
 struct ty {
 	virtual ~ty() = default;
+	ty(mach::target &target) : target_(target) {}
 
 	virtual std::string to_string() const = 0;
 
@@ -56,15 +62,21 @@ struct ty {
 	 * pointers
 	 */
 	virtual size_t assem_size() const { return size(); }
+
+	mach::target &target() { return target_; }
+
+      protected:
+	mach::target &target_;
 };
 
 bool operator==(const ty *ty, const type &t);
 bool operator!=(const ty *ty, const type &t);
 
 struct builtin_ty : public ty {
-	builtin_ty();
-	builtin_ty(type t, signedness is_signed);
-	builtin_ty(type t, size_t size, signedness is_signed);
+	builtin_ty(mach::target &target);
+	builtin_ty(type t, signedness is_signed, mach::target &target);
+	builtin_ty(type t, size_t size, signedness is_signed,
+		   mach::target &target);
 
 	std::string to_string() const override;
 
@@ -76,7 +88,8 @@ struct builtin_ty : public ty {
 
 	virtual builtin_ty *clone() const override
 	{
-		return new builtin_ty(ty_, size_, size_modif_, is_signed_);
+		return new builtin_ty(ty_, size_, size_modif_, is_signed_,
+				      target_);
 	}
 
 	size_t size() const override;
@@ -90,8 +103,8 @@ struct builtin_ty : public ty {
 	}
 
       private:
-	builtin_ty(type t, size_t size, size_t size_modif,
-		   signedness is_signed);
+	builtin_ty(type t, size_t size, size_t size_modif, signedness is_signed,
+		   mach::target &target);
 
 	size_t size_;
 	size_t size_modif_;
@@ -130,17 +143,12 @@ struct pointer_ty : public ty {
 	unsigned ptr_;
 };
 
-// XXX: This should be arch dependant, and is allocates a chunk of memory
-// for each call
-utils::ref<builtin_ty> void_type();
-utils::ref<builtin_ty> integer_type();
-utils::ref<builtin_ty> boolean_type();
-
 bool is_scalar(const ty *ty);
 utils::ref<ty> deref_pointer_type(utils::ref<ty> ty);
 bool is_integer(const ty *ty);
 
 struct composite_ty : public ty {
+	composite_ty(mach::target &target) : ty(target) {}
 };
 
 struct array_ty : public composite_ty {
@@ -259,7 +267,8 @@ struct fun_ty : public ty {
  * This is necessary because of type declarations that the parser doesn't track.
  */
 struct named_ty : public ty {
-	named_ty(const symbol &name, size_t sz = DEFAULT_SIZE);
+	named_ty(const symbol &name, mach::target &target,
+		 size_t sz = DEFAULT_SIZE);
 	std::string to_string() const override;
 
 	bool assign_compat(const ty *t) const override;
@@ -267,7 +276,10 @@ struct named_ty : public ty {
 				    const ty *t) const override;
 	utils::ref<ty> unaryop_type(ops::unaryop binop) const override;
 
-	virtual named_ty *clone() const override { return new named_ty(name_); }
+	virtual named_ty *clone() const override
+	{
+		return new named_ty(name_, target_, sz_);
+	}
 	size_t size() const override;
 
 	symbol name_;
@@ -278,7 +290,6 @@ struct named_ty : public ty {
 
 utils::ref<ty> concretize_type(utils::ref<ty> &t,
 			       utils::scoped_map<symbol, utils::ref<ty>> tmap);
-
 
 utils::ref<fun_ty> normalize_function_pointer(utils::ref<ty> ty);
 } // namespace types

@@ -39,7 +39,7 @@ utils::ref<access> amd64_frame::alloc_local(bool escapes,
 
 utils::ref<access> amd64_frame::alloc_local(bool escapes)
 {
-	return alloc_local(escapes, types::integer_type());
+	return alloc_local(escapes, target_.integer_type());
 }
 
 ir::tree::rstm amd64_frame::proc_entry_exit_1(ir::tree::rstm s,
@@ -52,8 +52,10 @@ ir::tree::rstm amd64_frame::proc_entry_exit_1(ir::tree::rstm s,
 	std::vector<utils::temp> callee_saved_temps(callee_saved.size());
 	for (size_t i = 0; i < callee_saved.size(); i++)
 		seq->children_.push_back(new ir::tree::move(
-			new ir::tree::temp(callee_saved_temps[i], gpr_type()),
-			new ir::tree::temp(callee_saved[i], gpr_type())));
+			new ir::tree::temp(callee_saved_temps[i],
+					   target_.gpr_type()),
+			new ir::tree::temp(callee_saved[i],
+					   target_.gpr_type())));
 
 	for (size_t i = 0; i < formals_.size() && i < in_regs.size(); i++) {
 		seq->children_.push_back(new ir::tree::move(
@@ -69,8 +71,9 @@ ir::tree::rstm amd64_frame::proc_entry_exit_1(ir::tree::rstm s,
 
 	for (size_t i = 0; i < callee_saved.size(); i++) {
 		seq->children_.push_back(new ir::tree::move(
-			new ir::tree::temp(callee_saved[i], gpr_type()),
-			new ir::tree::temp(callee_saved_temps[i], gpr_type())));
+			new ir::tree::temp(callee_saved[i], target_.gpr_type()),
+			new ir::tree::temp(callee_saved_temps[i],
+					   target_.gpr_type())));
 	}
 
 	return seq;
@@ -132,6 +135,8 @@ amd64_frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
 
 std::vector<utils::ref<access>> amd64_frame::formals() { return formals_; }
 
+std::string amd64_target::name() { return "amd64"; }
+
 utils::temp_set amd64_target::registers() { return mach::amd64::registers(); }
 
 std::vector<utils::temp> amd64_target::caller_saved_regs()
@@ -172,6 +177,24 @@ utils::temp amd64_target::repr_to_register(std::string repr)
 	return mach::amd64::repr_to_register(repr);
 }
 
+utils::ref<types::ty> amd64_target::integer_type(types::signedness signedness)
+{
+	return std::make_shared<types::builtin_ty>(types::type::INT, signedness,
+						   *this);
+}
+
+utils::ref<types::ty> amd64_target::boolean_type()
+{
+	return std::make_shared<types::builtin_ty>(
+		types::type::INT, 1, types::signedness::UNSIGNED, *this);
+}
+
+utils::ref<types::ty> amd64_target::gpr_type()
+{
+	return std::make_shared<types::builtin_ty>(
+		types::type::INT, 8, types::signedness::UNSIGNED, *this);
+}
+
 utils::ref<asm_generator> amd64_target::make_asm_generator()
 {
 	return new amd64_generator(*this);
@@ -185,7 +208,8 @@ amd64_target::make_frame(const symbol &s, const std::vector<bool> &args,
 	return new amd64_frame(*this, s, args, types, has_return);
 }
 
-utils::ref<access> amd64_target::alloc_global(const symbol &name, utils::ref<types::ty> &ty)
+utils::ref<access> amd64_target::alloc_global(const symbol &name,
+					      utils::ref<types::ty> &ty)
 {
 	return new global_acc(name, ty);
 }

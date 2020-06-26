@@ -1,4 +1,5 @@
 #include "frontend/stmt.hh"
+#include "mach/target.hh"
 
 namespace frontend
 {
@@ -9,4 +10,6 @@ std::ostream &operator<<(std::ostream &os, const vardec &dec)
 		os << '^';
 	return os;
 }
+
+tydec::tydec(symbol name) : dec(mach::TARGET().invalid_type(), name) {}
 } // namespace frontend

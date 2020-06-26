@@ -112,7 +112,7 @@ class translate_visitor : public default_visitor
 	std::vector<ir::tree::rstm> init_funs_;
 	utils::ref<mach::fun_fragment> init_fun_;
 
-        mach::target& target_;
+	mach::target &target_;
 };
 
 } // namespace frontend::translate

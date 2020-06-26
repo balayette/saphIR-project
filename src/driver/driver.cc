@@ -2,7 +2,10 @@
 
 #include "frontend/parser/parser.hh"
 
-driver::driver() : debug_parsing_(false), debug_scanning_(false) {}
+driver::driver(mach::target &target)
+    : target_(target), debug_parsing_(false), debug_scanning_(false)
+{
+}
 
 int driver::parse(const std::string &file)
 {

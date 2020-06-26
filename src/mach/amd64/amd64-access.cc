@@ -1,5 +1,6 @@
 #include "mach/amd64/amd64-access.hh"
 #include "amd64-common.hh"
+#include "mach/target.hh"
 
 namespace mach::amd64
 {
@@ -41,7 +42,7 @@ ir::tree::rexp frame_acc::addr(size_t offt) const
 	 * doesn't necessarily point to a variable of the same type as ty_.
 	 * (addresses of members of structs, for example)
 	 */
-	auto type = offt ? gpr_type() : ty_->clone();
+	auto type = offt ? mach::TARGET().gpr_type() : ty_->clone();
 	type = new types::pointer_ty(type);
 
 	return new ir::tree::binop(
@@ -72,7 +73,7 @@ ir::tree::rexp global_acc::exp(size_t offt) const
 // XXX: fix types
 ir::tree::rexp global_acc::addr(size_t offt) const
 {
-	auto type = offt ? gpr_type() : ty_->clone();
+	auto type = offt ? mach::TARGET().gpr_type() : ty_->clone();
 	type = new types::pointer_ty(type);
 
 	if (offt != 0)

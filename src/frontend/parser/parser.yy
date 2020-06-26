@@ -13,6 +13,7 @@
         #include "utils/ref.hh"
 	#include "frontend/stmt.hh"
 	#include "frontend/exp.hh"
+        #include "mach/target.hh"
 	class driver;
 
 	using namespace frontend;
@@ -348,11 +349,11 @@ memberaccess:
 ;
 
 type:
-	ID { $$ = new types::named_ty($1); }
+	ID { $$ = new types::named_ty($1, d.target_); }
 |        "(" "(" types_comma ")" "->" type ")" {
                 $$ = new types::fun_ty($6, $3, false);
 }
-|       ID "<" INT_LIT ">" { $$ = new types::named_ty($1, $3); }
+|       ID "<" INT_LIT ">" { $$ = new types::named_ty($1, d.target_, $3); }
 | 	type "*" { $$ = new types::pointer_ty($1); }
 |       type "[" INT_LIT "]" { $$ = new types::array_ty($1, $3); }
 ;

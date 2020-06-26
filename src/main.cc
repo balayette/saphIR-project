@@ -40,7 +40,8 @@ int main(int argc, char *argv[])
 	bool optimize = false;
 	bool obfuscate = false;
 
-	auto target = new mach::amd64::amd64_target();
+	mach::SET_TARGET(new mach::amd64::amd64_target());
+	auto &target = mach::TARGET();
 
 	int opt = 0;
 	while ((opt = getopt(argc, argv, "OPho:i:")) != -1 && !help) {
@@ -64,7 +65,7 @@ int main(int argc, char *argv[])
 	if (help || !src_path || !dst_path)
 		return usage(argv[0]);
 
-	driver drv;
+	driver drv(target);
 	if (drv.parse(src_path)) {
 		COMPILATION_ERROR(utils::cfail::PARSING);
 	}
@@ -86,12 +87,12 @@ int main(int argc, char *argv[])
 	frontend::sema::escapes_visitor e;
 	drv.prog_->accept(e);
 
-	frontend::sema::frame_visitor f(*target);
+	frontend::sema::frame_visitor f(target);
 	drv.prog_->accept(f);
 
 	drv.prog_->accept(p);
 
-	frontend::translate::translate_visitor trans(*target);
+	frontend::translate::translate_visitor trans(target);
 	drv.prog_->accept(trans);
 
 	ir::ir_pretty_printer pir(std::cout);
@@ -156,7 +157,7 @@ int main(int argc, char *argv[])
 		std::cout << "-------------------------------------\n";
 
 		std::cout << "==========\n";
-		auto generator = target->make_asm_generator();
+		auto generator = target.make_asm_generator();
 		generator->codegen(trace);
 		auto instrs = generator->output();
 
@@ -187,7 +188,7 @@ int main(int argc, char *argv[])
 
 	fout << "\t.section .rodata\n";
 	for (auto [lab, s] : trans.str_lits_)
-		fout << target->asm_string(lab, s.str_);
+		fout << target.asm_string(lab, s.str_);
 	fout << '\n';
 
 	for (auto &glob : drv.prog_->decs_) {
@@ -212,7 +213,7 @@ int main(int argc, char *argv[])
 			if (!i.as<assem::label>())
 				fout << '\t';
 			fout << i->to_string([&](utils::temp t, unsigned sz) {
-				return target->register_repr(t, sz);
+				return target.register_repr(t, sz);
 			}) << '\n';
 		}
 		fout << f.epilogue_;

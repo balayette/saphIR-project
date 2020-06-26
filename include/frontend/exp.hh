@@ -16,12 +16,8 @@ struct vardec;
 
 struct exp {
       protected:
-	exp()
-	    : ty_(new types::builtin_ty(types::type::INVALID,
-					types::signedness::INVALID))
-	{
-	}
-	exp(utils::ref<types::ty> &ty) : ty_(ty) {}
+	exp();
+	exp(const utils::ref<types::ty> &ty) : ty_(ty) {}
 	exp(const exp &rhs) = default;
 	exp &operator=(const exp &rhs) = default;
 
@@ -82,12 +78,7 @@ struct unary : public exp {
 };
 
 struct cmp : public exp {
-	cmp(ops::cmpop op, utils::ref<exp> lhs, utils::ref<exp> rhs)
-	    : op_(op), lhs_(lhs), rhs_(rhs)
-	{
-		ty_ = new types::builtin_ty(types::type::INT, 4,
-					    types::signedness::UNSIGNED);
-	}
+	cmp(ops::cmpop op, utils::ref<exp> lhs, utils::ref<exp> rhs);
 
 	ACCEPT(cmp)
 
@@ -97,11 +88,7 @@ struct cmp : public exp {
 };
 
 struct num : public exp {
-	num(int64_t value) : value_(value)
-	{
-		ty_ = new types::builtin_ty(types::type::INT, 4,
-					    types::signedness::SIGNED);
-	}
+	num(int64_t value);
 
 	ACCEPT(num)
 
@@ -148,11 +135,7 @@ struct call : public exp {
 };
 
 struct str_lit : public exp {
-	str_lit(const std::string &str) : str_(str)
-	{
-		ty_ = new types::builtin_ty(types::type::STRING,
-					    types::signedness::INVALID);
-	}
+	str_lit(const std::string &str);
 
 	ACCEPT(str_lit)
 

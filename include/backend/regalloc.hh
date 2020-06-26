@@ -13,7 +13,6 @@ namespace regalloc
 void alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f);
 
 void rewrite(std::vector<assem::rinstr> &instrs,
-				 std::vector<assem::temp> spills,
-				 mach::frame &f);
+	     std::vector<assem::temp> spills, mach::frame &f);
 } // namespace regalloc
 } // namespace backend

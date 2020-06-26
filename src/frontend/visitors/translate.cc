@@ -6,6 +6,7 @@
 #include "frontend/exp.hh"
 #include "ir/ir.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
+#include "mach/target.hh"
 
 #define TRANS_DEBUG 0
 
@@ -37,14 +38,16 @@ tree::rexp cx::un_ex()
 	auto *je = new tree::jump(new tree::name(e_lbl), {e_lbl});
 	auto *cj = new tree::cjump(op_, l_, r_, t_lbl, f_lbl);
 
-	auto *movt = new tree::move(new tree::temp(ret, types::integer_type()),
-				    new tree::cnst(1));
-	auto *movf = new tree::move(new tree::temp(ret, types::integer_type()),
-				    new tree::cnst(0));
+	auto *movt = new tree::move(
+		new tree::temp(ret, mach::TARGET().integer_type()),
+		new tree::cnst(1));
+	auto *movf = new tree::move(
+		new tree::temp(ret, mach::TARGET().integer_type()),
+		new tree::cnst(0));
 
 	auto *body = new tree::seq({cj, lt, movt, je, lf, movf, le});
 
-	tree::rexp value = new tree::temp(ret, types::integer_type());
+	tree::rexp value = new tree::temp(ret, mach::TARGET().integer_type());
 
 	return new tree::eseq(body, value);
 }
@@ -131,20 +134,20 @@ utils::ref<exp> translate_visitor::array_copy(ir::tree::rexp lhs,
 	utils::temp src_temp;
 
 	s->children_.push_back(new tree::move(
-		new tree::temp(dst_temp, types::integer_type()), dst_base));
+		new tree::temp(dst_temp, target_.integer_type()), dst_base));
 	s->children_.push_back(new tree::move(
-		new tree::temp(src_temp, types::integer_type()), src_base));
+		new tree::temp(src_temp, target_.integer_type()), src_base));
 
 	size_t offt = 0;
 	for (size_t i = 0; i < at->n_; i++) {
 		tree::exp *dst_exp = new tree::binop(
 			ops::binop::PLUS,
-			new tree::temp(dst_temp, types::integer_type()),
-			new tree::cnst(offt), types::integer_type());
+			new tree::temp(dst_temp, target_.integer_type()),
+			new tree::cnst(offt), target_.integer_type());
 		tree::exp *src_exp = new tree::binop(
 			ops::binop::PLUS,
-			new tree::temp(src_temp, types::integer_type()),
-			new tree::cnst(offt), types::integer_type());
+			new tree::temp(src_temp, target_.integer_type()),
+			new tree::cnst(offt), target_.integer_type());
 
 		dst_exp->ty_ = at->ty_->clone();
 		src_exp->ty_ = at->ty_->clone();
@@ -186,20 +189,20 @@ utils::ref<exp> translate_visitor::struct_copy(ir::tree::rexp lhs,
 	utils::temp src_temp;
 
 	s->children_.push_back(new tree::move(
-		new tree::temp(dst_temp, types::integer_type()), dst_base));
+		new tree::temp(dst_temp, target_.integer_type()), dst_base));
 	s->children_.push_back(new tree::move(
-		new tree::temp(src_temp, types::integer_type()), src_base));
+		new tree::temp(src_temp, target_.integer_type()), src_base));
 
 	size_t offt = 0;
 	for (size_t i = 0; i < st->types_.size(); i++) {
 		tree::exp *dst_exp = new tree::binop(
 			ops::binop::PLUS,
-			new tree::temp(dst_temp, types::integer_type()),
-			new tree::cnst(offt), types::integer_type());
+			new tree::temp(dst_temp, target_.integer_type()),
+			new tree::cnst(offt), target_.integer_type());
 		tree::exp *src_exp = new tree::binop(
 			ops::binop::PLUS,
-			new tree::temp(src_temp, types::integer_type()),
-			new tree::cnst(offt), types::integer_type());
+			new tree::temp(src_temp, target_.integer_type()),
+			new tree::cnst(offt), target_.integer_type());
 
 		dst_exp->ty_ = st->types_[i]->clone();
 		src_exp->ty_ = st->types_[i]->clone();
@@ -255,14 +258,14 @@ translate_visitor::braceinit_copy_to_array(ir::tree::rexp lhs,
 
 	utils::temp base_temp;
 	s->children_.push_back(new tree::move(
-		new tree::temp(base_temp, types::integer_type()), base));
+		new tree::temp(base_temp, target_.integer_type()), base));
 
 	size_t offt = 0;
 	for (size_t i = 0; i < exps.size(); i++) {
 		tree::exp *dst_exp = new tree::binop(
 			ops::binop::PLUS,
-			new tree::temp(base_temp, types::integer_type()),
-			new tree::cnst(offt), types::integer_type());
+			new tree::temp(base_temp, target_.integer_type()),
+			new tree::cnst(offt), target_.integer_type());
 
 		dst_exp->ty_ = at->ty_->clone();
 
@@ -299,14 +302,14 @@ translate_visitor::braceinit_copy_to_struct(ir::tree::rexp lhs,
 
 	utils::temp base_temp;
 	s->children_.push_back(new tree::move(
-		new tree::temp(base_temp, types::integer_type()), base));
+		new tree::temp(base_temp, target_.integer_type()), base));
 
 	size_t offt = 0;
 	for (size_t i = 0; i < exps.size(); i++) {
 		tree::exp *dst_exp = new tree::binop(
 			ops::binop::PLUS,
-			new tree::temp(base_temp, types::integer_type()),
-			new tree::cnst(offt), types::integer_type());
+			new tree::temp(base_temp, target_.integer_type()),
+			new tree::cnst(offt), target_.integer_type());
 
 		dst_exp->ty_ = st->types_[i]->clone();
 
@@ -425,19 +428,19 @@ void translate_visitor::visit_bin(bin &e)
 			cond1->un_cx(f_label, t_label),
 			new tree::label(t_label),
 			new tree::move(
-				new tree::temp(result, types::integer_type()),
+				new tree::temp(result, target_.integer_type()),
 				cond2->un_ex()),
 			new tree::jump(new tree::name(done_label),
 				       {done_label}),
 			new tree::label(f_label),
 			new tree::move(
-				new tree::temp(result, types::integer_type()),
+				new tree::temp(result, target_.integer_type()),
 				new tree::cnst(0)),
 			new tree::label(done_label),
 		});
 
 		ret_ = new ex(new tree::eseq(
-			seq, new tree::temp(result, types::integer_type())));
+			seq, new tree::temp(result, target_.integer_type())));
 		return;
 	}
 	if (e.op_ == ops::binop::OR) {
@@ -462,25 +465,25 @@ void translate_visitor::visit_bin(bin &e)
 			new cx(ops::cmpop::EQ, left, new tree::cnst(1));
 		utils::ref<cx> cond2 =
 			new cx(ops::cmpop::EQ,
-			       new tree::temp(result, types::integer_type()),
+			       new tree::temp(result, target_.integer_type()),
 			       new tree::cnst(1));
 		utils::ref<cx> cond3 =
 			new cx(ops::cmpop::EQ, right, new tree::cnst(1));
 
 		auto seq = new tree::seq({
 			new tree::move(
-				new tree::temp(result, types::integer_type()),
+				new tree::temp(result, target_.integer_type()),
 				cond1->un_ex()),
 			cond2->un_cx(done_label, f_label),
 			new tree::label(f_label),
 			new tree::move(
-				new tree::temp(result, types::integer_type()),
+				new tree::temp(result, target_.integer_type()),
 				cond3->un_ex()),
 			new tree::label(done_label),
 		});
 
 		ret_ = new ex(new tree::eseq(
-			seq, new tree::temp(result, types::integer_type())));
+			seq, new tree::temp(result, target_.integer_type())));
 		return;
 	}
 
@@ -503,13 +506,13 @@ void translate_visitor::visit_bin(bin &e)
 						  ->pointed_size();
 				left = new tree::binop(ops::binop::MULT,
 						       new tree::cnst(sz), left,
-						       types::integer_type());
+						       target_.integer_type());
 			} else {
 				auto sz = left->ty_.as<types::pointer_ty>()
 						  ->pointed_size();
 				right = new tree::binop(
 					ops::binop::MULT, new tree::cnst(sz),
-					right, types::integer_type());
+					right, target_.integer_type());
 			}
 		}
 	}
@@ -663,7 +666,7 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 
 		rm.e_->accept(*this);
 		pre->children_.push_back(new tree::move(
-			new tree::temp(reg, types::integer_type()),
+			new tree::temp(reg, target_.integer_type()),
 			ret_->un_ex()));
 	}
 
@@ -675,7 +678,7 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 		rm.e_->accept(*this);
 		post->children_.push_back(new tree::move(
 			ret_->un_ex(),
-			new tree::temp(reg, types::integer_type())));
+			new tree::temp(reg, target_.integer_type())));
 	}
 
 	for (auto &rm : s.reg_clob_)
@@ -864,7 +867,7 @@ void translate_visitor::visit_subscript(subscript &e)
 		new tree::binop(ops::binop::PLUS, base,
 				new tree::binop(ops::binop::MULT, index,
 						new tree::cnst(e.ty_->size()),
-						types::integer_type()),
+						target_.integer_type()),
 				base->ty_->clone())));
 }
 } // namespace frontend::translate

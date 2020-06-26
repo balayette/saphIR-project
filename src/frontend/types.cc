@@ -1,26 +1,12 @@
 #include "frontend/types.hh"
 #include "utils/assert.hh"
 #include "utils/misc.hh"
+#include "mach/target.hh"
 
 namespace types
 {
 const std::string str[] = {"int", "string", "void", "invalid"};
 const unsigned default_size[] = {8, 8, 0, 0};
-
-utils::ref<builtin_ty> integer_type()
-{
-	return std::make_shared<builtin_ty>(type::INT, signedness::SIGNED);
-}
-
-utils::ref<builtin_ty> boolean_type()
-{
-	return std::make_shared<builtin_ty>(type::INT, 1, signedness::UNSIGNED);
-}
-
-utils::ref<builtin_ty> void_type()
-{
-	return std::make_shared<builtin_ty>(type::VOID, signedness::INVALID);
-}
 
 bool is_scalar(const ty *ty)
 {
@@ -54,15 +40,17 @@ utils::ref<ty> deref_pointer_type(utils::ref<ty> ty)
 	return ret;
 }
 
-builtin_ty::builtin_ty() : ty_(type::INVALID), is_signed_(signedness::INVALID)
+builtin_ty::builtin_ty(mach::target &target)
+    : ty(target), ty_(type::INVALID), is_signed_(signedness::INVALID)
 {
 }
-builtin_ty::builtin_ty(type t, signedness is_signed)
-    : builtin_ty(t, DEFAULT_SIZE, is_signed)
+builtin_ty::builtin_ty(type t, signedness is_signed, mach::target &target)
+    : builtin_ty(t, DEFAULT_SIZE, is_signed, target)
 {
 }
-builtin_ty::builtin_ty(type t, size_t size, signedness is_signed)
-    : ty_(t), size_modif_(DEFAULT_SIZE), is_signed_(is_signed)
+builtin_ty::builtin_ty(type t, size_t size, signedness is_signed,
+		       mach::target &target)
+    : ty(target), ty_(t), size_modif_(DEFAULT_SIZE), is_signed_(is_signed)
 {
 	if (size == DEFAULT_SIZE)
 		size_ = default_size[static_cast<unsigned>(t)];
@@ -70,8 +58,9 @@ builtin_ty::builtin_ty(type t, size_t size, signedness is_signed)
 		size_ = size;
 }
 builtin_ty::builtin_ty(type t, size_t size, size_t size_modif,
-		       signedness is_signed)
-    : ty_(t), size_(size), size_modif_(size_modif), is_signed_(is_signed)
+		       signedness is_signed, mach::target &target)
+    : ty(target), ty_(t), size_(size), size_modif_(size_modif),
+      is_signed_(is_signed)
 {
 }
 
@@ -165,33 +154,36 @@ utils::ref<ty> builtin_ty::unaryop_type(ops::unaryop unaryop) const
 
 	switch (unaryop) {
 	case ops::unaryop::NOT:
-		return boolean_type();
+		return target_.boolean_type();
 	case ops::unaryop::NEG:
 		if (size() >= 4u)
 			return this->clone();
 		else
-			return new builtin_ty(type::INT, 4u,
-					      signedness::SIGNED);
+			return new builtin_ty(type::INT, 4u, signedness::SIGNED,
+					      target_);
 	case ops::unaryop::BITNOT:
 		if (size() >= 4u)
 			return this->clone();
 		else
-			return new builtin_ty(type::INT, 4u,
-					      signedness::SIGNED);
+			return new builtin_ty(type::INT, 4u, signedness::SIGNED,
+					      target_);
 	default:
 		return nullptr;
 	}
 }
 
-pointer_ty::pointer_ty(utils::ref<ty> ty, unsigned ptr) : ty_(ty), ptr_(ptr) {}
-
-pointer_ty::pointer_ty(utils::ref<ty> ty)
+pointer_ty::pointer_ty(utils::ref<ty> type, unsigned ptr)
+    : ty(type->target()), ty_(type), ptr_(ptr)
 {
-	if (auto pt = ty.as<pointer_ty>()) {
+}
+
+pointer_ty::pointer_ty(utils::ref<ty> type) : ty(type->target())
+{
+	if (auto pt = type.as<pointer_ty>()) {
 		ty_ = pt->ty_;
 		ptr_ = pt->ptr_ + 1;
 	} else {
-		ty_ = ty;
+		ty_ = type;
 		ptr_ = 1;
 	}
 }
@@ -247,7 +239,7 @@ utils::ref<ty> pointer_ty::unaryop_type(ops::unaryop unaryop) const
 {
 	switch (unaryop) {
 	case ops::unaryop::NOT:
-		return boolean_type();
+		return target_.boolean_type();
 	default:
 		return nullptr;
 	}
@@ -262,7 +254,7 @@ size_t pointer_ty::pointed_size() const
 }
 
 braceinit_ty::braceinit_ty(const std::vector<utils::ref<types::ty>> &types)
-    : types_(types)
+    : composite_ty(types[0]->target()), types_(types)
 {
 }
 
@@ -309,7 +301,8 @@ utils::ref<ty> braceinit_ty::unaryop_type(ops::unaryop) const
 
 struct_ty::struct_ty(const symbol &name, const std::vector<symbol> &names,
 		     const std::vector<utils::ref<types::ty>> &types)
-    : types_(types), name_(name), names_(names)
+    : composite_ty(types[0]->target()), types_(types), name_(name),
+      names_(names)
 {
 	size_ = 0;
 	// XXX: Arch specific pointer size
@@ -371,7 +364,10 @@ size_t struct_ty::member_offset(const symbol &name)
 	return offt;
 }
 
-array_ty::array_ty(utils::ref<types::ty> type, size_t n) : ty_(type), n_(n) {}
+array_ty::array_ty(utils::ref<types::ty> type, size_t n)
+    : composite_ty(type->target()), ty_(type), n_(n)
+{
+}
 
 std::string array_ty::to_string() const
 {
@@ -418,7 +414,7 @@ utils::ref<ty> array_ty::unaryop_type(ops::unaryop unaryop) const
 {
 	switch (unaryop) {
 	case ops::unaryop::NOT:
-		return integer_type()->clone();
+		return target_.integer_type()->clone();
 	default:
 		return nullptr;
 	}
@@ -436,7 +432,8 @@ utils::ref<ty> struct_ty::member_ty(const symbol &name)
 
 fun_ty::fun_ty(utils::ref<types::ty> ret_ty,
 	       const std::vector<utils::ref<types::ty>> &arg_tys, bool variadic)
-    : ret_ty_(ret_ty), arg_tys_(arg_tys), variadic_(variadic)
+    : ty(ret_ty->target()), ret_ty_(ret_ty), arg_tys_(arg_tys),
+      variadic_(variadic)
 {
 }
 
@@ -482,7 +479,10 @@ utils::ref<ty> fun_ty::binop_compat(ops::binop, const ty *) const
 
 utils::ref<ty> fun_ty::unaryop_type(ops::unaryop) const { return nullptr; }
 
-named_ty::named_ty(const symbol &name, size_t sz) : name_(name), sz_(sz) {}
+named_ty::named_ty(const symbol &name, mach::target &target, size_t sz)
+    : ty(target), name_(name), sz_(sz)
+{
+}
 
 std::string named_ty::to_string() const
 {

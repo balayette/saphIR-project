@@ -47,6 +47,8 @@ struct amd64_frame : public mach::frame {
 };
 
 struct amd64_target : public mach::target {
+	virtual std::string name() override;
+
 	virtual utils::temp_set registers() override;
 	virtual std::vector<utils::temp> caller_saved_regs() override;
 	virtual std::vector<utils::temp> callee_saved_regs() override;
@@ -62,6 +64,12 @@ struct amd64_target : public mach::target {
 	virtual std::string register_repr(utils::temp t,
 					  unsigned size) override;
 	virtual utils::temp repr_to_register(std::string repr) override;
+
+	utils::ref<types::ty>
+	integer_type(types::signedness signedness =
+			     types::signedness::SIGNED) override;
+	utils::ref<types::ty> boolean_type() override;
+	utils::ref<types::ty> gpr_type() override;
 
 	virtual utils::ref<mach::frame>
 	make_frame(const symbol &s, const std::vector<bool> &args,

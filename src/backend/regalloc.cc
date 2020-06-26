@@ -6,9 +6,7 @@
 #include <iostream>
 #include "backend/color.hh"
 
-namespace backend
-{
-namespace regalloc
+namespace backend::regalloc
 {
 // Replace all uses of spilling temps by memory loads and stores
 void rewrite(std::vector<assem::rinstr> &instrs,
@@ -135,5 +133,4 @@ void alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
 
 	allocate(instrs, initial, f);
 }
-} // namespace regalloc
-} // namespace backend
+} // namespace backend::regalloc

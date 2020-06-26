@@ -12,8 +12,7 @@
 namespace backend
 {
 struct cfgnode {
-	cfgnode(assem::temp_set def,
-		assem::temp_set use, bool is_move);
+	cfgnode(assem::temp_set def, assem::temp_set use, bool is_move);
 	assem::temp_set def;
 	assem::temp_set use;
 	bool is_move;

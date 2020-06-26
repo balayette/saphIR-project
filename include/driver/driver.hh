@@ -5,6 +5,7 @@
 
 #include "frontend/stmt.hh"
 #include "frontend/parser/parser.hh"
+#include "mach/target.hh"
 
 #define YY_DECL yy::parser::symbol_type yylex(driver &d)
 
@@ -13,7 +14,7 @@ YY_DECL;
 class driver
 {
       public:
-	driver();
+	driver(mach::target &target);
 
 	int parse(const std::string &file);
 
@@ -22,6 +23,8 @@ class driver
 
 	yy::location location_;
 	utils::ref<frontend::decs> prog_;
+
+	mach::target &target_;
 
       private:
 	bool debug_parsing_;

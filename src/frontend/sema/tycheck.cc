@@ -1,5 +1,6 @@
 #include "frontend/sema/tycheck.hh"
 #include "utils/assert.hh"
+#include "mach/target.hh"
 
 namespace frontend::sema
 {
@@ -15,14 +16,11 @@ namespace frontend::sema
 
 tycheck_visitor::tycheck_visitor()
 {
-	tmap_.add("int", new types::builtin_ty(types::type::INT,
-					       types::signedness::SIGNED));
-	tmap_.add("uint", new types::builtin_ty(types::type::INT,
-						types::signedness::UNSIGNED));
-	tmap_.add("string", new types::builtin_ty(types::type::STRING,
-						  types::signedness::INVALID));
-	tmap_.add("void", new types::builtin_ty(types::type::VOID,
-						types::signedness::INVALID));
+	auto &target = mach::TARGET();
+	tmap_.add("int", target.integer_type(types::signedness::SIGNED));
+	tmap_.add("uint", target.integer_type(types::signedness::UNSIGNED));
+	tmap_.add("string", target.string_type());
+	tmap_.add("void", target.void_type());
 }
 
 // get_type must be used everytime there can be a refernce to a type.
@@ -102,6 +100,8 @@ void tycheck_visitor::visit_funprotodec(funprotodec &s)
 		arg_tys.push_back(arg->type_);
 	}
 	auto ret_ty = get_type(s.type_);
+	std::cout << "ret_ty: " << &ret_ty << '\n';
+	std::cout << "ret_ty: " << ret_ty->target().name() << '\n';
 	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
 }
 
@@ -124,7 +124,7 @@ void tycheck_visitor::visit_fundec(fundec &s)
 	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
 
 	if (!s.has_return_)
-		CHECK_TYPE_ERROR(&types::void_type(), &s.type_,
+		CHECK_TYPE_ERROR(&mach::TARGET().void_type(), &s.type_,
 				 "function '" << s.name_
 					      << "' without return statement");
 
@@ -145,7 +145,7 @@ void tycheck_visitor::visit_ret(ret &s)
 
 	/* return; in void function */
 	if (s.e_ == nullptr)
-		CHECK_TYPE_ERROR(&types::void_type(), &fty->ret_ty_,
+		CHECK_TYPE_ERROR(&mach::TARGET().void_type(), &fty->ret_ty_,
 				 "function '" << s.fdec_->name_
 					      << "' return statement");
 	else
@@ -158,7 +158,8 @@ void tycheck_visitor::visit_ifstmt(ifstmt &s)
 {
 	default_visitor::visit_ifstmt(s);
 
-	CHECK_TYPE_ERROR(&s.cond_->ty_, &types::integer_type(), "if condition");
+	CHECK_TYPE_ERROR(&s.cond_->ty_, &mach::TARGET().integer_type(),
+			 "if condition");
 }
 
 
@@ -166,7 +167,7 @@ void tycheck_visitor::visit_forstmt(forstmt &s)
 {
 	default_visitor::visit_forstmt(s);
 
-	CHECK_TYPE_ERROR(&s.cond_->ty_, &types::integer_type(),
+	CHECK_TYPE_ERROR(&s.cond_->ty_, &mach::TARGET().integer_type(),
 			 "for condition");
 }
 
@@ -269,7 +270,7 @@ void tycheck_visitor::visit_addrof(addrof &e)
 
 	e.ty_ = new types::pointer_ty(e.e_->ty_);
 
-	if (e.ty_->assign_compat(&types::void_type())) {
+	if (e.ty_->assign_compat(&mach::TARGET().void_type())) {
 		std::cerr << "TypeError: Pointers to void are not supported.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
@@ -357,7 +358,7 @@ void tycheck_visitor::visit_subscript(subscript &e)
 {
 	default_visitor::visit_subscript(e);
 
-	CHECK_TYPE_ERROR(&e.index_->ty_, &types::integer_type(),
+	CHECK_TYPE_ERROR(&e.index_->ty_, &mach::TARGET().integer_type(),
 			 "array subscript");
 	if (!e.base_->ty_.as<types::pointer_ty>()
 	    && !e.base_->ty_.as<types::array_ty>()) {

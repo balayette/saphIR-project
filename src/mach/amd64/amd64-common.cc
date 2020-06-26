@@ -111,8 +111,6 @@ utils::temp repr_to_register(std::string repr)
 	UNREACHABLE("Register does not exist");
 }
 
-utils::ref<types::ty> gpr_type() { return types::integer_type(); }
-
 utils::temp reg_to_temp(regs r) { return register_array[r].label; }
 utils::temp reg_to_str(regs r) { return register_array[r].repr[0]; }
 } // namespace mach::amd64

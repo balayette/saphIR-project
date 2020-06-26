@@ -79,6 +79,7 @@ struct fun_fragment : public fragment {
 struct target {
 	virtual ~target() = default;
 
+	virtual std::string name() = 0;
 	virtual size_t reg_count();
 
 	virtual utils::temp_set registers() = 0;
@@ -95,6 +96,14 @@ struct target {
 	virtual std::string register_repr(utils::temp t, unsigned size) = 0;
 	virtual utils::temp repr_to_register(std::string repr) = 0;
 
+	virtual utils::ref<types::ty> invalid_type();
+	virtual utils::ref<types::ty> void_type();
+	virtual utils::ref<types::ty> string_type();
+	virtual utils::ref<types::ty> integer_type(
+		types::signedness signedness = types::signedness::SIGNED) = 0;
+	virtual utils::ref<types::ty> boolean_type() = 0;
+	virtual utils::ref<types::ty> gpr_type() = 0;
+
 	virtual utils::ref<frame>
 	make_frame(const symbol &s, const std::vector<bool> &args,
 		   std::vector<utils::ref<types::ty>> types,
@@ -108,4 +117,7 @@ struct target {
 	virtual std::string asm_string(utils::label lab,
 				       const std::string &str);
 };
+
+mach::target &TARGET();
+void SET_TARGET(utils::ref<mach::target> target);
 } // namespace mach

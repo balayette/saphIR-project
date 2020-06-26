@@ -19,7 +19,7 @@ struct coloring_out {
 	assem::temp_set coalesced;
 };
 
-coloring_out color(mach::target& target, backend::ifence_graph &ifence, assem::temp_set initial);
+coloring_out color(mach::target &target, backend::ifence_graph &ifence,
+		   assem::temp_set initial);
 } // namespace regalloc
 } // namespace backend
-
