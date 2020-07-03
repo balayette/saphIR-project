@@ -15,7 +15,8 @@ struct allocator {
 		mach::target &target,
 		std::unordered_map<assem::temp, assem::temp_pair_set> move_list,
 		assem::temp_pair_set worklist_moves)
-	    : target_(target), move_list_(move_list), moves_wkl_(worklist_moves)
+	    : target_(target), move_list_(move_list),
+	      moves_wkl_(worklist_moves), precolored_(target.temp_map())
 	{
 	}
 
@@ -27,12 +28,11 @@ struct allocator {
 		adjacency_set_.insert({u, v});
 		adjacency_set_.insert({v, u});
 
-		auto precolored = target_.temp_map();
-		if (precolored.find(u) == precolored.end()) {
+		if (precolored_.find(u) == precolored_.end()) {
 			adjacency_list_[u] += v;
 			degree_[u] += 1;
 		}
-		if (precolored.find(v) == precolored.end()) {
+		if (precolored_.find(v) == precolored_.end()) {
 			adjacency_list_[v] += u;
 			degree_[v] += 1;
 		}
@@ -233,27 +233,26 @@ struct allocator {
 			x = get_alias(x);
 			y = get_alias(y);
 
-			auto precolored = target_.temp_map();
-			auto [u, v] = precolored.count(y) ? std::pair(y, x)
-							  : std::pair(x, y);
+			auto [u, v] = precolored_.count(y) ? std::pair(y, x)
+							   : std::pair(x, y);
 
 			moves_wkl_ -= m;
 			if (u == v) {
 				coalesced_moves_ += m;
 				add_work_list(u);
-			} else if (precolored.count(v)
+			} else if (precolored_.count(v)
 				   || adjacency_set_.count(std::pair(u, v))) {
 				constrained_moves_ += m;
 				add_work_list(u);
 				add_work_list(v);
-			} else if ((precolored.count(u)
+			} else if ((precolored_.count(u)
 				    // u is a reference name, and can't be
 				    // captured by a lambda.
 				    && utils::all_of(adjacent(v),
 						     [this, u = u](auto t) {
 							     return ok(t, u);
 						     }))
-				   || (!precolored.count(u)
+				   || (!precolored_.count(u)
 				       && conservative(adjacent(u)
 						       + adjacent(v)))) {
 				coalesced_moves_ += m;
@@ -267,10 +266,9 @@ struct allocator {
 	assem::temp_endomap assign_colors()
 	{
 		assem::temp_endomap colors;
-		auto precolored = target_.temp_map();
 		assem::temp_set precolored_set;
 
-		for (auto [t, _] : precolored) {
+		for (auto [t, _] : precolored_) {
 			colors.emplace(t, t);
 			precolored_set += t;
 		}
@@ -347,6 +345,8 @@ struct allocator {
 	assem::temp_set spill_wkl_;
 	assem::temp_set freeze_wkl_;
 	assem::temp_set simplify_wkl_;
+
+	std::unordered_map<utils::temp, std::string> precolored_;
 
 	std::unordered_map<assem::temp, unsigned> degree_;
 	assem::temp_pair_set adjacency_set_;
