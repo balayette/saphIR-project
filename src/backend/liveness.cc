@@ -26,7 +26,8 @@ ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
 	std::vector<assem::temp_set> new_out(cfg.size());
 
 	do {
-		for (utils::node_id n = 0; n < cfg.size(); n++) {
+		/* Etienne <3 */
+		for (utils::node_id n = cfg.size(); n-- >= 1;) {
 			new_in[n] = in[n];
 			new_out[n] = out[n];
 
