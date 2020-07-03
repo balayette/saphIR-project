@@ -26,7 +26,8 @@
 
 int usage(char *pname)
 {
-	std::cerr << "usage: " << pname << " -i in.jit -o out.S [-O] [-P]\n";
+	std::cerr << "usage: " << pname
+		  << " -i in.jit -o out.S [-O] [-P] [-m aarch64|amd64]\n";
 	std::cerr << " -O : optimize\n";
 	std::cerr << " -P : obfuscate\n";
 	std::cerr << "Optimization removes some obfuscation techniques.\n";
@@ -40,12 +41,10 @@ int main(int argc, char *argv[])
 	char *dst_path = NULL;
 	bool optimize = false;
 	bool obfuscate = false;
-
-	mach::SET_TARGET(new mach::amd64::amd64_target());
-	auto &target = mach::TARGET();
+	std::string arch("amd64");
 
 	int opt = 0;
-	while ((opt = getopt(argc, argv, "OPho:i:")) != -1 && !help) {
+	while ((opt = getopt(argc, argv, "OPhm:o:i:")) != -1 && !help) {
 		if (opt == 'h')
 			help = true;
 		else if (opt == 'o')
@@ -56,6 +55,8 @@ int main(int argc, char *argv[])
 			optimize = true;
 		else if (opt == 'P')
 			obfuscate = true;
+		else if (opt == 'm')
+			arch = optarg;
 		else {
 			std::cerr << "option '" << (char)opt
 				  << "' not recognized.\n";
@@ -65,6 +66,15 @@ int main(int argc, char *argv[])
 
 	if (help || !src_path || !dst_path)
 		return usage(argv[0]);
+
+	if (arch == "amd64")
+		mach::SET_TARGET(new mach::amd64::amd64_target());
+	else if (arch == "aarch64")
+		mach::SET_TARGET(new mach::aarch64::aarch64_target());
+	else
+		return usage(argv[0]);
+
+	auto &target = mach::TARGET();
 
 	driver drv(target);
 	if (drv.parse(src_path)) {
