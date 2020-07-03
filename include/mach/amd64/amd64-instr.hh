@@ -2,8 +2,6 @@
 
 namespace assem::amd64
 {
-using namespace assem;
-
 struct sized_oper : public oper {
 	sized_oper(const std::string &oper_str, const std::string &op,
 		   std::vector<assem::temp> dst, std::vector<assem::temp> src,

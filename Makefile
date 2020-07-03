@@ -38,6 +38,11 @@ OBJ = \
       src/mach/amd64/amd64-common.o \
       src/mach/amd64/amd64-codegen.o \
       src/mach/amd64/amd64-instr.o \
+      src/mach/aarch64/aarch64-instr.o \
+      src/mach/aarch64/aarch64-target.o \
+      src/mach/aarch64/aarch64-common.o \
+      src/mach/aarch64/aarch64-access.o \
+      src/mach/aarch64/aarch64-codegen.o \
       src/mach/access.o \
       src/mach/target.o \
       src/ir/ir.o \

@@ -21,6 +21,7 @@
 #include "backend/opt/peephole.hh"
 #include "mach/target.hh"
 #include "mach/amd64/amd64-target.hh"
+#include "mach/aarch64/aarch64-target.hh"
 #include "utils/assert.hh"
 
 int usage(char *pname)
@@ -186,7 +187,7 @@ int main(int argc, char *argv[])
 		funs.push_back(f);
 	}
 
-	fout << "\t.section .rodata\n";
+	fout << ".section .rodata\n";
 	for (auto [lab, s] : trans.str_lits_)
 		fout << target.asm_string(lab, s.str_);
 	fout << '\n';
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
 	fout << "\n";
 
 	if (trans.init_fun_) {
-		fout << "\t.section .init_array\n";
+		fout << ".section .init_array\n";
 		fout << "\t.quad " << trans.init_fun_->frame_->s_ << "\n";
 		fout << "\n";
 	}

@@ -80,9 +80,8 @@ void generator::visit_call(tree::call &c)
 	size_t total_stack_change = stack_space + alignment_bonus;
 
 	if (alignment_bonus)
-		EMIT(oper("subq $" + std::to_string(alignment_bonus)
-					 + ", %rsp",
-				 {}, {}, {}));
+		EMIT(oper("subq $" + std::to_string(alignment_bonus) + ", %rsp",
+			  {}, {}, {}));
 
 	// Push stack parameters RTL
 	for (size_t i = 0; i < stack_args_count; i++) {
@@ -102,10 +101,10 @@ void generator::visit_call(tree::call &c)
 
 		// In a variadic function
 		if (i >= c.fun_ty_->arg_tys_.size()) {
-			EMIT(simple_move(
-				assem::temp(cc[i], std::max(ret_.size_, 4u),
-					    ret_.is_signed_),
-				ret_));
+			EMIT(simple_move(assem::temp(cc[i],
+						     std::max(ret_.size_, 4u),
+						     ret_.is_signed_),
+					 ret_));
 		} else
 			EMIT(simple_move(
 				assem::temp(cc[i], std::max(ret_.size_, 4u),
@@ -117,8 +116,8 @@ void generator::visit_call(tree::call &c)
 	// XXX: %al holds the number of floating point variadic parameters.
 	// This assumes no floating point parameters
 	if (c.variadic())
-		EMIT(oper("xor `d0, `d0",
-				 {reg_to_assem_temp(regs::RAX, 1)}, {}, {}));
+		EMIT(oper("xor `d0, `d0", {reg_to_assem_temp(regs::RAX, 1)}, {},
+			  {}));
 
 	auto clobbered_regs = caller_saved_regs();
 
@@ -139,8 +138,8 @@ void generator::visit_call(tree::call &c)
 	EMIT(oper(repr, clobbered, src, {}));
 	if (total_stack_change)
 		EMIT(oper("addq $" + std::to_string(total_stack_change)
-					 + ", %rsp",
-				 {}, {}, {}));
+				  + ", %rsp",
+			  {}, {}, {}));
 
 	assem::temp ret(c.ty_->assem_size());
 	if (ret.size_ != 0)
@@ -344,9 +343,8 @@ void generator::visit_move(tree::move &mv)
 		auto mem = mv.rhs().as<tree::mem>();
 		auto [s, t2] = reg_deref_str(mem->e(), "`s0");
 
-		EMIT(complex_move("`d0", s, {t1}, {t2},
-					 mv.lhs()->assem_size(),
-					 mv.rhs()->assem_size(), signedness));
+		EMIT(complex_move("`d0", s, {t1}, {t2}, mv.lhs()->assem_size(),
+				  mv.rhs()->assem_size(), signedness));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_simple_source(mv.rhs())) {
@@ -358,13 +356,13 @@ void generator::visit_move(tree::move &mv)
 			mem->e(), t2 == std::nullopt ? "`s0" : "`s1");
 
 		if (t2 == std::nullopt)
-			EMIT(complex_move(
-				s2, s1, {}, {t1}, mv.lhs()->assem_size(),
-				mv.rhs()->assem_size(), signedness));
+			EMIT(complex_move(s2, s1, {}, {t1},
+					  mv.lhs()->assem_size(),
+					  mv.rhs()->assem_size(), signedness));
 		else
-			EMIT(complex_move(
-				s2, s1, {}, {*t2, t1}, mv.lhs()->assem_size(),
-				mv.rhs()->assem_size(), signedness));
+			EMIT(complex_move(s2, s1, {}, {*t2, t1},
+					  mv.lhs()->assem_size(),
+					  mv.rhs()->assem_size(), signedness));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
@@ -376,15 +374,14 @@ void generator::visit_move(tree::move &mv)
 
 		auto mem1 = mv.rhs().as<tree::mem>();
 		auto [s1, t2] = reg_deref_str(mem1->e(), "`s0");
-		EMIT(complex_move("`d0", s1, {t3}, {t2},
-					 mv.lhs()->assem_size(),
-					 mv.rhs()->assem_size(), signedness));
+		EMIT(complex_move("`d0", s1, {t3}, {t2}, mv.lhs()->assem_size(),
+				  mv.rhs()->assem_size(), signedness));
 
 		auto mem2 = mv.lhs().as<tree::mem>();
 		auto [s2, t1] = reg_deref_str(mem2->e(), "`s1");
 		EMIT(complex_move(s2, "`s0", {}, {t3, t1},
-					 mv.lhs()->assem_size(),
-					 mv.rhs()->assem_size(), signedness));
+				  mv.lhs()->assem_size(),
+				  mv.rhs()->assem_size(), signedness));
 		return;
 	}
 
@@ -397,8 +394,8 @@ void generator::visit_move(tree::move &mv)
 		auto rhs = assem::temp(ret_, mv.lhs()->assem_size());
 
 		EMIT(complex_move("(`s1)", "`s0", {}, {rhs, lhs},
-					 mv.lhs()->assem_size(),
-					 mv.lhs()->assem_size(), signedness));
+				  mv.lhs()->assem_size(),
+				  mv.lhs()->assem_size(), signedness));
 		return;
 	}
 
@@ -415,9 +412,8 @@ void generator::visit_mem(tree::mem &mm)
 	assem::temp dst(mm.ty_->assem_size());
 
 	mm.e()->accept(*this);
-	EMIT(complex_move("`d0", "(`s0)", {dst}, {ret_},
-				 mm.ty_->assem_size(), mm.ty_->assem_size(),
-				 types::signedness::INVALID));
+	EMIT(complex_move("`d0", "(`s0)", {dst}, {ret_}, mm.ty_->assem_size(),
+			  mm.ty_->assem_size(), types::signedness::INVALID));
 	ret_ = dst;
 }
 
@@ -425,8 +421,8 @@ void generator::visit_cnst(tree::cnst &c)
 {
 	assem::temp dst;
 
-	EMIT(complex_move("`d0", "$" + std::to_string(c.value_), {dst},
-				 {}, 8, 8, types::signedness::INVALID));
+	EMIT(complex_move("`d0", "$" + std::to_string(c.value_), {dst}, {}, 8,
+			  8, types::signedness::INVALID));
 
 	ret_ = dst;
 }
@@ -516,60 +512,51 @@ void generator::visit_binop(tree::binop &b)
 		EMIT(simple_move(dst, lhs));
 
 	if (b.op_ == ops::binop::PLUS)
-		EMIT(sized_oper("add", "`s0, `d0", {dst}, {lhs, dst},
-				       oper_sz));
+		EMIT(sized_oper("add", "`s0, `d0", {dst}, {lhs, dst}, oper_sz));
 	else if (b.op_ == ops::binop::MINUS)
-		EMIT(sized_oper("sub", "`s0, `d0", {dst}, {rhs, dst},
-				       oper_sz));
+		EMIT(sized_oper("sub", "`s0, `d0", {dst}, {rhs, dst}, oper_sz));
 	else if (b.op_ == ops::binop::MULT)
-		EMIT(sized_oper("imul", "`s0, `d0", {dst}, {lhs},
-				       oper_sz));
+		EMIT(sized_oper("imul", "`s0, `d0", {dst}, {lhs}, oper_sz));
 	else if (b.op_ == ops::binop::BITXOR)
-		EMIT(sized_oper("xor", "`s0, `d0", {dst}, {lhs, dst},
-				       oper_sz));
+		EMIT(sized_oper("xor", "`s0, `d0", {dst}, {lhs, dst}, oper_sz));
 	else if (b.op_ == ops::binop::BITAND)
-		EMIT(sized_oper("and", "`s0, `d0", {dst}, {lhs, dst},
-				       oper_sz));
+		EMIT(sized_oper("and", "`s0, `d0", {dst}, {lhs, dst}, oper_sz));
 	else if (b.op_ == ops::binop::BITOR)
-		EMIT(sized_oper("or", "`s0, `d0", {dst}, {lhs, dst},
-				       oper_sz));
+		EMIT(sized_oper("or", "`s0, `d0", {dst}, {lhs, dst}, oper_sz));
 	else if (b.op_ == ops::binop::BITLSHIFT) {
 		/*
 		 * shlX %cl, %reg is the only encoding for all sizes of reg
 		 */
 		auto cl = reg_to_assem_temp(regs::RCX, 1);
 		EMIT(simple_move(cl, rhs));
-		EMIT(sized_oper("shl", "`s0, `d0", {dst}, {cl, dst},
-				       oper_sz));
+		EMIT(sized_oper("shl", "`s0, `d0", {dst}, {cl, dst}, oper_sz));
 	} else if (b.op_ == ops::binop::BITRSHIFT) {
 		/*
 		 * shrX %cl, %reg is the only encoding for all sizes of reg
 		 */
 		auto cl = reg_to_assem_temp(regs::RCX, 1);
 		EMIT(simple_move(cl, rhs));
-		EMIT(sized_oper("shr", "`s0, `d0", {dst}, {cl, dst},
-				       oper_sz));
+		EMIT(sized_oper("shr", "`s0, `d0", {dst}, {cl, dst}, oper_sz));
 	} else if (b.op_ == ops::binop::ARITHBITRSHIFT) {
 		/*
 		 * sarX %cl, %reg is the only encoding for all sizes of reg
 		 */
 		auto cl = reg_to_assem_temp(regs::RCX, 1);
 		EMIT(simple_move(cl, rhs));
-		EMIT(sized_oper("sar", "`s0, `d0", {dst}, {cl, dst},
-				       oper_sz));
+		EMIT(sized_oper("sar", "`s0, `d0", {dst}, {cl, dst}, oper_sz));
 	} else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
 		EMIT(simple_move(reg_to_assem_temp(regs::RAX), lhs));
 		EMIT(oper("cqto",
-				 {reg_to_assem_temp(regs::RAX),
-				  reg_to_assem_temp(regs::RDX)},
-				 {reg_to_assem_temp(regs::RAX)}, {}));
+			  {reg_to_assem_temp(regs::RAX),
+			   reg_to_assem_temp(regs::RDX)},
+			  {reg_to_assem_temp(regs::RAX)}, {}));
 		// quotient in %rax, remainder in %rdx
 		EMIT(oper("idivq `s0",
-				 {reg_to_assem_temp(regs::RAX),
-				  reg_to_assem_temp(regs::RDX)},
-				 {dst, reg_to_assem_temp(regs::RAX),
-				  reg_to_assem_temp(regs::RAX)},
-				 {}));
+			  {reg_to_assem_temp(regs::RAX),
+			   reg_to_assem_temp(regs::RDX)},
+			  {dst, reg_to_assem_temp(regs::RAX),
+			   reg_to_assem_temp(regs::RAX)},
+			  {}));
 		if (b.op_ == ops::binop::DIV)
 			EMIT(simple_move(
 				dst, reg_to_assem_temp(regs::RAX, oper_sz)));
@@ -600,7 +587,7 @@ void generator::visit_unaryop(tree::unaryop &b)
 		assem::temp dst(4, types::signedness::UNSIGNED);
 		EMIT(sized_oper("xor", "`d0, `d0", {dst}, {}, 4));
 		EMIT(sized_oper("cmp", "$0x0, `s0", {}, {val},
-				       b.e()->assem_size()));
+				b.e()->assem_size()));
 		dst.size_ = 1;
 		EMIT(oper("sete `d0", {dst}, {}, {}));
 		ret_ = dst;
