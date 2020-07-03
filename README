@@ -1,9 +1,5 @@
 This was supposed to be a JIT, but it's just a compiler.
-The only backend is amd64 at the moment, using the System V calling convention.
-
-The language itself is still very limited, but shouldn't be too hard to
-extend. The backend (boring) stuff is implemented (CFG building, liveness
-analysis, interfence graph building, register allocation...)
+It supports SystemV amd64 and aarch64.
 
 ```
 fun printf(string fmt) int variadic;
