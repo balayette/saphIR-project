@@ -1,4 +1,5 @@
 #include "mach/amd64/amd64-codegen.hh"
+#include "mach/amd64/amd64-instr.hh"
 #include "amd64-common.hh"
 #include "utils/assert.hh"
 #include "utils/misc.hh"
@@ -6,6 +7,8 @@
 #include <sstream>
 
 using namespace ir;
+using namespace assem;
+using namespace assem::amd64;
 
 namespace mach::amd64
 {
@@ -57,7 +60,7 @@ std::string label_to_asm(const utils::label &lbl)
 void generator::visit_name(tree::name &n)
 {
 	assem::temp ret;
-	EMIT(assem::lea(ret, std::string(n.label_) + "(%rip)"));
+	EMIT(lea(ret, std::string(n.label_) + "(%rip)"));
 
 	ret_ = ret;
 }
@@ -77,14 +80,14 @@ void generator::visit_call(tree::call &c)
 	size_t total_stack_change = stack_space + alignment_bonus;
 
 	if (alignment_bonus)
-		EMIT(assem::oper("subq $" + std::to_string(alignment_bonus)
+		EMIT(oper("subq $" + std::to_string(alignment_bonus)
 					 + ", %rsp",
 				 {}, {}, {}));
 
 	// Push stack parameters RTL
 	for (size_t i = 0; i < stack_args_count; i++) {
 		args[args.size() - 1 - i]->accept(*this);
-		EMIT(assem::oper("push `s0", {}, {assem::temp(ret_, 8)}, {}));
+		EMIT(oper("push `s0", {}, {assem::temp(ret_, 8)}, {}));
 	}
 
 	// Move registers params to the correct registers.
@@ -99,12 +102,12 @@ void generator::visit_call(tree::call &c)
 
 		// In a variadic function
 		if (i >= c.fun_ty_->arg_tys_.size()) {
-			EMIT(assem::simple_move(
+			EMIT(simple_move(
 				assem::temp(cc[i], std::max(ret_.size_, 4u),
 					    ret_.is_signed_),
 				ret_));
 		} else
-			EMIT(assem::simple_move(
+			EMIT(simple_move(
 				assem::temp(cc[i], std::max(ret_.size_, 4u),
 					    c.fun_ty_->arg_tys_[i]
 						    ->get_signedness()),
@@ -114,7 +117,7 @@ void generator::visit_call(tree::call &c)
 	// XXX: %al holds the number of floating point variadic parameters.
 	// This assumes no floating point parameters
 	if (c.variadic())
-		EMIT(assem::oper("xor `d0, `d0",
+		EMIT(oper("xor `d0, `d0",
 				 {reg_to_assem_temp(regs::RAX, 1)}, {}, {}));
 
 	auto clobbered_regs = caller_saved_regs();
@@ -133,15 +136,15 @@ void generator::visit_call(tree::call &c)
 		src.insert(src.begin(), ret_);
 	}
 
-	EMIT(assem::oper(repr, clobbered, src, {}));
+	EMIT(oper(repr, clobbered, src, {}));
 	if (total_stack_change)
-		EMIT(assem::oper("addq $" + std::to_string(total_stack_change)
+		EMIT(oper("addq $" + std::to_string(total_stack_change)
 					 + ", %rsp",
 				 {}, {}, {}));
 
 	assem::temp ret(c.ty_->assem_size());
 	if (ret.size_ != 0)
-		EMIT(assem::simple_move(ret, reg_to_assem_temp(regs::RAX)));
+		EMIT(simple_move(ret, reg_to_assem_temp(regs::RAX)));
 
 	// XXX: The temp is not initialized if the function doesn't return
 	// a value, but sema makes sure that void function results aren't used
@@ -160,10 +163,10 @@ void generator::visit_cjump(tree::cjump &cj)
 	assem::temp cmpr(cmp_sz, lhs.is_signed_);
 	assem::temp cmpl(cmp_sz, rhs.is_signed_);
 
-	EMIT(assem::simple_move(cmpr, rhs));
-	EMIT(assem::simple_move(cmpl, lhs));
+	EMIT(simple_move(cmpr, rhs));
+	EMIT(simple_move(cmpl, lhs));
 
-	EMIT(assem::sized_oper("cmp", "`s0, `s1", {}, {cmpr, cmpl}, cmp_sz));
+	EMIT(sized_oper("cmp", "`s0, `s1", {}, {cmpr, cmpl}, cmp_sz));
 	std::string repr;
 	if (cj.op_ == ops::cmpop::EQ)
 		repr += "je ";
@@ -181,12 +184,12 @@ void generator::visit_cjump(tree::cjump &cj)
 		UNREACHABLE("Impossible cmpop");
 
 	repr += label_to_asm(cj.ltrue_);
-	EMIT(assem::oper(repr, {}, {}, {cj.ltrue_, cj.lfalse_}));
+	EMIT(oper(repr, {}, {}, {cj.ltrue_, cj.lfalse_}));
 }
 
 void generator::visit_label(tree::label &l)
 {
-	EMIT(assem::label(label_to_asm(l.name_) + std::string(":"), l.name_));
+	EMIT(label(label_to_asm(l.name_) + std::string(":"), l.name_));
 }
 
 void generator::visit_asm_block(ir::tree::asm_block &s)
@@ -198,12 +201,12 @@ void generator::visit_asm_block(ir::tree::asm_block &s)
 		dst.push_back(t);
 	for (const auto &t : s.reg_clob_)
 		clob.push_back(t);
-	EMIT(assem::oper("", dst, src, {}));
+	EMIT(oper("", dst, src, {}));
 
 	for (const auto &l : s.lines_)
-		EMIT(assem::oper(l, {}, {}, {}));
+		EMIT(oper(l, {}, {}, {}));
 
-	EMIT(assem::oper("", clob, {}, {}));
+	EMIT(oper("", clob, {}, {}));
 }
 
 void generator::visit_jump(tree::jump &j)
@@ -212,7 +215,7 @@ void generator::visit_jump(tree::jump &j)
 		std::string repr("jmp ");
 		repr += label_to_asm(dest->label_);
 
-		EMIT(assem::oper(repr, {}, {}, {dest->label_}));
+		EMIT(oper(repr, {}, {}, {dest->label_}));
 	} else
 		UNREACHABLE("Destination of jump must be a name");
 }
@@ -329,7 +332,7 @@ void generator::visit_move(tree::move &mv)
 
 		auto [s, t2] = reg_deref_str(mv.rhs(), "`s0");
 
-		EMIT(assem::lea(t1, {s, t2}));
+		EMIT(lea(t1, {s, t2}));
 		return;
 	}
 	if (is_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
@@ -341,7 +344,7 @@ void generator::visit_move(tree::move &mv)
 		auto mem = mv.rhs().as<tree::mem>();
 		auto [s, t2] = reg_deref_str(mem->e(), "`s0");
 
-		EMIT(assem::complex_move("`d0", s, {t1}, {t2},
+		EMIT(complex_move("`d0", s, {t1}, {t2},
 					 mv.lhs()->assem_size(),
 					 mv.rhs()->assem_size(), signedness));
 		return;
@@ -355,11 +358,11 @@ void generator::visit_move(tree::move &mv)
 			mem->e(), t2 == std::nullopt ? "`s0" : "`s1");
 
 		if (t2 == std::nullopt)
-			EMIT(assem::complex_move(
+			EMIT(complex_move(
 				s2, s1, {}, {t1}, mv.lhs()->assem_size(),
 				mv.rhs()->assem_size(), signedness));
 		else
-			EMIT(assem::complex_move(
+			EMIT(complex_move(
 				s2, s1, {}, {*t2, t1}, mv.lhs()->assem_size(),
 				mv.rhs()->assem_size(), signedness));
 		return;
@@ -373,13 +376,13 @@ void generator::visit_move(tree::move &mv)
 
 		auto mem1 = mv.rhs().as<tree::mem>();
 		auto [s1, t2] = reg_deref_str(mem1->e(), "`s0");
-		EMIT(assem::complex_move("`d0", s1, {t3}, {t2},
+		EMIT(complex_move("`d0", s1, {t3}, {t2},
 					 mv.lhs()->assem_size(),
 					 mv.rhs()->assem_size(), signedness));
 
 		auto mem2 = mv.lhs().as<tree::mem>();
 		auto [s2, t1] = reg_deref_str(mem2->e(), "`s1");
-		EMIT(assem::complex_move(s2, "`s0", {}, {t3, t1},
+		EMIT(complex_move(s2, "`s0", {}, {t3, t1},
 					 mv.lhs()->assem_size(),
 					 mv.rhs()->assem_size(), signedness));
 		return;
@@ -393,7 +396,7 @@ void generator::visit_move(tree::move &mv)
 		mv.rhs()->accept(*this);
 		auto rhs = assem::temp(ret_, mv.lhs()->assem_size());
 
-		EMIT(assem::complex_move("(`s1)", "`s0", {}, {rhs, lhs},
+		EMIT(complex_move("(`s1)", "`s0", {}, {rhs, lhs},
 					 mv.lhs()->assem_size(),
 					 mv.lhs()->assem_size(), signedness));
 		return;
@@ -404,7 +407,7 @@ void generator::visit_move(tree::move &mv)
 	mv.rhs()->accept(*this);
 	auto rhs = assem::temp(ret_, mv.rhs()->assem_size(), signedness);
 
-	EMIT(assem::simple_move(lhs, rhs));
+	EMIT(simple_move(lhs, rhs));
 }
 
 void generator::visit_mem(tree::mem &mm)
@@ -412,7 +415,7 @@ void generator::visit_mem(tree::mem &mm)
 	assem::temp dst(mm.ty_->assem_size());
 
 	mm.e()->accept(*this);
-	EMIT(assem::complex_move("`d0", "(`s0)", {dst}, {ret_},
+	EMIT(complex_move("`d0", "(`s0)", {dst}, {ret_},
 				 mm.ty_->assem_size(), mm.ty_->assem_size(),
 				 types::signedness::INVALID));
 	ret_ = dst;
@@ -422,7 +425,7 @@ void generator::visit_cnst(tree::cnst &c)
 {
 	assem::temp dst;
 
-	EMIT(assem::complex_move("`d0", "$" + std::to_string(c.value_), {dst},
+	EMIT(complex_move("`d0", "$" + std::to_string(c.value_), {dst},
 				 {}, 8, 8, types::signedness::INVALID));
 
 	ret_ = dst;
@@ -449,8 +452,8 @@ bool generator::opt_mul(tree::binop &b)
 
 	assem::temp dst;
 
-	EMIT(assem::simple_move(dst, lhs));
-	EMIT(assem::sized_oper("imul", repr, {dst}, {lhs}, 8));
+	EMIT(simple_move(dst, lhs));
+	EMIT(sized_oper("imul", repr, {dst}, {lhs}, 8));
 
 	ret_ = dst;
 
@@ -472,9 +475,9 @@ bool generator::opt_add(tree::binop &b)
 	repr += ", `d0";
 
 	assem::temp dst;
-	EMIT(assem::simple_move(dst, lhs));
+	EMIT(simple_move(dst, lhs));
 	if (cnst->value_ != 0)
-		EMIT(assem::sized_oper("add", repr, {dst}, {lhs}, 8));
+		EMIT(sized_oper("add", repr, {dst}, {lhs}, 8));
 
 	ret_ = dst;
 
@@ -497,81 +500,81 @@ void generator::visit_binop(tree::binop &b)
 
 	b.lhs()->accept(*this);
 	auto lhs = assem::temp(oper_sz);
-	EMIT(assem::simple_move(lhs, ret_));
+	EMIT(simple_move(lhs, ret_));
 
 	b.rhs()->accept(*this);
 	auto rhs = assem::temp(oper_sz);
-	EMIT(assem::simple_move(rhs, ret_));
+	EMIT(simple_move(rhs, ret_));
 
 	assem::temp dst(oper_sz);
 
 	if (b.op_ != ops::binop::MINUS && b.op_ != ops::binop::BITLSHIFT
 	    && b.op_ != ops::binop::BITRSHIFT
 	    && b.op_ != ops::binop::ARITHBITRSHIFT)
-		EMIT(assem::simple_move(dst, rhs));
+		EMIT(simple_move(dst, rhs));
 	else
-		EMIT(assem::simple_move(dst, lhs));
+		EMIT(simple_move(dst, lhs));
 
 	if (b.op_ == ops::binop::PLUS)
-		EMIT(assem::sized_oper("add", "`s0, `d0", {dst}, {lhs, dst},
+		EMIT(sized_oper("add", "`s0, `d0", {dst}, {lhs, dst},
 				       oper_sz));
 	else if (b.op_ == ops::binop::MINUS)
-		EMIT(assem::sized_oper("sub", "`s0, `d0", {dst}, {rhs, dst},
+		EMIT(sized_oper("sub", "`s0, `d0", {dst}, {rhs, dst},
 				       oper_sz));
 	else if (b.op_ == ops::binop::MULT)
-		EMIT(assem::sized_oper("imul", "`s0, `d0", {dst}, {lhs},
+		EMIT(sized_oper("imul", "`s0, `d0", {dst}, {lhs},
 				       oper_sz));
 	else if (b.op_ == ops::binop::BITXOR)
-		EMIT(assem::sized_oper("xor", "`s0, `d0", {dst}, {lhs, dst},
+		EMIT(sized_oper("xor", "`s0, `d0", {dst}, {lhs, dst},
 				       oper_sz));
 	else if (b.op_ == ops::binop::BITAND)
-		EMIT(assem::sized_oper("and", "`s0, `d0", {dst}, {lhs, dst},
+		EMIT(sized_oper("and", "`s0, `d0", {dst}, {lhs, dst},
 				       oper_sz));
 	else if (b.op_ == ops::binop::BITOR)
-		EMIT(assem::sized_oper("or", "`s0, `d0", {dst}, {lhs, dst},
+		EMIT(sized_oper("or", "`s0, `d0", {dst}, {lhs, dst},
 				       oper_sz));
 	else if (b.op_ == ops::binop::BITLSHIFT) {
 		/*
 		 * shlX %cl, %reg is the only encoding for all sizes of reg
 		 */
 		auto cl = reg_to_assem_temp(regs::RCX, 1);
-		EMIT(assem::simple_move(cl, rhs));
-		EMIT(assem::sized_oper("shl", "`s0, `d0", {dst}, {cl, dst},
+		EMIT(simple_move(cl, rhs));
+		EMIT(sized_oper("shl", "`s0, `d0", {dst}, {cl, dst},
 				       oper_sz));
 	} else if (b.op_ == ops::binop::BITRSHIFT) {
 		/*
 		 * shrX %cl, %reg is the only encoding for all sizes of reg
 		 */
 		auto cl = reg_to_assem_temp(regs::RCX, 1);
-		EMIT(assem::simple_move(cl, rhs));
-		EMIT(assem::sized_oper("shr", "`s0, `d0", {dst}, {cl, dst},
+		EMIT(simple_move(cl, rhs));
+		EMIT(sized_oper("shr", "`s0, `d0", {dst}, {cl, dst},
 				       oper_sz));
 	} else if (b.op_ == ops::binop::ARITHBITRSHIFT) {
 		/*
 		 * sarX %cl, %reg is the only encoding for all sizes of reg
 		 */
 		auto cl = reg_to_assem_temp(regs::RCX, 1);
-		EMIT(assem::simple_move(cl, rhs));
-		EMIT(assem::sized_oper("sar", "`s0, `d0", {dst}, {cl, dst},
+		EMIT(simple_move(cl, rhs));
+		EMIT(sized_oper("sar", "`s0, `d0", {dst}, {cl, dst},
 				       oper_sz));
 	} else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
-		EMIT(assem::simple_move(reg_to_assem_temp(regs::RAX), lhs));
-		EMIT(assem::oper("cqto",
+		EMIT(simple_move(reg_to_assem_temp(regs::RAX), lhs));
+		EMIT(oper("cqto",
 				 {reg_to_assem_temp(regs::RAX),
 				  reg_to_assem_temp(regs::RDX)},
 				 {reg_to_assem_temp(regs::RAX)}, {}));
 		// quotient in %rax, remainder in %rdx
-		EMIT(assem::oper("idivq `s0",
+		EMIT(oper("idivq `s0",
 				 {reg_to_assem_temp(regs::RAX),
 				  reg_to_assem_temp(regs::RDX)},
 				 {dst, reg_to_assem_temp(regs::RAX),
 				  reg_to_assem_temp(regs::RAX)},
 				 {}));
 		if (b.op_ == ops::binop::DIV)
-			EMIT(assem::simple_move(
+			EMIT(simple_move(
 				dst, reg_to_assem_temp(regs::RAX, oper_sz)));
 		else
-			EMIT(assem::simple_move(
+			EMIT(simple_move(
 				dst, reg_to_assem_temp(regs::RDX, oper_sz)));
 	} else
 		UNREACHABLE("Unimplemented binop");
@@ -595,21 +598,21 @@ void generator::visit_unaryop(tree::unaryop &b)
 		 * register.
 		 */
 		assem::temp dst(4, types::signedness::UNSIGNED);
-		EMIT(assem::sized_oper("xor", "`d0, `d0", {dst}, {}, 4));
-		EMIT(assem::sized_oper("cmp", "$0x0, `s0", {}, {val},
+		EMIT(sized_oper("xor", "`d0, `d0", {dst}, {}, 4));
+		EMIT(sized_oper("cmp", "$0x0, `s0", {}, {val},
 				       b.e()->assem_size()));
 		dst.size_ = 1;
-		EMIT(assem::oper("sete `d0", {dst}, {}, {}));
+		EMIT(oper("sete `d0", {dst}, {}, {}));
 		ret_ = dst;
 	} else if (b.op_ == ops::unaryop::NEG) {
 		assem::temp dst(b.ty_->size(), val.is_signed_);
-		EMIT(assem::simple_move(dst, val));
-		EMIT(assem::oper("neg `s0", {dst}, {dst}, {}));
+		EMIT(simple_move(dst, val));
+		EMIT(oper("neg `s0", {dst}, {dst}, {}));
 		ret_ = dst;
 	} else if (b.op_ == ops::unaryop::BITNOT) {
 		assem::temp dst(b.ty_->size(), val.is_signed_);
-		EMIT(assem::simple_move(dst, val));
-		EMIT(assem::oper("not `s0", {dst}, {dst}, {}));
+		EMIT(simple_move(dst, val));
+		EMIT(oper("not `s0", {dst}, {dst}, {}));
 		ret_ = dst;
 	} else
 		UNREACHABLE("Unimplemented unaryop\n");

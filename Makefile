@@ -37,6 +37,7 @@ OBJ = \
       src/mach/amd64/amd64-target.o \
       src/mach/amd64/amd64-common.o \
       src/mach/amd64/amd64-codegen.o \
+      src/mach/amd64/amd64-instr.o \
       src/mach/access.o \
       src/mach/target.o \
       src/ir/ir.o \
@@ -54,7 +55,6 @@ OBJ = \
       src/backend/liveness.o \
       src/backend/regalloc.o \
       src/backend/color.o \
-      src/backend/opt/peephole.o \
       src/frontend/ops.o \
 
 DEP = $(OBJ:.o=.d)

@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 		std::cout << "######################\n";
 
 		backend::regalloc::alloc(instrs, frag);
-		backend::opt::peephole(instrs);
+		// backend::opt::peephole(instrs);
 		auto f = frag.frame_->proc_entry_exit_3(instrs, frag.body_lbl_,
 							frag.epi_lbl_);
 

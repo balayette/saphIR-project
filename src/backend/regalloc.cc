@@ -88,7 +88,7 @@ void replace_allocation(std::vector<assem::rinstr> &instrs,
 	std::vector<assem::rinstr> filterd;
 	for (auto &inst : instrs) {
 		// Remove redundant moves
-		auto move = inst.as<assem::simple_move>();
+		auto move = inst.as<assem::move>();
 		if (move && move->removable())
 			continue;
 
