@@ -134,8 +134,22 @@ void generator::visit_call(tree::call &c)
 	auto cc = args_regs();
 	auto args = c.args();
 	size_t reg_args_count = std::min(args.size(), cc.size());
+	size_t stack_args_count =
+		args.size() > cc.size() ? args.size() - cc.size() : 0;
+	size_t stack_space = ROUND_UP(stack_args_count * 8, 16);
 
-	ASSERT(args.size() < 8, "Too many params");
+	if (stack_space)
+		EMIT(oper("sub sp, sp, #" + std::to_string(stack_space), {}, {},
+			  {}));
+
+	for (size_t i = 0; i < stack_args_count; i++) {
+		args[args.size() - 1 - i]->accept(*this);
+		EMIT(oper(
+			"str `s0, [sp, #"
+				+ std::to_string((stack_args_count - i - 1) * 8)
+				+ "]",
+			{}, {assem::temp(ret_, 8)}, {}));
+	}
 
 	for (size_t i = 0; i < reg_args_count; i++) {
 		args[i]->accept(*this);
@@ -162,6 +176,10 @@ void generator::visit_call(tree::call &c)
 	}
 
 	EMIT(oper(repr, clobbered, src, {}));
+
+	if (stack_space)
+		EMIT(oper("add sp, sp, #" + std::to_string(stack_space), {}, {},
+			  {}));
 
 	assem::temp ret(c.ty_->assem_size());
 	if (ret.size_ != 0)

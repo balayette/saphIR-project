@@ -94,9 +94,11 @@ aarch64_frame::aarch64_frame(target &target, const symbol &s,
 			     bool has_return)
     : mach::frame(target, s, has_return), locals_size_(0), reg_count_(0)
 {
-	ASSERT(args.size() <= 8, "Can't pass more than 8 params.");
-	for (size_t i = 0; i < args.size(); i++)
+	for (size_t i = 0; i < args.size() && i < 8; i++)
 		formals_.push_back(alloc_local(args[i], types[i]));
+	for (size_t i = 8; i < args.size(); i++)
+		formals_.push_back(new frame_acc(reg_to_temp(regs::FP),
+						 (i - 8) * 8 + 16, types[i]));
 }
 
 utils::ref<access> aarch64_frame::alloc_local(bool escapes,
