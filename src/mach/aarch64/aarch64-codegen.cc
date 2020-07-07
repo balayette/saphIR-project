@@ -174,8 +174,13 @@ void generator::visit_call(tree::call &c)
 		args[i]->accept(*this);
 		src.push_back(cc[i]);
 
+		auto signedness =
+			i >= c.fun_ty_->arg_tys_.size()
+				? ret_.is_signed_
+				: c.fun_ty_->arg_tys_[i]->get_signedness();
+
 		EMIT(simple_move(assem::temp(cc[i], std::max(ret_.size_, 4u),
-					     ret_.is_signed_),
+					     signedness),
 				 ret_));
 	}
 
