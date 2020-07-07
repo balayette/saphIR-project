@@ -19,7 +19,7 @@ struct generator : public ir::default_ir_visitor {
 	void visit_name(ir::tree::name &n) override;
 	void visit_jump(ir::tree::jump &) override;
 	void visit_label(ir::tree::label &) override;
-	// void visit_asm_block(ir::tree::asm_block &) override;
+	void visit_asm_block(ir::tree::asm_block &) override;
 
 	std::vector<assem::rinstr> instrs_;
 	assem::temp ret_;

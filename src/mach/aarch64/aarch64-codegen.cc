@@ -312,6 +312,23 @@ void generator::visit_unaryop(tree::unaryop &b)
 		UNREACHABLE("Unimplemented binary op\n");
 }
 
+void generator::visit_asm_block(ir::tree::asm_block &s)
+{
+	std::vector<assem::temp> src, dst, clob;
+	for (const auto &t : s.reg_in_)
+		src.push_back(t);
+	for (const auto &t : s.reg_out_)
+		dst.push_back(t);
+	for (const auto &t : s.reg_clob_)
+		clob.push_back(t);
+	EMIT(oper("", dst, src, {}));
+
+	for (const auto &l : s.lines_)
+		EMIT(oper(l, {}, {}, {}));
+
+	EMIT(oper("", clob, {}, {}));
+}
+
 void generator::emit(assem::rinstr ins)
 {
 	unsigned width = 80;
