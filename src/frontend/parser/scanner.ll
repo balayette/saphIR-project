@@ -82,7 +82,7 @@ strlit \"[^"]*\"
 
 ":"             return TOKEN(COLON);
 
-{int} 		return TOKEN_VAL(INT_LIT, std::atoi(yytext));
+{int} 		return TOKEN_VAL(INT_LIT, std::atoll(yytext));
 {hexint} 	return TOKEN_VAL(INT_LIT, std::strtol(yytext, NULL, 16));
 {id} 		return TOKEN_VAL(ID, symbol(yytext));
 {strlit} 	{return TOKEN_VAL(STR_LIT, /* Remove quotes */

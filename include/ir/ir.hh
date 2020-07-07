@@ -75,7 +75,7 @@ using rexp = utils::ref<exp>;
 using rstm = utils::ref<stm>;
 
 struct cnst : public exp {
-	cnst(int value);
+	cnst(int64_t value);
 
 	TREE_KIND(cnst)
 

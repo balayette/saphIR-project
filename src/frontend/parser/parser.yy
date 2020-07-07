@@ -83,7 +83,7 @@
 	EOF 0 "eof"
 
 %token <symbol> ID "id"
-%token <int> INT_LIT "int_lit"
+%token <int64_t> INT_LIT "int_lit"
 %token <std::string> STR_LIT "str_lit"
 
 %type <utils::ref<decs>> decs

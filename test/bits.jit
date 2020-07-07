@@ -2,17 +2,17 @@
 
 fun main() void
 {
-	let int deadbeef = 3735928559;
-	let int badcoffee = 50159747054;
+	let int deadbeef = 0xdeadbeef;
+	let int badcoffee = 0xbadc0ffee;
 
 	let int x1 = 49181180161;
 	let int x2 = 51538427887;
 	let int x3 = 2357247726;
-	printf("0x%x ^ 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee,
+	printf("0x%lx ^ 0x%lx = 0x%lx (should be 0x%lx)\n", deadbeef, badcoffee,
 	       deadbeef ^ badcoffee, x1);
-	printf("0x%x | 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee,
+	printf("0x%lx | 0x%lx = 0x%lx (should be 0x%lx)\n", deadbeef, badcoffee,
 	       deadbeef | badcoffee, x2);
-	printf("0x%x & 0x%x = 0x%x (should be 0x%x)\n", deadbeef, badcoffee,
+	printf("0x%lx & 0x%lx = 0x%lx (should be 0x%lx)\n", deadbeef, badcoffee,
 	       deadbeef & badcoffee, x3);
 
 	let int<4> a1 = -2048;

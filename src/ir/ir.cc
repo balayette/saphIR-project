@@ -3,5 +3,5 @@
 
 namespace ir::tree
 {
-cnst::cnst(int value) : exp(mach::TARGET().integer_type()), value_(value) {}
+cnst::cnst(int64_t value) : exp(mach::TARGET().integer_type()), value_(value) {}
 } // namespace ir::tree
