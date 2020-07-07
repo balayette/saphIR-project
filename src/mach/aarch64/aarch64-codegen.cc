@@ -66,8 +66,27 @@ void generator::visit_cnst(tree::cnst &c)
 {
 	assem::temp dst;
 
-	std::string repr("mov `d0, #" + std::to_string(c.value_));
-	EMIT(oper(repr, {dst}, {}, {}));
+	uint64_t val = c.value_;
+
+	EMIT(oper("mov `d0, #" + std::to_string(val & 0xffff), {dst}, {}, {}));
+	if (val > 0xffff) {
+		std::string repr("movk `d0, #"
+				 + std::to_string((val >> 16) & 0xffff)
+				 + ", lsl 16");
+		EMIT(oper(repr, {dst}, {dst}, {}));
+	}
+	if (val > 0xffffffff) {
+		std::string repr("movk `d0, #"
+				 + std::to_string((val >> 32) & 0xffff)
+				 + ", lsl 32");
+		EMIT(oper(repr, {dst}, {dst}, {}));
+	}
+	if (val > 0xffffffffffff) {
+		std::string repr("movk `d0, #"
+				 + std::to_string((val >> 48) & 0xffff)
+				 + ", lsl 48");
+		EMIT(oper(repr, {dst}, {dst}, {}));
+	}
 
 	ret_ = dst;
 }
@@ -226,6 +245,9 @@ void generator::visit_binop(tree::binop &b)
 {
 	auto oper_sz = std::max(b.lhs()->assem_size(), b.rhs()->assem_size());
 	oper_sz = std::max(oper_sz, 4ul);
+	if (b.op_ == ops::binop::BITLSHIFT || b.op_ == ops::binop::BITRSHIFT
+	    || b.op_ == ops::binop::ARITHBITRSHIFT)
+		oper_sz = b.lhs()->assem_size();
 
 	b.lhs()->accept(*this);
 	auto lhs = assem::temp(oper_sz);
