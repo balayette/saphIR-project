@@ -16,7 +16,8 @@ struct allocator {
 		std::unordered_map<assem::temp, assem::temp_pair_set> move_list,
 		assem::temp_pair_set worklist_moves)
 	    : target_(target), move_list_(move_list),
-	      moves_wkl_(worklist_moves), precolored_(target.temp_map())
+	      moves_wkl_(worklist_moves), precolored_(target.temp_map()),
+	      k_(precolored_.size())
 	{
 	}
 
@@ -51,7 +52,7 @@ struct allocator {
 		for (auto n : initial) {
 			unsigned degree = degree_[n];
 
-			if (degree >= target_.reg_count())
+			if (degree >= k_)
 				spill_wkl_ += n;
 			else if (move_related(n))
 				freeze_wkl_ += n;
@@ -99,7 +100,7 @@ struct allocator {
 	{
 		ASSERT(degree_[m] > 0, "Can't decrement 0");
 		auto d = degree_[m]--;
-		if (d == target_.reg_count()) {
+		if (d == k_) {
 			enable_moves(adjacent(m) + m);
 			spill_wkl_ -= m;
 			if (move_related(m))
@@ -139,8 +140,7 @@ struct allocator {
 			active_moves_ -= m;
 			frozen_moves_ += m;
 
-			if (node_moves(v).size() == 0
-			    && degree_[v] < target_.reg_count()) {
+			if (node_moves(v).size() == 0 && degree_[v] < k_) {
 				freeze_wkl_ -= v;
 				simplify_wkl_ += v;
 			}
@@ -171,8 +171,8 @@ struct allocator {
 
 	void add_work_list(assem::temp u)
 	{
-		if (target_.temp_map().count(u) == 0 && !move_related(u)
-		    && degree_[u] < target_.reg_count()) {
+		if (precolored_.count(u) == 0 && !move_related(u)
+		    && degree_[u] < k_) {
 			freeze_wkl_ -= u;
 			simplify_wkl_ += u;
 		}
@@ -180,8 +180,7 @@ struct allocator {
 
 	bool ok(assem::temp t, assem::temp r)
 	{
-		return degree_[t] < target_.reg_count()
-		       || target_.temp_map().count(t)
+		return degree_[t] < k_ || precolored_.count(t)
 		       || adjacency_set_.count(std::pair(t, r));
 	}
 
@@ -189,23 +188,19 @@ struct allocator {
 	{
 		unsigned k = 0;
 		for (auto &n : nodes) {
-			if (degree_[n] >= target_.reg_count())
+			if (degree_[n] >= k_)
 				k++;
 		}
-		return k < target_.reg_count();
+		return k < k_;
 	}
 
 	void combine(assem::temp u, assem::temp v)
 	{
-		if (freeze_wkl_.count(v))
+		if (freeze_wkl_.count(v)) {
 			freeze_wkl_ -= v;
-		else {
-			/*
-			FIXME: This assertion sometimes fails, but the program
-			seems to behaves correctly.
+		} else {
 			ASSERT(spill_wkl_.count(v),
-					"Removing but it isn't here");
-			*/
+			       "Removing from spills but it isn't there");
 			spill_wkl_ -= v;
 		}
 		coalesced_nodes_ += v;
@@ -218,49 +213,47 @@ struct allocator {
 			decrement_degree(t);
 		}
 
-		if (degree_[u] >= target_.reg_count() && freeze_wkl_.count(u)) {
+		if (degree_[u] >= k_ && freeze_wkl_.count(u)) {
 			freeze_wkl_ -= u;
 			simplify_wkl_ += u;
-			freeze_moves(u);
 		}
 	}
 
 	void coalesce()
 	{
-		auto tmp_moves_wkl_ = moves_wkl_;
-		for (auto m : tmp_moves_wkl_) {
-			auto [x, y] = m;
-			x = get_alias(x);
-			y = get_alias(y);
+		auto m = *moves_wkl_.begin();
+		auto [x, y] = m;
+		x = get_alias(x);
+		y = get_alias(y);
 
-			auto [u, v] = precolored_.count(y) ? std::pair(y, x)
-							   : std::pair(x, y);
+		auto [u, v] = precolored_.count(y) ? std::pair(y, x)
+						   : std::pair(x, y);
 
-			moves_wkl_ -= m;
-			if (u == v) {
-				coalesced_moves_ += m;
-				add_work_list(u);
-			} else if (precolored_.count(v)
-				   || adjacency_set_.count(std::pair(u, v))) {
-				constrained_moves_ += m;
-				add_work_list(u);
-				add_work_list(v);
-			} else if ((precolored_.count(u)
-				    // u is a reference name, and can't be
-				    // captured by a lambda.
-				    && utils::all_of(adjacent(v),
-						     [this, u = u](auto t) {
-							     return ok(t, u);
-						     }))
-				   || (!precolored_.count(u)
-				       && conservative(adjacent(u)
-						       + adjacent(v)))) {
-				coalesced_moves_ += m;
-				combine(u, v);
-				add_work_list(u);
-			} else
-				active_moves_ += m;
-		}
+		moves_wkl_ -= m;
+		if (u == v) {
+			coalesced_moves_ += m;
+			add_work_list(u);
+		} else if (precolored_.count(v)
+			   || adjacency_set_.count(std::pair(u, v))) {
+			constrained_moves_ += m;
+			add_work_list(u);
+			add_work_list(v);
+#if 0
+                // XXX: This somehow breaks register allocation
+		} else if ((precolored_.count(u)
+			    // u is a reference name, and can't be
+			    // captured by a lambda.
+			    && utils::all_of(
+				    adjacent(v),
+				    [this, u = u](auto t) { return ok(t, u); }))
+			   || (!precolored_.count(u)
+			       && conservative(adjacent(u) + adjacent(v)))) {
+			coalesced_moves_ += m;
+			combine(u, v);
+			add_work_list(u);
+#endif
+		} else
+			active_moves_ += m;
 	}
 
 	assem::temp_endomap assign_colors()
@@ -347,6 +340,7 @@ struct allocator {
 	assem::temp_set simplify_wkl_;
 
 	std::unordered_map<utils::temp, std::string> precolored_;
+	unsigned k_;
 
 	std::unordered_map<assem::temp, unsigned> degree_;
 	assem::temp_pair_set adjacency_set_;
