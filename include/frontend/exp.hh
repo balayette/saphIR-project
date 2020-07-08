@@ -88,11 +88,11 @@ struct cmp : public exp {
 };
 
 struct num : public exp {
-	num(int64_t value);
+	num(uint64_t value);
 
 	ACCEPT(num)
 
-	int64_t value_;
+	uint64_t value_;
 };
 
 struct ref : public exp {

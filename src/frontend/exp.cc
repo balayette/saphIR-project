@@ -4,7 +4,7 @@
 namespace frontend
 {
 exp::exp() : ty_(mach::TARGET().invalid_type()) {}
-num::num(int64_t value) : exp(mach::TARGET().integer_type()), value_(value) {}
+num::num(uint64_t value) : exp(mach::TARGET().integer_type()), value_(value) {}
 str_lit::str_lit(const std::string &str)
     : exp(mach::TARGET().string_type()), str_(str)
 {

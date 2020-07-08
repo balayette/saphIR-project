@@ -75,11 +75,11 @@ using rexp = utils::ref<exp>;
 using rstm = utils::ref<stm>;
 
 struct cnst : public exp {
-	cnst(int64_t value);
+	cnst(uint64_t value);
 
 	TREE_KIND(cnst)
 
-	int64_t value_;
+	uint64_t value_;
 };
 
 struct braceinit : public exp {

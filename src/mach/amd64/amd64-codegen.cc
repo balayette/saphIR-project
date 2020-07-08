@@ -419,10 +419,10 @@ void generator::visit_mem(tree::mem &mm)
 
 void generator::visit_cnst(tree::cnst &c)
 {
-	assem::temp dst;
+	assem::temp dst(4, types::signedness::SIGNED);
 
-	EMIT(complex_move("`d0", "$" + std::to_string(c.value_), {dst}, {}, 8,
-			  8, types::signedness::INVALID));
+	EMIT(complex_move("`d0", "$" + std::to_string((int32_t)c.value_), {dst},
+			  {}, 4, 4, types::signedness::SIGNED));
 
 	ret_ = dst;
 }
