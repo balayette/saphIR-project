@@ -65,7 +65,8 @@ load::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 	assem::temp dst = dst_[0];
 
 	std::string repr("ldr");
-	repr += size_str(dst.size_);
+	if (sz_ < 4)
+		repr += size_str(dst.size_);
 	repr += " `d0, [`s0]";
 
 	return assem::format_repr(repr, {f(src.temp_, 8)},
@@ -84,7 +85,9 @@ store::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 	assem::temp value = src_[1];
 
 	std::string repr("str");
-	repr += size_str(sz_);
+	if (sz_ < 4)
+		repr += size_str(sz_);
+
 	repr += " `s1, [`s0]";
 
 	return assem::format_repr(
