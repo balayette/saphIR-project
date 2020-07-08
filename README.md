@@ -1,8 +1,31 @@
-This was supposed to be a JIT, but it's just a compiler.
-It supports SystemV amd64 and aarch64.
+# Compiler
+
+A frontend for a simple language, and an IR with amd64 and aarch64 backends.
+
+## amd64 backend
+
+* SystemV ABI
+* Supports stack protectors
+* Position independant code
+
+## aarch64 backend
+
+* ARM64 ABI
+* Position independant code
+
+## IR features
+
+* Typed IR
+* Liveness analysis
+* Graph coloring register allocation
+* Machine independant optimization passes
+* Machine independant obfuscation passes
+
+## Example
 
 ```
 fun printf(string fmt) int variadic;
+
 struct pair { int a, int b };
 
 fun mult(pair* p) int {
@@ -30,3 +53,10 @@ fun main(int a) int {
         return a;
 }
 ```
+
+## Notable language features
+
+* Structures, arrays, pointers
+* Variable size integers
+* Inline assembly
+* Brace initialization of structures and arrays
