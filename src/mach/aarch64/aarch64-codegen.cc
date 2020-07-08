@@ -5,6 +5,7 @@
 #include "utils/misc.hh"
 
 #include <sstream>
+#include <climits>
 
 using namespace ir;
 using namespace assem;
@@ -66,6 +67,15 @@ void generator::visit_cnst(tree::cnst &c)
 {
 	assem::temp dst(4);
 	ret_ = dst;
+
+	int64_t imm = c.value_;
+	if (imm >= SHRT_MIN && imm <= SHRT_MAX) {
+		/*
+		 * Emit a more simple single move for values in the range
+		 */
+		EMIT(oper("mov `d0, #" + std::to_string(imm), {dst}, {}, {}));
+		return;
+	}
 
 	uint32_t val = c.value_;
 	EMIT(oper("mov `d0, #" + std::to_string(val & 0xffff), {dst}, {}, {}));
