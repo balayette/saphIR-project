@@ -30,7 +30,7 @@ utils::temp_set registers()
 {
 	return utils::temp_set(caller_saved_regs())
 	       + utils::temp_set(callee_saved_regs())
-	       + utils::temp_set(args_regs());
+	       + utils::temp_set(args_regs()) + utils::temp_set(special_regs());
 }
 
 std::vector<utils::temp> caller_saved_regs()
