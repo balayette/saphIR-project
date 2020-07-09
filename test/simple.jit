@@ -1,6 +1,6 @@
 #include "libc.jit"
 
-struct pair { int a, int b };
+struct pair { int<8> a, int<8> b };
 
 fun mult(pair* p) int {
         let int ret = 0;

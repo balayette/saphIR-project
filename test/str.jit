@@ -1,7 +1,8 @@
-fun print_str(string s) void {}
+#include "libc.jit"
 
 fun main() void {
-        print_str("LOL");
-        string l = "LOL2";
-        print_str(l);
+        printf("%s\n", "LOL");
+        let string l = "LOL2";
+        l = "XD";
+        printf("%s\n", l);
 }

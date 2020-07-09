@@ -5,8 +5,8 @@ fun main(int a) int {
 		return 3;
 	fi
 
-	for (int a = 0; a != 10; a = a + 1)
-		return call(lol);
+	for (let int lol = 0; lol != 10; lol = a + 1)
+		return lol;
 	rof
 
 	return a;

@@ -2,9 +2,12 @@ fun fact(int n) int {
         if (n == 0)
                 return 0;
         fi
-        int ret = 1;
-        for (int i = 1; i != n; i = i + 1)
+        let int ret = 1;
+        for (let int i = 1; i != n; i = i + 1)
                 ret = ret + i;
         rof
         return ret;
+}
+
+fun main() void {
 }

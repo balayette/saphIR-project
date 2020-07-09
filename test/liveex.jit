@@ -1,9 +1,9 @@
 fun main() int {
-        int a = 0;
-        int b = 0;
-        int c = 0;
+        let int a = 0;
+        let int b = 0;
+        let int c = 0;
 
-        for (int z = 0; a != 10; a = a + 1)
+        for (let int z = 0; a != 10; a = a + 1)
                 c = c + b;
                 a = b * 2;
         rof
