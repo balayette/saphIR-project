@@ -724,7 +724,7 @@ void translate_visitor::visit_str_lit(str_lit &e)
 {
 	utils::label lab = unique_label("str_lit");
 
-	ret_ = new ex(new ir::tree::name(lab));
+	ret_ = new ex(new ir::tree::name(lab, mach::TARGET().string_type()));
 
 	str_lits_.emplace(lab, e);
 }
