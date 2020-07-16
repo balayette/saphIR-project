@@ -13,6 +13,6 @@ See the subdirectories for more detailed descriptions.
 ## Building
 ```
 mkdir build && cd build
-cmake ..
+cmake .. # -D CMAKE_BUILD_TYPE=Debug or -D CMAKE_BUILD_TYPE=Release
 make
 ```
