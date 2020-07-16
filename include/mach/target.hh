@@ -2,7 +2,7 @@
 
 #include "utils/symbol.hh"
 #include "utils/temp.hh"
-#include "frontend/types.hh"
+#include "ir/types.hh"
 #include "mach/access.hh"
 #include "mach/codegen.hh"
 

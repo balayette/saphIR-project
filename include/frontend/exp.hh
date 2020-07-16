@@ -2,7 +2,7 @@
 
 #include "frontend/visitors/visitor.hh"
 #include "utils/symbol.hh"
-#include "types.hh"
+#include "ir/types.hh"
 #include "frontend/ops.hh"
 #include "utils/ref.hh"
 #include <vector>

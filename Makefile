@@ -24,7 +24,6 @@ OBJ = \
       src/utils/symbol.o \
       src/utils/assert.o \
       src/driver/driver.o \
-      src/frontend/types.o \
       src/frontend/stmt.o \
       src/frontend/exp.o \
       src/frontend/sema/sema.o \
@@ -46,6 +45,7 @@ OBJ = \
       src/mach/access.o \
       src/mach/target.o \
       src/ir/ir.o \
+      src/ir/types.o \
       src/ir/canon/linearize.o \
       src/ir/canon/bb.o \
       src/ir/canon/trace.o \

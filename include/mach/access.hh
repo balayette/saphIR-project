@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ir/ir.hh"
-#include "frontend/types.hh"
+#include "ir/types.hh"
 #include <iostream>
 
 namespace mach

@@ -4,7 +4,7 @@
 #include "utils/temp.hh"
 #include "frontend/ops.hh"
 #include "frontend/exp.hh"
-#include "frontend/types.hh"
+#include "ir/types.hh"
 #include "visitors/ir-visitor.hh"
 #include "utils/ref.hh"
 #include "utils/assert.hh"

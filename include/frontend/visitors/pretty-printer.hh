@@ -1,6 +1,6 @@
 #pragma once
 #include "default-visitor.hh"
-#include "frontend/types.hh"
+#include "ir/types.hh"
 #include <iostream>
 #include <string>
 

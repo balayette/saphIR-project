@@ -1,4 +1,4 @@
-#include "frontend/types.hh"
+#include "ir/types.hh"
 #include "utils/assert.hh"
 #include "utils/misc.hh"
 #include "mach/target.hh"

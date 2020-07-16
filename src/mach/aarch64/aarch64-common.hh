@@ -2,7 +2,7 @@
 
 #include <vector>
 #include "utils/temp.hh"
-#include "frontend/types.hh"
+#include "ir/types.hh"
 
 namespace mach::aarch64
 {

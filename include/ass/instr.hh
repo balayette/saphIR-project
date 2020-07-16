@@ -6,7 +6,7 @@
 #include <utility>
 #include "utils/ref.hh"
 #include "utils/temp.hh"
-#include "frontend/types.hh"
+#include "ir/types.hh"
 
 namespace assem
 {

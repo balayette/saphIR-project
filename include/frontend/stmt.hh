@@ -3,7 +3,7 @@
 #include <vector>
 #include "utils/symbol.hh"
 #include "frontend/visitors/visitor.hh"
-#include "types.hh"
+#include "ir/types.hh"
 #include "exp.hh"
 #include "mach/target.hh"
 #include "utils/ref.hh"

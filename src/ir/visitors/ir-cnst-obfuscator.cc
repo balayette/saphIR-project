@@ -1,6 +1,6 @@
 #include "ir/visitors/ir-cnst-obfuscator.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
-#include "frontend/types.hh"
+#include "ir/types.hh"
 #include "mach/target.hh"
 #include <cstdlib>
 
