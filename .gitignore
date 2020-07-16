@@ -13,3 +13,4 @@ parser.output
 vgcore*
 *.dot
 *.S
+build
