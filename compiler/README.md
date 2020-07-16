@@ -1,25 +1,6 @@
 # Compiler
 
-A frontend for a simple language, and an IR with amd64 and aarch64 backends.
-
-## amd64 backend
-
-* SystemV ABI
-* Supports stack protectors
-* Position independant code
-
-## aarch64 backend
-
-* ARM64 ABI
-* Position independant code
-
-## IR features
-
-* Typed IR
-* Liveness analysis
-* Graph coloring register allocation
-* Machine independant optimization passes
-* Machine independant obfuscation passes
+A frontend for a simple language, which targets saphIR
 
 ## Example
 
