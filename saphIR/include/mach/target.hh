@@ -116,8 +116,43 @@ struct target {
 
 	virtual std::string asm_string(utils::label lab,
 				       const std::string &str);
-};
 
-mach::target &TARGET();
-void SET_TARGET(utils::ref<mach::target> target);
+	/*
+	 * IR nodes builders
+	 */
+	ir::tree::cnst *make_cnst(uint64_t value);
+	ir::tree::braceinit *
+	make_braceinit(utils::ref<types::ty> &ty,
+		       const std::vector<ir::tree::rexp> &exps);
+	ir::tree::name *make_name(const utils::label &label);
+	ir::tree::name *make_name(const utils::label &label,
+				  utils::ref<types::ty> ty);
+	ir::tree::temp *make_temp(const utils::temp &temp,
+				  utils::ref<types::ty> ty);
+	ir::tree::binop *make_binop(ops::binop op, ir::tree::rexp lhs,
+				    ir::tree::rexp rhs,
+				    utils::ref<types::ty> ty);
+	ir::tree::unaryop *make_unaryop(ops::unaryop op, ir::tree::rexp e,
+					utils::ref<types::ty> type);
+	ir::tree::mem *make_mem(ir::tree::rexp e);
+	ir::tree::call *make_call(const ir::tree::rexp &f,
+				  const std::vector<ir::tree::rexp> &args,
+				  utils::ref<types::ty> type);
+	ir::tree::eseq *make_eseq(ir::tree::rstm lhs, ir::tree::rexp rhs);
+	ir::tree::move *make_move(ir::tree::rexp lhs, ir::tree::rexp rhs);
+	ir::tree::sexp *make_sexp(ir::tree::rexp e);
+	ir::tree::jump *make_jump(ir::tree::rexp dest,
+				  const std::vector<utils::label> &avlbl_dests);
+	ir::tree::cjump *make_cjump(ops::cmpop op, ir::tree::rexp lhs,
+				    ir::tree::rexp rhs,
+				    const utils::label &ltrue,
+				    const utils::label &lfalse);
+	ir::tree::seq *make_seq(const std::vector<ir::tree::rstm> &body);
+	ir::tree::label *make_label(const utils::label &name);
+	ir::tree::asm_block *
+	make_asm_block(const std::vector<std::string> &lines,
+		       const std::vector<utils::temp> &reg_in,
+		       const std::vector<utils::temp> &reg_out,
+		       const std::vector<utils::temp> &reg_clob);
+};
 } // namespace mach

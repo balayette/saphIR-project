@@ -30,7 +30,7 @@ void ir_binop_optimizer::visit_binop(tree::binop &n)
 
 		if (n.op_ == ops::binop::MULT) {
 			if (value == 0) {
-				auto zero = new tree::cnst(0);
+				auto zero = target_.make_cnst(0);
 				zero->ty_ = bin->ty_->clone();
 				ret_ = zero;
 
@@ -101,7 +101,7 @@ void ir_binop_optimizer::visit_binop(tree::binop &n)
 		break;
 	}
 
-	auto ret = new tree::cnst(value);
+	auto ret = target_.make_cnst(value);
 	ret->ty_ = bin->ty_->clone();
 
 	ret_ = ret;

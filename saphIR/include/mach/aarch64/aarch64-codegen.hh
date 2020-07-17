@@ -30,7 +30,10 @@ struct generator : public ir::default_ir_visitor {
 };
 
 struct aarch64_generator : public mach::asm_generator {
-	aarch64_generator(mach::aarch64::aarch64_target &target) : target_(target) {}
+	aarch64_generator(mach::aarch64::aarch64_target &target)
+	    : target_(target)
+	{
+	}
 
 	assem::temp codegen(ir::tree::rnode instr) override;
 	void codegen(ir::tree::rnodevec instrs) override;

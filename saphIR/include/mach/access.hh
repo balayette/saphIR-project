@@ -6,8 +6,10 @@
 
 namespace mach
 {
+struct target;
+
 struct access {
-	access(utils::ref<types::ty> &ty);
+	access(mach::target &target, utils::ref<types::ty> &ty);
 	virtual ~access() = default;
 
 	// Expression that returns the value/address of the variable represented
@@ -20,6 +22,7 @@ struct access {
 
 	virtual std::ostream &print(std::ostream &os) const = 0;
 
+	mach::target &target_;
 	utils::ref<types::ty> ty_;
 };
 

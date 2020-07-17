@@ -1,7 +1,7 @@
 #include "mach/aarch64/aarch64-target.hh"
 #include "mach/aarch64/aarch64-access.hh"
 #include "mach/aarch64/aarch64-codegen.hh"
-#include "aarch64-common.hh"
+#include "mach/aarch64/aarch64-common.hh"
 #include "utils/misc.hh"
 
 namespace mach::aarch64
@@ -85,7 +85,7 @@ aarch64_target::make_frame(const symbol &s, const std::vector<bool> &args,
 utils::ref<access> aarch64_target::alloc_global(const symbol &name,
 						utils::ref<types::ty> &ty)
 {
-	return new global_acc(name, ty);
+	return new global_acc(*this, name, ty);
 }
 
 aarch64_frame::aarch64_frame(target &target, const symbol &s,
@@ -97,7 +97,7 @@ aarch64_frame::aarch64_frame(target &target, const symbol &s,
 	for (size_t i = 0; i < args.size() && i < 8; i++)
 		formals_.push_back(alloc_local(args[i], types[i]));
 	for (size_t i = 8; i < args.size(); i++)
-		formals_.push_back(new frame_acc(reg_to_temp(regs::FP),
+		formals_.push_back(new frame_acc(target_, reg_to_temp(regs::FP),
 						 (i - 8) * 8 + 16, types[i]));
 }
 
@@ -106,12 +106,12 @@ utils::ref<access> aarch64_frame::alloc_local(bool escapes,
 {
 	if (escapes) {
 		locals_size_ += type->size();
-		return new frame_acc(reg_to_temp(regs::FP), -locals_size_,
-				     type);
+		return new frame_acc(target_, reg_to_temp(regs::FP),
+				     -locals_size_, type);
 	}
 
 	reg_count_++;
-	return new reg_acc(utils::temp(), type);
+	return new reg_acc(target_, utils::temp(), type);
 }
 
 utils::ref<access> aarch64_frame::alloc_local(bool escapes)
@@ -123,34 +123,34 @@ ir::tree::rstm aarch64_frame::proc_entry_exit_1(ir::tree::rstm s,
 						utils::label ret_lbl)
 {
 	auto in_regs = args_regs();
-	auto *seq = new ir::tree::seq({});
+	auto *seq = target_.make_seq({});
 
 	auto callee_saved = callee_saved_regs();
 	std::vector<utils::temp> callee_saved_temps(callee_saved.size());
 	for (size_t i = 0; i < callee_saved.size(); i++)
-		seq->children_.push_back(new ir::tree::move(
-			new ir::tree::temp(callee_saved_temps[i],
-					   target_.gpr_type()),
-			new ir::tree::temp(callee_saved[i],
-					   target_.gpr_type())));
+		seq->children_.push_back(target_.make_move(
+			target_.make_temp(callee_saved_temps[i],
+					  target_.gpr_type()),
+			target_.make_temp(callee_saved[i],
+					  target_.gpr_type())));
 
 	for (size_t i = 0; i < formals_.size() && i < in_regs.size(); i++) {
-		seq->children_.push_back(new ir::tree::move(
+		seq->children_.push_back(target_.make_move(
 			formals_[i]->exp(),
-			new ir::tree::temp(in_regs[i],
-					   formals_[i]->exp()->ty_)));
+			target_.make_temp(in_regs[i],
+					  formals_[i]->exp()->ty_)));
 	}
 
 	seq->children_.push_back(s);
 
-	auto *ret = new ir::tree::label(ret_lbl);
+	auto *ret = target_.make_label(ret_lbl);
 	seq->children_.push_back(ret);
 
 	for (size_t i = 0; i < callee_saved.size(); i++) {
-		seq->children_.push_back(new ir::tree::move(
-			new ir::tree::temp(callee_saved[i], target_.gpr_type()),
-			new ir::tree::temp(callee_saved_temps[i],
-					   target_.gpr_type())));
+		seq->children_.push_back(target_.make_move(
+			target_.make_temp(callee_saved[i], target_.gpr_type()),
+			target_.make_temp(callee_saved_temps[i],
+					  target_.gpr_type())));
 	}
 
 	return seq;

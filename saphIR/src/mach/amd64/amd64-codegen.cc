@@ -1,6 +1,6 @@
 #include "mach/amd64/amd64-codegen.hh"
 #include "mach/amd64/amd64-instr.hh"
-#include "amd64-common.hh"
+#include "mach/amd64/amd64-common.hh"
 #include "utils/assert.hh"
 #include "utils/misc.hh"
 

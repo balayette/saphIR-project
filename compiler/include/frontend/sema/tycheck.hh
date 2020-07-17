@@ -4,14 +4,14 @@
 #include "utils/symbol.hh"
 #include "frontend/stmt.hh"
 #include "frontend/exp.hh"
-
+#include "mach/target.hh"
 
 namespace frontend::sema
 {
 class tycheck_visitor : public default_visitor
 {
       public:
-	tycheck_visitor();
+	tycheck_visitor(mach::target &target);
 	virtual void visit_globaldec(globaldec &s) override;
 	virtual void visit_locdec(locdec &s) override;
 	virtual void visit_funprotodec(funprotodec &s) override;
@@ -37,8 +37,13 @@ class tycheck_visitor : public default_visitor
 	virtual void visit_ref(ref &e) override;
 	virtual void visit_braceinit(braceinit &e) override;
 	virtual void visit_subscript(subscript &e) override;
+	virtual void visit_num(num &e) override;
+	virtual void visit_str_lit(str_lit &e) override;
 
 	utils::ref<types::ty> get_type(utils::ref<types::ty> t);
 	utils::scoped_map<symbol, utils::ref<types::ty>> tmap_;
+
+      private:
+	mach::target &target_;
 };
 } // namespace frontend::sema

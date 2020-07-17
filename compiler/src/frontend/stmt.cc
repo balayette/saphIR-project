@@ -11,5 +11,5 @@ std::ostream &operator<<(std::ostream &os, const vardec &dec)
 	return os;
 }
 
-tydec::tydec(symbol name) : dec(mach::TARGET().invalid_type(), name) {}
+tydec::tydec(symbol name) : dec(nullptr, name) {}
 } // namespace frontend

@@ -13,18 +13,23 @@ namespace frontend::translate
 class exp
 {
       public:
+	exp(mach::target &target) : target_(target) {}
 	virtual ~exp() = default;
 
 	virtual ir::tree::rexp un_ex() = 0;
 	virtual ir::tree::rstm un_nx() = 0;
 	virtual ir::tree::rstm un_cx(const utils::label &t,
 				     const utils::label &f) = 0;
+
+      protected:
+	mach::target &target_;
 };
 
 class cx : public exp
 {
       public:
-	cx(ops::cmpop op, ir::tree::rexp l, ir::tree::rexp r);
+	cx(mach::target &target, ops::cmpop op, ir::tree::rexp l,
+	   ir::tree::rexp r);
 
 	ir::tree::rexp un_ex() override;
 	ir::tree::rstm un_nx() override;
@@ -40,7 +45,7 @@ class cx : public exp
 class ex : public exp
 {
       public:
-	ex(ir::tree::rexp e);
+	ex(mach::target &target, ir::tree::rexp e);
 	ir::tree::rexp un_ex() override;
 	ir::tree::rstm un_nx() override;
 	ir::tree::rstm un_cx(const utils::label &t,
@@ -53,7 +58,7 @@ class ex : public exp
 class nx : public exp
 {
       public:
-	nx(ir::tree::rstm s);
+	nx(mach::target &target, ir::tree::rstm s);
 	ir::tree::rexp un_ex() override;
 	ir::tree::rstm un_nx() override;
 	ir::tree::rstm un_cx(const utils::label &t,

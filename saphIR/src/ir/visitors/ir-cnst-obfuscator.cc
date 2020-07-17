@@ -10,8 +10,8 @@ void ir_cnst_obfuscator::visit_cnst(tree::cnst &n)
 {
 	uint32_t key = rand();
 
-	ret_ = new tree::binop(
-		ops::binop::BITXOR, new tree::cnst(n.value_ ^ key),
-		new tree::cnst(key), mach::TARGET().integer_type());
+	ret_ = target_.make_binop(
+		ops::binop::BITXOR, target_.make_cnst(n.value_ ^ key),
+		target_.make_cnst(key), target_.integer_type());
 }
 } // namespace ir

@@ -67,14 +67,15 @@ int main(int argc, char *argv[])
 	if (help || !src_path || !dst_path)
 		return usage(argv[0]);
 
+	utils::ref<mach::target> target_ptr;
 	if (arch == "amd64")
-		mach::SET_TARGET(new mach::amd64::amd64_target());
+		target_ptr = new mach::amd64::amd64_target();
 	else if (arch == "aarch64")
-		mach::SET_TARGET(new mach::aarch64::aarch64_target());
+		target_ptr = new mach::aarch64::aarch64_target();
 	else
 		return usage(argv[0]);
 
-	auto &target = mach::TARGET();
+	auto &target = *target_ptr;
 
 	driver drv(target);
 	if (drv.parse(src_path)) {
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
 	frontend::sema::binding_visitor b;
 	drv.prog_->accept(b);
 
-	frontend::sema::tycheck_visitor tc;
+	frontend::sema::tycheck_visitor tc(target);
 	drv.prog_->accept(tc);
 
 	frontend::transforms::unique_ids_visitor u;
@@ -118,17 +119,17 @@ int main(int argc, char *argv[])
 
 	if (obfuscate) {
 		for (auto &frag : frags) {
-			ir::ir_cnst_obfuscator obf;
+			ir::ir_cnst_obfuscator obf(target);
 			frag.body_ = obf.perform(frag.body_);
 		}
 	}
 
 	if (optimize) {
 		for (auto &frag : frags) {
-			ir::ir_arith_optimizer arith_opt;
+			ir::ir_arith_optimizer arith_opt(target);
 			frag.body_ = arith_opt.perform(frag.body_);
 
-			ir::ir_binop_optimizer opt;
+			ir::ir_binop_optimizer opt(target);
 			frag.body_ = opt.perform(frag.body_);
 		}
 	}
@@ -159,7 +160,7 @@ int main(int argc, char *argv[])
 
 		auto traces = ir::create_traces(bbs, frag.body_lbl_);
 		auto trace = ir::optimize_traces(traces);
-		trace.push_back(new ir::tree::label(frag.epi_lbl_));
+		trace.push_back(target.make_label(frag.epi_lbl_));
 
 		std::cout << "Trace:\n";
 		std::cout << "-------------------------------------\n";

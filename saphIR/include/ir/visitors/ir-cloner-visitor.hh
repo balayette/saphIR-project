@@ -1,12 +1,16 @@
 #pragma once
 #include "ir-visitor.hh"
 #include "ir/ir.hh"
+#include "mach/target.hh"
 
 namespace ir
 {
 class ir_cloner_visitor : public ir_visitor
 {
       public:
+	ir_cloner_visitor(mach::target &target) : target_(target) {}
+	virtual ~ir_cloner_visitor() = default;
+
 	template <typename T> utils::ref<T> perform(const utils::ref<T> &n);
 
 	virtual void visit_cnst(tree::cnst &) override;
@@ -30,6 +34,7 @@ class ir_cloner_visitor : public ir_visitor
 	template <typename U, typename T>
 	utils::ref<U> recurse(const utils::ref<T> &n);
 
+	mach::target &target_;
 	tree::rnode ret_;
 };
 } // namespace ir

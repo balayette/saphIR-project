@@ -14,9 +14,8 @@ namespace frontend::sema
 		}                                                              \
 	} while (0)
 
-tycheck_visitor::tycheck_visitor()
+tycheck_visitor::tycheck_visitor(mach::target &target) : target_(target)
 {
-	auto &target = mach::TARGET();
 	tmap_.add("int", target.integer_type(types::signedness::SIGNED));
 	tmap_.add("uint", target.integer_type(types::signedness::UNSIGNED));
 	tmap_.add("string", target.string_type());
@@ -124,7 +123,7 @@ void tycheck_visitor::visit_fundec(fundec &s)
 	s.type_ = new types::fun_ty(ret_ty, arg_tys, s.variadic_);
 
 	if (!s.has_return_)
-		CHECK_TYPE_ERROR(&mach::TARGET().void_type(), &s.type_,
+		CHECK_TYPE_ERROR(&target_.void_type(), &s.type_,
 				 "function '" << s.name_
 					      << "' without return statement");
 
@@ -145,7 +144,7 @@ void tycheck_visitor::visit_ret(ret &s)
 
 	/* return; in void function */
 	if (s.e_ == nullptr)
-		CHECK_TYPE_ERROR(&mach::TARGET().void_type(), &fty->ret_ty_,
+		CHECK_TYPE_ERROR(&target_.void_type(), &fty->ret_ty_,
 				 "function '" << s.fdec_->name_
 					      << "' return statement");
 	else
@@ -158,7 +157,7 @@ void tycheck_visitor::visit_ifstmt(ifstmt &s)
 {
 	default_visitor::visit_ifstmt(s);
 
-	CHECK_TYPE_ERROR(&s.cond_->ty_, &mach::TARGET().integer_type(),
+	CHECK_TYPE_ERROR(&s.cond_->ty_, &target_.integer_type(),
 			 "if condition");
 }
 
@@ -167,7 +166,7 @@ void tycheck_visitor::visit_forstmt(forstmt &s)
 {
 	default_visitor::visit_forstmt(s);
 
-	CHECK_TYPE_ERROR(&s.cond_->ty_, &mach::TARGET().integer_type(),
+	CHECK_TYPE_ERROR(&s.cond_->ty_, &target_.integer_type(),
 			 "for condition");
 }
 
@@ -246,6 +245,7 @@ void tycheck_visitor::visit_braceinit(braceinit &e)
 void tycheck_visitor::visit_cmp(cmp &e)
 {
 	default_visitor::visit_cmp(e);
+	e.ty_ = target_.integer_type();
 
 	CHECK_TYPE_ERROR(&e.lhs_->ty_, &e.rhs_->ty_,
 			 ops::cmpop_to_string(e.op_));
@@ -270,7 +270,7 @@ void tycheck_visitor::visit_addrof(addrof &e)
 
 	e.ty_ = new types::pointer_ty(e.e_->ty_);
 
-	if (e.ty_->assign_compat(&mach::TARGET().void_type())) {
+	if (e.ty_->assign_compat(&target_.void_type())) {
 		std::cerr << "TypeError: Pointers to void are not supported.\n";
 		COMPILATION_ERROR(utils::cfail::SEMA);
 	}
@@ -358,7 +358,7 @@ void tycheck_visitor::visit_subscript(subscript &e)
 {
 	default_visitor::visit_subscript(e);
 
-	CHECK_TYPE_ERROR(&e.index_->ty_, &mach::TARGET().integer_type(),
+	CHECK_TYPE_ERROR(&e.index_->ty_, &target_.integer_type(),
 			 "array subscript");
 	if (!e.base_->ty_.as<types::pointer_ty>()
 	    && !e.base_->ty_.as<types::array_ty>()) {
@@ -370,4 +370,9 @@ void tycheck_visitor::visit_subscript(subscript &e)
 	e.ty_ = types::deref_pointer_type(e.base_->ty_);
 }
 
+void tycheck_visitor::visit_num(num &e) { e.ty_ = target_.integer_type(); }
+void tycheck_visitor::visit_str_lit(str_lit &e)
+{
+	e.ty_ = target_.string_type();
+}
 } // namespace frontend::sema

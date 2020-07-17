@@ -1,6 +1,7 @@
 #include "ir/canon/bb.hh"
 #include "ir/visitors/ir-pretty-printer.hh"
 #include "utils/assert.hh"
+#include "mach/target.hh"
 
 namespace ir
 {
@@ -37,6 +38,7 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 {
 	// stm is a seq, and is the only seq/eseq in the program.
 	auto seq = stm.as<tree::seq>();
+	auto &target = stm->target_;
 
 	tree::rnodevec::iterator bb_begin = seq->children_.begin();
 	std::vector<bb> basic_blocks;
@@ -66,7 +68,7 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 			else {
 				body = unique_label("body");
 				stmts.insert(stmts.begin(),
-					     new tree::label(body));
+					     target.make_label(body));
 			}
 			std::cout << " Body label: " << body << '\n';
 		}
@@ -83,8 +85,8 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 		} else {
 			std::cout << " The block was ended by a label\n";
 			auto lbl = child.as<tree::label>();
-			stmts.emplace_back(new tree::jump(
-				new tree::name(lbl->name_), {lbl->name_}));
+			stmts.emplace_back(target.make_jump(
+				target.make_name(lbl->name_), {lbl->name_}));
 			std::cout << "  Added a jump to " << lbl->name_ << '\n';
 		}
 
@@ -109,8 +111,8 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 	if (bb_begin != seq->children_.end()) {
 		std::cout << "Adding the epilogue block\n";
 		bb block(bb_begin, seq->children_.end());
-		block.instrs_.push_back(
-			new tree::jump(new tree::name(epilogue), {epilogue}));
+		block.instrs_.push_back(target.make_jump(
+			target.make_name(epilogue), {epilogue}));
 
 		basic_blocks.push_back(block);
 	}

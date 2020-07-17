@@ -22,12 +22,12 @@ void ir_cloner_visitor::visit_braceinit(tree::braceinit &n)
 		nchildren.push_back(ne);
 	}
 
-	ret_ = new tree::braceinit(nty, nchildren);
+	ret_ = target_.make_braceinit(nty, nchildren);
 }
 
 void ir_cloner_visitor::visit_cnst(tree::cnst &n)
 {
-	auto c = new tree::cnst(n.value_);
+	auto c = target_.make_cnst(n.value_);
 	c->ty_ = n.ty_->clone();
 	ret_ = c;
 }
@@ -35,26 +35,26 @@ void ir_cloner_visitor::visit_cnst(tree::cnst &n)
 void ir_cloner_visitor::visit_name(tree::name &n)
 {
 	if (n.ty_)
-		ret_ = new tree::name(n.label_, n.ty_->clone());
+		ret_ = target_.make_name(n.label_, n.ty_->clone());
 	else
-		ret_ = new tree::name(n.label_);
+		ret_ = target_.make_name(n.label_);
 }
 
 void ir_cloner_visitor::visit_temp(tree::temp &n)
 {
-	ret_ = new tree::temp(n.temp_, n.ty_->clone());
+	ret_ = target_.make_temp(n.temp_, n.ty_->clone());
 }
 
 void ir_cloner_visitor::visit_binop(tree::binop &n)
 {
-	ret_ = new tree::binop(n.op_, recurse<tree::exp>(n.lhs()),
-			       recurse<tree::exp>(n.rhs()), n.ty_->clone());
+	ret_ = target_.make_binop(n.op_, recurse<tree::exp>(n.lhs()),
+				  recurse<tree::exp>(n.rhs()), n.ty_->clone());
 }
 
 void ir_cloner_visitor::visit_unaryop(tree::unaryop &n)
 {
-	ret_ = new tree::unaryop(n.op_, recurse<tree::exp>(n.e()),
-				 n.ty_->clone());
+	ret_ = target_.make_unaryop(n.op_, recurse<tree::exp>(n.e()),
+				    n.ty_->clone());
 }
 
 void ir_cloner_visitor::visit_mem(tree::mem &n)
@@ -62,7 +62,7 @@ void ir_cloner_visitor::visit_mem(tree::mem &n)
 	auto e = recurse<tree::exp>(n.e());
 	e->ty_ = e->ty_->clone();
 
-	ret_ = new tree::mem(e);
+	ret_ = target_.make_mem(e);
 }
 
 void ir_cloner_visitor::visit_call(tree::call &n)
@@ -72,37 +72,37 @@ void ir_cloner_visitor::visit_call(tree::call &n)
 	for (auto e : n.args())
 		nargs.push_back(recurse<tree::exp>(e));
 
-	ret_ = new tree::call(recurse<tree::exp>(n.f()), nargs,
-			      n.fun_ty_->clone());
+	ret_ = target_.make_call(recurse<tree::exp>(n.f()), nargs,
+				 n.fun_ty_->clone());
 }
 
 void ir_cloner_visitor::visit_eseq(tree::eseq &n)
 {
-	ret_ = new tree::eseq(recurse<tree::stm>(n.lhs()),
-			      recurse<tree::exp>(n.rhs()));
+	ret_ = target_.make_eseq(recurse<tree::stm>(n.lhs()),
+				 recurse<tree::exp>(n.rhs()));
 }
 
 void ir_cloner_visitor::visit_move(tree::move &n)
 {
-	ret_ = new tree::move(recurse<tree::exp>(n.lhs()),
-			      recurse<tree::exp>(n.rhs()));
+	ret_ = target_.make_move(recurse<tree::exp>(n.lhs()),
+				 recurse<tree::exp>(n.rhs()));
 }
 
 void ir_cloner_visitor::visit_sexp(tree::sexp &n)
 {
-	ret_ = new tree::sexp(recurse<tree::exp>(n.e()));
+	ret_ = target_.make_sexp(recurse<tree::exp>(n.e()));
 }
 
 void ir_cloner_visitor::visit_jump(tree::jump &n)
 {
-	ret_ = new tree::jump(recurse<tree::exp>(n.dest()), n.avlbl_dests_);
+	ret_ = target_.make_jump(recurse<tree::exp>(n.dest()), n.avlbl_dests_);
 }
 
 void ir_cloner_visitor::visit_cjump(tree::cjump &n)
 {
-	ret_ = new tree::cjump(n.op_, recurse<tree::exp>(n.lhs()),
-			       recurse<tree::exp>(n.rhs()), n.ltrue_,
-			       n.lfalse_);
+	ret_ = target_.make_cjump(n.op_, recurse<tree::exp>(n.lhs()),
+				  recurse<tree::exp>(n.rhs()), n.ltrue_,
+				  n.lfalse_);
 }
 
 void ir_cloner_visitor::visit_seq(tree::seq &n)
@@ -112,17 +112,17 @@ void ir_cloner_visitor::visit_seq(tree::seq &n)
 	for (auto e : n.body())
 		nbody.push_back(recurse<tree::stm>(e));
 
-	ret_ = new tree::seq(nbody);
+	ret_ = target_.make_seq(nbody);
 }
 
 void ir_cloner_visitor::visit_label(tree::label &n)
 {
-	ret_ = new tree::label(n.name_);
+	ret_ = target_.make_label(n.name_);
 }
 
 void ir_cloner_visitor::visit_asm_block(tree::asm_block &s)
 {
-	ret_ = new tree::asm_block(s.lines_, s.reg_in_, s.reg_out_,
-				   s.reg_clob_);
+	ret_ = target_.make_asm_block(s.lines_, s.reg_in_, s.reg_out_,
+				      s.reg_clob_);
 }
 } // namespace ir

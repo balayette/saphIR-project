@@ -1,6 +1,7 @@
 #include <iostream>
 #include "ir/visitors/ir-pretty-printer.hh"
 #include "ir/canon/linearize.hh"
+#include "mach/target.hh"
 
 namespace ir
 {
@@ -18,7 +19,8 @@ tree::rstm make_stm(tree::rstm stm1, tree::rstm stm2)
 	if (!stm2 || is_nop(stm2))
 		return stm1;
 
-	utils::ref<tree::seq> ret = new tree::seq({});
+	auto &target = stm1->target_;
+	utils::ref<tree::seq> ret = target.make_seq({});
 
 	if (stm1.as<tree::seq>())
 		ret->children_.insert(ret->children_.end(),
@@ -48,7 +50,8 @@ tree::rexp make_eseq(tree::rstm stm, tree::rexp exp)
 	}
 
 
-	return new tree::eseq(stm, exp);
+	auto &target = stm->target_;
+	return target.make_eseq(stm, exp);
 }
 
 bool valid_call(tree::rnode tree, utils::ref<tree::call> call)
@@ -72,6 +75,7 @@ bool valid_call(tree::rnode tree, utils::ref<tree::call> call)
 tree::rnode canon_default(tree::rnode &tree)
 {
 	tree::rstm bigseq;
+	auto &target = tree->target_;
 
 	std::vector<tree::rnode> &children = tree->children_;
 	for (auto ichild = children.begin(); ichild != children.end();
@@ -85,10 +89,10 @@ tree::rnode canon_default(tree::rnode &tree)
 				*ichild = eseq->rhs();
 			} else if (auto sexp = tree.as<tree::sexp>()) {
 				bigseq = make_stm(bigseq, eseq->lhs());
-				bigseq = make_stm(bigseq,
-						  new tree::sexp(eseq->rhs()));
+				bigseq = make_stm(
+					bigseq, target.make_sexp(eseq->rhs()));
 				// nop statement
-				*ichild = new tree::cnst(0);
+				*ichild = target.make_cnst(0);
 			} else {
 				bigseq = make_stm(bigseq, eseq->lhs());
 				*ichild = eseq->rhs();
@@ -99,11 +103,11 @@ tree::rnode canon_default(tree::rnode &tree)
 			if (!valid_call(tree, call)) {
 				utils::temp tmp;
 				bigseq = make_stm(
-					bigseq,
-					new tree::move(
-						new tree::temp(tmp, call->ty_),
-						call));
-				*ichild = new tree::temp(tmp, call->ty_);
+					bigseq, target.make_move(
+							target.make_temp(
+								tmp, call->ty_),
+							call));
+				*ichild = target.make_temp(tmp, call->ty_);
 			}
 		}
 
@@ -113,13 +117,13 @@ tree::rnode canon_default(tree::rnode &tree)
 				utils::temp tmp;
 				bigseq = make_stm(
 					bigseq,
-					new tree::move(
-						new tree::temp(tmp,
-							       mem->e()->ty_),
+					target.make_move(
+						target.make_temp(tmp,
+								 mem->e()->ty_),
 						mem->e()));
 
-				*(mv->lhs()) = tree::mem(
-					new tree::temp(tmp, mem->e()->ty_));
+				mv->children_[0] = target.make_mem(
+					target.make_temp(tmp, mem->e()->ty_));
 			}
 		}
 	}

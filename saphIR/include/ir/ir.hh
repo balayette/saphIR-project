@@ -42,9 +42,8 @@ enum class tree_kind {
 
 struct ir_node {
       protected:
-	ir_node() = default;
-	ir_node(const ir_node &rhs) = default;
-	ir_node &operator=(const ir_node &rhs) = default;
+	ir_node(mach::target &target) : target_(target) {}
+	ir_node(const ir_node &ir_node) = default;
 
       public:
 	virtual ~ir_node() = default;
@@ -52,6 +51,7 @@ struct ir_node {
 
 	virtual void accept(ir_visitor &visitor) = 0;
 
+	mach::target &target_;
 	std::vector<utils::ref<ir_node>> children_;
 };
 
@@ -59,22 +59,28 @@ using rnode = utils::ref<ir_node>;
 using rnodevec = std::vector<rnode>;
 
 struct exp : public ir_node {
-	exp() = default;
-	exp(utils::ref<types::ty> ty) : ty_(ty) { ASSERT(ty, "Type is null"); }
+	exp(mach::target &target) : ir_node(target) {}
+	exp(mach::target &target, utils::ref<types::ty> ty)
+	    : ir_node(target), ty_(ty)
+	{
+		ASSERT(ty, "Type is null");
+	}
 
-	utils::ref<types::ty> ty_;
 	size_t size() const { return ty_->size(); }
 	size_t assem_size() const { return ty_->assem_size(); }
+
+	utils::ref<types::ty> ty_;
 };
 
 struct stm : public ir_node {
+	stm(mach::target &target) : ir_node(target) {}
 };
 
 using rexp = utils::ref<exp>;
 using rstm = utils::ref<stm>;
 
 struct cnst : public exp {
-	cnst(uint64_t value);
+	cnst(mach::target &target, uint64_t value);
 
 	TREE_KIND(cnst)
 
@@ -82,8 +88,9 @@ struct cnst : public exp {
 };
 
 struct braceinit : public exp {
-	braceinit(utils::ref<types::ty> &ty, const std::vector<rexp> &exps)
-	    : exp(ty)
+	braceinit(mach::target &target, utils::ref<types::ty> &ty,
+		  const std::vector<rexp> &exps)
+	    : exp(target, ty)
 	{
 		children_.insert(children_.end(), exps.begin(), exps.end());
 	}
@@ -101,9 +108,13 @@ struct braceinit : public exp {
 
 struct name : public exp {
 	// Jump destinations can be names, but they don't have a type.
-	name(const utils::label &label) : label_(label) {}
-	name(const utils::label &label, utils::ref<types::ty> ty)
-	    : exp(ty), label_(label)
+	name(mach::target &target, const utils::label &label)
+	    : exp(target), label_(label)
+	{
+	}
+	name(mach::target &target, const utils::label &label,
+	     utils::ref<types::ty> ty)
+	    : exp(target, ty), label_(label)
 	{
 	}
 	TREE_KIND(name)
@@ -112,8 +123,9 @@ struct name : public exp {
 };
 
 struct temp : public exp {
-	temp(const utils::temp &temp, utils::ref<types::ty> ty)
-	    : exp(ty), temp_(temp)
+	temp(mach::target &target, const utils::temp &temp,
+	     utils::ref<types::ty> ty)
+	    : exp(target, ty), temp_(temp)
 	{
 	}
 	TREE_KIND(temp)
@@ -122,8 +134,9 @@ struct temp : public exp {
 };
 
 struct binop : public exp {
-	binop(ops::binop op, rexp lhs, rexp rhs, utils::ref<types::ty> ty)
-	    : exp(ty), op_(op)
+	binop(mach::target &target, ops::binop op, rexp lhs, rexp rhs,
+	      utils::ref<types::ty> ty)
+	    : exp(target, ty), op_(op)
 	{
 		children_.emplace_back(lhs);
 		children_.emplace_back(rhs);
@@ -137,8 +150,9 @@ struct binop : public exp {
 };
 
 struct unaryop : public exp {
-	unaryop(ops::unaryop op, rexp e, utils::ref<types::ty> type)
-	    : exp(type), op_(op)
+	unaryop(mach::target &target, ops::unaryop op, rexp e,
+		utils::ref<types::ty> type)
+	    : exp(target, type), op_(op)
 	{
 		children_.emplace_back(e);
 	}
@@ -150,7 +164,7 @@ struct unaryop : public exp {
 };
 
 struct mem : public exp {
-	mem(rexp e)
+	mem(mach::target &target, rexp e) : exp(target)
 	{
 		ty_ = types::deref_pointer_type(e->ty_);
 		children_.emplace_back(e);
@@ -162,9 +176,9 @@ struct mem : public exp {
 };
 
 struct call : public exp {
-	call(const rexp &f, const std::vector<rexp> &args,
+	call(mach::target &target, const rexp &f, const std::vector<rexp> &args,
 	     utils::ref<types::ty> type)
-	    : exp(type)
+	    : exp(target, type)
 	{
 		children_.emplace_back(f);
 		children_.insert(children_.end(), args.begin(), args.end());
@@ -197,7 +211,10 @@ struct call : public exp {
 };
 
 struct eseq : public exp {
-	eseq(rstm lhs, rexp rhs) : exp(rhs->ty_) { children_ = {lhs, rhs}; }
+	eseq(mach::target &target, rstm lhs, rexp rhs) : exp(target, rhs->ty_)
+	{
+		children_ = {lhs, rhs};
+	}
 	TREE_KIND(eseq)
 
 	rstm lhs() { return children_[0].as<stm>(); }
@@ -205,7 +222,10 @@ struct eseq : public exp {
 };
 
 struct move : public stm {
-	move(rexp lhs, rexp rhs) { children_ = {lhs, rhs}; }
+	move(mach::target &target, rexp lhs, rexp rhs) : stm(target)
+	{
+		children_ = {lhs, rhs};
+	}
 	TREE_KIND(move);
 
 	rexp lhs() { return children_[0].as<exp>(); }
@@ -213,15 +233,16 @@ struct move : public stm {
 };
 
 struct sexp : public stm {
-	sexp(rexp e) { children_ = {e}; }
+	sexp(mach::target &target, rexp e) : stm(target) { children_ = {e}; }
 	TREE_KIND(sexp)
 
 	rexp e() { return children_[0].as<exp>(); }
 };
 
 struct jump : public stm {
-	jump(rexp dest, const std::vector<utils::label> &avlbl_dests)
-	    : avlbl_dests_(avlbl_dests)
+	jump(mach::target &target, rexp dest,
+	     const std::vector<utils::label> &avlbl_dests)
+	    : stm(target), avlbl_dests_(avlbl_dests)
 	{
 		children_ = {dest};
 	}
@@ -232,9 +253,9 @@ struct jump : public stm {
 };
 
 struct cjump : public stm {
-	cjump(ops::cmpop op, rexp lhs, rexp rhs, const utils::label &ltrue,
-	      const utils::label &lfalse)
-	    : op_(op), ltrue_(ltrue), lfalse_(lfalse)
+	cjump(mach::target &target, ops::cmpop op, rexp lhs, rexp rhs,
+	      const utils::label &ltrue, const utils::label &lfalse)
+	    : stm(target), op_(op), ltrue_(ltrue), lfalse_(lfalse)
 	{
 		children_ = {lhs, rhs};
 	}
@@ -248,7 +269,7 @@ struct cjump : public stm {
 };
 
 struct seq : public stm {
-	seq(const std::vector<rstm> &body)
+	seq(mach::target &target, const std::vector<rstm> &body) : stm(target)
 	{
 		for (auto c : body)
 			children_.push_back(c);
@@ -265,18 +286,21 @@ struct seq : public stm {
 };
 
 struct label : public stm {
-	label(const utils::label &name) : name_(name) {}
+	label(mach::target &target, const utils::label &name)
+	    : stm(target), name_(name)
+	{
+	}
 	TREE_KIND(label)
 
 	utils::label name_;
 };
 
 struct asm_block : public stm {
-	asm_block(const std::vector<std::string> &lines,
+	asm_block(mach::target &target, const std::vector<std::string> &lines,
 		  const std::vector<utils::temp> &reg_in,
 		  const std::vector<utils::temp> &reg_out,
 		  const std::vector<utils::temp> &reg_clob)
-	    : lines_(lines), reg_in_(reg_in), reg_out_(reg_out),
+	    : stm(target), lines_(lines), reg_in_(reg_in), reg_out_(reg_out),
 	      reg_clob_(reg_clob)
 	{
 	}

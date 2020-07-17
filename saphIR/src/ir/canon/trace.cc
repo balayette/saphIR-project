@@ -2,6 +2,7 @@
 #include "ir/ops.hh"
 #include "utils/uset.hh"
 #include "utils/assert.hh"
+#include "mach/target.hh"
 
 namespace ir
 {
@@ -48,17 +49,18 @@ void optimize_trace(tree::rnodevec &instrs)
 {
 	for (unsigned i = 0; i < instrs.size(); i++) {
 		auto instr = instrs[i];
+		auto &target = instr->target_;
 		if (auto cj = instr.as<tree::cjump>()) {
 			if (i + 1 == instrs.size()) {
 				// The final instruction is a cjump, we expand
 				// it.
 				utils::label lab;
-				auto ncj = new tree::cjump(cj->op_, cj->lhs(),
-							   cj->rhs(),
-							   cj->ltrue_, lab);
-				auto newlab = new tree::label(lab);
-				auto jmpold = new tree::jump(
-					new tree::name(cj->lfalse_),
+				auto ncj = target.make_cjump(cj->op_, cj->lhs(),
+							     cj->rhs(),
+							     cj->ltrue_, lab);
+				auto newlab = target.make_label(lab);
+				auto jmpold = target.make_jump(
+					target.make_name(cj->lfalse_),
 					{cj->lfalse_});
 
 				// Remove the old cjump

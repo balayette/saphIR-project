@@ -19,7 +19,8 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 		temp_to_acc.insert({spill, f.alloc_local(true)});
 	}
 
-	auto cgen = f.target_.make_asm_generator();
+	auto &target = f.target_;
+	auto cgen = target.make_asm_generator();
 
 	for (auto &inst : instrs) {
 		bool emitted = false;
@@ -42,10 +43,10 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 				continue;
 
 			auto vi = assem::temp(unique_temp());
-			ir::tree::rstm mv = new ir::tree::move(
+			ir::tree::rstm mv = target.make_move(
 				temp_to_acc[dst]->exp(),
-				new ir::tree::temp(
-					vi, temp_to_acc[dst]->exp()->ty_));
+				target.make_temp(vi,
+						 temp_to_acc[dst]->exp()->ty_));
 
 			dst = vi;
 			cgen->emit(inst);

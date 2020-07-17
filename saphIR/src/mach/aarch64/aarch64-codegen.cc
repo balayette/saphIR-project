@@ -1,6 +1,6 @@
 #include "mach/aarch64/aarch64-instr.hh"
 #include "mach/aarch64/aarch64-codegen.hh"
-#include "aarch64-common.hh"
+#include "mach/aarch64/aarch64-common.hh"
 #include "utils/assert.hh"
 #include "utils/misc.hh"
 

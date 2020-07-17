@@ -33,7 +33,7 @@ struct aarch64_frame : public mach::frame {
 };
 
 struct aarch64_target : public mach::target {
-        virtual std::string name() override;
+	virtual std::string name() override;
 	virtual utils::temp_set registers() override;
 	virtual std::vector<utils::temp> caller_saved_regs() override;
 	virtual std::vector<utils::temp> callee_saved_regs() override;

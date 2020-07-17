@@ -1,18 +1,19 @@
 #include "mach/aarch64/aarch64-access.hh"
-#include "aarch64-common.hh"
+#include "mach/aarch64/aarch64-common.hh"
 #include "mach/target.hh"
 
 namespace mach::aarch64
 {
-reg_acc::reg_acc(utils::temp reg, utils::ref<types::ty> &ty)
-    : access(ty), reg_(reg)
+reg_acc::reg_acc(mach::target &target, utils::temp reg,
+		 utils::ref<types::ty> &ty)
+    : access(target, ty), reg_(reg)
 {
 }
 
 ir::tree::rexp reg_acc::exp(size_t offt) const
 {
 	ASSERT(offt == 0, "offt must be zero for registers.\n");
-	return new ir::tree::temp(reg_, ty_->clone());
+	return target_.make_temp(reg_, ty_->clone());
 }
 
 ir::tree::rexp reg_acc::addr(size_t) const
@@ -25,14 +26,15 @@ std::ostream &reg_acc::print(std::ostream &os) const
 	return os << "reg_acc(" << reg_ << ")";
 }
 
-frame_acc::frame_acc(utils::temp fp, int offt, utils::ref<types::ty> &ty)
-    : access(ty), fp_(fp), offt_(offt)
+frame_acc::frame_acc(mach::target &target, utils::temp fp, int offt,
+		     utils::ref<types::ty> &ty)
+    : access(target, ty), fp_(fp), offt_(offt)
 {
 }
 
 ir::tree::rexp frame_acc::exp(size_t offt) const
 {
-	return new ir::tree::mem(addr(offt));
+	return target_.make_mem(addr(offt));
 }
 
 ir::tree::rexp frame_acc::addr(size_t offt) const
@@ -42,12 +44,12 @@ ir::tree::rexp frame_acc::addr(size_t offt) const
 	 * doesn't necessarily point to a variable of the same type as ty_.
 	 * (addresses of members of structs, for example)
 	 */
-	auto type = offt ? mach::TARGET().gpr_type() : ty_->clone();
+	auto type = offt ? target_.gpr_type() : ty_->clone();
 	type = new types::pointer_ty(type);
 
-	return new ir::tree::binop(
-		ops::binop::PLUS, new ir::tree::temp(fp_, type),
-		new ir::tree::cnst(offt_ + offt), type->clone());
+	return target_.make_binop(
+		ops::binop::PLUS, target_.make_temp(fp_, type),
+		target_.make_cnst(offt_ + offt), type->clone());
 }
 
 std::ostream &frame_acc::print(std::ostream &os) const
@@ -60,28 +62,29 @@ std::ostream &frame_acc::print(std::ostream &os) const
 	return os << ")";
 }
 
-global_acc::global_acc(const symbol &name, utils::ref<types::ty> &ty)
-    : access(ty), name_(name)
+global_acc::global_acc(mach::target &target, const symbol &name,
+		       utils::ref<types::ty> &ty)
+    : access(target, ty), name_(name)
 {
 }
 
 ir::tree::rexp global_acc::exp(size_t offt) const
 {
-	return new ir::tree::mem(addr(offt));
+	return target_.make_mem(addr(offt));
 }
 
 // XXX: fix types
 ir::tree::rexp global_acc::addr(size_t offt) const
 {
-	auto type = offt ? mach::TARGET().gpr_type() : ty_->clone();
+	auto type = offt ? target_.gpr_type() : ty_->clone();
 	type = new types::pointer_ty(type);
 
 	if (offt != 0)
-		return new ir::tree::binop(
-			ops::binop::PLUS, new ir::tree::name(name_, type),
-			new ir::tree::cnst(offt), type->clone());
+		return target_.make_binop(
+			ops::binop::PLUS, target_.make_name(name_, type),
+			target_.make_cnst(offt), type->clone());
 	else
-		return new ir::tree::name(name_, type);
+		return target_.make_name(name_, type);
 }
 
 std::ostream &global_acc::print(std::ostream &os) const

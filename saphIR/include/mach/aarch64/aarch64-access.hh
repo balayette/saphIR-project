@@ -5,7 +5,8 @@
 namespace mach::aarch64
 {
 struct reg_acc : public access {
-	reg_acc(utils::temp reg, utils::ref<types::ty> &ty);
+	reg_acc(mach::target &target, utils::temp reg,
+		utils::ref<types::ty> &ty);
 
 	ir::tree::rexp exp(size_t offt = 0) const override;
 	ir::tree::rexp addr(size_t offt = 0) const override;
@@ -16,7 +17,8 @@ struct reg_acc : public access {
 };
 
 struct frame_acc : public access {
-	frame_acc(utils::temp fp, int offt, utils::ref<types::ty> &ty);
+	frame_acc(mach::target &target, utils::temp fp, int offt,
+		  utils::ref<types::ty> &ty);
 
 	ir::tree::rexp exp(size_t offt = 0) const override;
 	ir::tree::rexp addr(size_t offt = 0) const override;
@@ -28,7 +30,8 @@ struct frame_acc : public access {
 };
 
 struct global_acc : public access {
-	global_acc(const symbol &name, utils::ref<types::ty> &ty);
+	global_acc(mach::target &target, const symbol &name,
+		   utils::ref<types::ty> &ty);
 
 	ir::tree::rexp exp(size_t offt = 0) const override;
 	ir::tree::rexp addr(size_t offt = 0) const override;

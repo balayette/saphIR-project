@@ -5,7 +5,10 @@
 
 namespace mach
 {
-access::access(utils::ref<types::ty> &ty) : ty_(ty) {}
+access::access(mach::target &target, utils::ref<types::ty> &ty)
+    : target_(target), ty_(ty)
+{
+}
 
 std::ostream &operator<<(std::ostream &os, const access &a)
 {

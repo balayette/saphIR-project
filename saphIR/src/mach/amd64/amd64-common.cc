@@ -1,4 +1,4 @@
-#include "amd64-common.hh"
+#include "mach/amd64/amd64-common.hh"
 
 namespace mach::amd64
 {
