@@ -4,12 +4,11 @@
 const char *code =
 	"mov x1, x0\n"
 	"mov x0, x1\n"
-	"mov x2, #2345\n"
-	"mov w2, #1234\n"
-	"add x0, x0, #1\n"
+	"mov x2, #123\n"
+	"movz x2, #2345, lsl 16\n"
+	"add w2, w3, w3, lsl 12\n"
 	"add x0, x0, x2\n"
-	"ldr w1, [sp, #8]\n"
-	"ret\n";
+	"add x0, x0, #1\n";
 
 int main()
 {

@@ -47,6 +47,21 @@ ir::tree::temp *lifter::translate_gpr(arm64_reg r)
 					    *amd_target_));
 }
 
+ir::tree::rexp lifter::shift(ir::tree::rexp exp, arm64_shifter shifter,
+			     unsigned value)
+{
+	switch (shifter) {
+	case ARM64_SFT_INVALID:
+		return exp;
+	case ARM64_SFT_LSL:
+		return amd_target_->make_binop(ops::binop::BITLSHIFT, exp,
+					       amd_target_->make_cnst(value),
+					       amd_target_->integer_type());
+	default:
+		UNREACHABLE("Unhandled shift");
+	}
+}
+
 ir::tree::rstm lifter::arm64_handle_MOV_reg_reg(const disas_insn &insn)
 {
 	const cs_arm64 *mach_det = insn.mach_detail();
@@ -82,7 +97,40 @@ ir::tree::rstm lifter::arm64_handle_MOVZ(const disas_insn &insn)
 	       "Wrong movz operands");
 
 	return amd_target_->make_move(translate_gpr(rd.reg),
-				      amd_target_->make_cnst(imm.imm));
+				      shift(amd_target_->make_cnst(imm.imm),
+					    imm.shift.type, imm.shift.value));
+}
+ir::tree::rexp lifter::arm64_handle_ADD_imm(cs_arm64_op rn, cs_arm64_op imm)
+{
+	return amd_target_->make_binop(ops::binop::PLUS, translate_gpr(rn.reg),
+				       shift(amd_target_->make_cnst(imm.imm),
+					     imm.shift.type, imm.shift.value),
+				       amd_target_->integer_type());
+}
+
+ir::tree::rexp lifter::arm64_handle_ADD_reg(cs_arm64_op rn, cs_arm64_op rm)
+{
+	return amd_target_->make_binop(
+		ops::binop::PLUS, translate_gpr(rn.reg),
+		shift(translate_gpr(rm.reg), rm.shift.type, rm.shift.value),
+		amd_target_->integer_type());
+}
+
+ir::tree::rstm lifter::arm64_handle_ADD(const disas_insn &insn)
+{
+	const cs_arm64 *mach_det = insn.mach_detail();
+	ASSERT(mach_det->op_count == 3, "Impossible operand count");
+
+	cs_arm64_op rd = mach_det->operands[0];
+	cs_arm64_op rn = mach_det->operands[1];
+	ASSERT(rd.type == ARM64_OP_REG && rn.type == ARM64_OP_REG,
+	       "Wrong operands");
+
+	cs_arm64_op m = mach_det->operands[2];
+	auto op = m.type == ARM64_OP_IMM ? arm64_handle_ADD_imm(rn, m)
+					 : arm64_handle_ADD_reg(rn, m);
+
+	return amd_target_->make_move(translate_gpr(rd.reg), op);
 }
 
 ir::tree::rstm lifter::lift(const disas_insn &insn)
@@ -90,6 +138,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 	switch (insn.id()) {
 		HANDLER(MOV);
 		HANDLER(MOVZ);
+		HANDLER(ADD);
 	default:
 		std::cerr << "Unimplemented instruction " << insn.as_str()
 			  << '\n';

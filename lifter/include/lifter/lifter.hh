@@ -24,10 +24,15 @@ class lifter
       private:
 	ir::tree::rstm lift(const disas_insn &insn);
 	ir::tree::temp *translate_gpr(arm64_reg r);
+	ir::tree::rexp shift(ir::tree::rexp exp, arm64_shifter shifter,
+			     unsigned value);
 
 	ir::tree::rstm arm64_handle_MOV_reg_reg(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_MOV(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_MOVZ(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_ADD(const disas_insn &insn);
+	ir::tree::rexp arm64_handle_ADD_imm(cs_arm64_op rn, cs_arm64_op imm);
+	ir::tree::rexp arm64_handle_ADD_reg(cs_arm64_op rn, cs_arm64_op rm);
 
 	utils::ref<mach::amd64::amd64_target> amd_target_;
 	utils::ref<mach::aarch64::aarch64_target> arm_target_;
