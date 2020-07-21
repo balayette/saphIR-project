@@ -1,7 +1,4 @@
-include(FindPkgConfig)
-
-pkg_check_modules(CAPSTONE REQUIRED capstone)
-pkg_check_modules(KEYSTONE REQUIRED keystone)
+include(CapstoneKeystone)
 
 add_library(lifter STATIC
         src/lifter.cc
@@ -14,11 +11,12 @@ target_include_directories(lifter
 )
 
 target_link_libraries(lifter
-        PUBLIC IR
-        PUBLIC utils
+        PUBLIC
+                IR
+                utils
 
-        PRIVATE ${CAPSTONE_LIBRARIES}
-        PRIVATE ${KEYSTONE_LIBRARIES}
+        PRIVATE
+                capstone-static
 )
 
 add_executable(lifter_main
@@ -26,5 +24,7 @@ add_executable(lifter_main
 )
 
 target_link_libraries(lifter_main
-        PRIVATE lifter
+        PRIVATE
+                lifter
+                keystone
 )
