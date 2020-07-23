@@ -18,6 +18,37 @@ std::string disas_insn::group_name(unsigned int group) const
 	return cs_group_name(handle_, group);
 }
 
+bool disas_insn::ends_bb() const
+{
+	return cs_insn_group(handle_, &insn_, ARM64_GRP_JUMP)
+	       || cs_insn_group(handle_, &insn_, ARM64_GRP_CALL)
+	       || cs_insn_group(handle_, &insn_, ARM64_GRP_RET);
+}
+
+bool disas_insn::is_ret() const
+{
+	return cs_insn_group(handle_, &insn_, ARM64_GRP_RET);
+}
+
+void disas_bb::append(const disas_insn &insn)
+{
+	ASSERT(!complete_, "Basic block already completed");
+	complete_ = insn.ends_bb();
+
+	if (complete_)
+		end_insn_ = insn;
+	else
+		insns_.push_back(insn);
+}
+
+std::string disas_bb::dump() const
+{
+	std::string ret;
+	for (const auto &insn : insns_)
+		ret += insn.as_str() + "\n";
+	return ret;
+}
+
 disas::disas(const uint8_t *buf, size_t sz)
 {
 	ASSERT(cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &handle_) == CS_ERR_OK,

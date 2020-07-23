@@ -1,5 +1,5 @@
 #include "lifter/lifter.hh"
-#include <keystone/keystone.h>
+#include "keystone/keystone.h"
 
 const char *code =
 	"mov x1, x0\n"
@@ -8,7 +8,10 @@ const char *code =
 	"movz x2, #2345, lsl 16\n"
 	"add w2, w3, w3, lsl 12\n"
 	"add x0, x0, x2\n"
-	"add x0, x0, #1\n";
+	"add x0, x0, #1\n"
+	"b #124\n"
+	"add x3, x3, x3\n"
+	"ret\n";
 
 int main()
 {
@@ -25,5 +28,24 @@ int main()
 		  << " instructions\n";
 
 	lifter::lifter lifter;
-	lifter.lift(assembled, size);
+	lifter::disas disas(assembled, size);
+
+	std::vector<lifter::disas_bb> bbs;
+	lifter::disas_bb bb;
+
+	for (size_t i = 0; i < count; i++) {
+		auto insn = disas[i];
+		bb.append(insn);
+		if (bb.complete()) {
+			bbs.push_back(bb);
+			bb = {};
+		}
+	}
+
+	ASSERT(bb.insns().size() == 0, "Unfinished basic block");
+
+	for (const auto &bb : bbs) {
+		std::cout << "Lifting basic block:\n" << bb.dump() << '\n';
+		lifter.lift(bb);
+	}
 }

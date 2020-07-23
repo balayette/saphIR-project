@@ -14,8 +14,6 @@ target_link_libraries(lifter
         PUBLIC
                 IR
                 utils
-
-        PRIVATE
                 capstone-static
 )
 

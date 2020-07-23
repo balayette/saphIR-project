@@ -56,7 +56,7 @@ ir::tree::rexp lifter::shift(ir::tree::rexp exp, arm64_shifter shifter,
 	case ARM64_SFT_LSL:
 		return amd_target_->make_binop(ops::binop::BITLSHIFT, exp,
 					       amd_target_->make_cnst(value),
-					       amd_target_->integer_type());
+					       arm_target_->integer_type());
 	default:
 		UNREACHABLE("Unhandled shift");
 	}
@@ -105,7 +105,7 @@ ir::tree::rexp lifter::arm64_handle_ADD_imm(cs_arm64_op rn, cs_arm64_op imm)
 	return amd_target_->make_binop(ops::binop::PLUS, translate_gpr(rn.reg),
 				       shift(amd_target_->make_cnst(imm.imm),
 					     imm.shift.type, imm.shift.value),
-				       amd_target_->integer_type());
+				       arm_target_->integer_type());
 }
 
 ir::tree::rexp lifter::arm64_handle_ADD_reg(cs_arm64_op rn, cs_arm64_op rm)
@@ -113,7 +113,7 @@ ir::tree::rexp lifter::arm64_handle_ADD_reg(cs_arm64_op rn, cs_arm64_op rm)
 	return amd_target_->make_binop(
 		ops::binop::PLUS, translate_gpr(rn.reg),
 		shift(translate_gpr(rm.reg), rm.shift.type, rm.shift.value),
-		amd_target_->integer_type());
+		arm_target_->integer_type());
 }
 
 ir::tree::rstm lifter::arm64_handle_ADD(const disas_insn &insn)
@@ -146,17 +146,15 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 	}
 }
 
-std::vector<ir::tree::rstm> lifter::lift(const uint8_t *buf, size_t sz)
+std::vector<ir::tree::rstm> lifter::lift(const disas_bb &bb)
 {
 	std::vector<ir::tree::rstm> ret;
 	ir::ir_pretty_printer pir(std::cout);
 
-	disas d(buf, sz);
-
-	for (size_t i = 0; i < d.insn_count(); i++) {
-		disas_insn ins = d[i];
-		std::cout << ins.as_str() << '\n';
-
+	const auto &insns = bb.insns();
+	for (size_t i = 0; i < insns.size(); i++) {
+		disas_insn ins = insns[i];
+		std::cout << "Lifting instruction " << ins.as_str() << '\n';
 		auto r = lift(ins);
 		r->accept(pir);
 		ret.push_back(r);

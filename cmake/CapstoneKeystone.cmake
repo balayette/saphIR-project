@@ -8,7 +8,6 @@ include(FetchContent)
 
 message(STATUS "Pulling and configuring capstone and keystone")
 
-set(CAPSTONE_ARCHITECTURE_DEFAULT OFF CACHE BOOL "Enable all capstone archs" FORCE)
 set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "Build capstone tests" FORCE)
 set(CAPSTONE_BUILD_SHARED OFF CACHE BOOL "Build shared capstone" FORCE)
 set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "Build cstool" FORCE)

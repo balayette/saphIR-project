@@ -19,7 +19,7 @@ class lifter
 	{
 	}
 
-	std::vector<ir::tree::rstm> lift(const uint8_t *buf, size_t sz);
+	std::vector<ir::tree::rstm> lift(const disas_bb &bb);
 
       private:
 	ir::tree::rstm lift(const disas_insn &insn);
@@ -36,5 +36,7 @@ class lifter
 
 	utils::ref<mach::amd64::amd64_target> amd_target_;
 	utils::ref<mach::aarch64::aarch64_target> arm_target_;
+
+	utils::temp flags_;
 };
 } // namespace lifter
