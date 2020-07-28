@@ -3,6 +3,7 @@
 #include "mach/amd64/amd64-common.hh"
 #include "utils/assert.hh"
 #include "utils/misc.hh"
+#include "fmt/format.h"
 
 #include <sstream>
 
@@ -57,6 +58,11 @@ std::string label_to_asm(const utils::label &lbl)
 	return ret;
 }
 
+static std::string num_to_string(int32_t num)
+{
+	return fmt::format("${:#x}", num);
+}
+
 void generator::visit_name(tree::name &n)
 {
 	assem::temp ret;
@@ -80,7 +86,8 @@ void generator::visit_call(tree::call &c)
 	size_t total_stack_change = stack_space + alignment_bonus;
 
 	if (alignment_bonus)
-		EMIT(oper("subq $" + std::to_string(alignment_bonus) + ", %rsp",
+		EMIT(oper(fmt::format("subq {}, %rsp",
+				      num_to_string(alignment_bonus)),
 			  {}, {}, {}));
 
 	// Push stack parameters RTL
@@ -137,8 +144,8 @@ void generator::visit_call(tree::call &c)
 
 	EMIT(oper(repr, clobbered, src, {}));
 	if (total_stack_change)
-		EMIT(oper("addq $" + std::to_string(total_stack_change)
-				  + ", %rsp",
+		EMIT(oper(fmt::format("addq {}, %rsp",
+				      num_to_string(total_stack_change)),
 			  {}, {}, {}));
 
 	assem::temp ret(c.ty_->assem_size());
@@ -260,7 +267,7 @@ std::pair<std::string, assem::temp> reg_deref_str(tree::rexp e,
 		auto reg = binop->lhs().as<tree::temp>();
 		auto cnst = binop->rhs().as<tree::cnst>();
 
-		return {std::to_string(cnst->value_) + "(" + regstr + ")",
+		return {fmt::format("{:#x}({})", cnst->value_, regstr),
 			reg->temp_};
 	} else if (is_reg(e)) {
 		auto reg = e.as<tree::temp>();
@@ -280,7 +287,7 @@ simple_src_str(tree::rexp e, std::string regstr)
 
 	auto cnst = e.as<tree::cnst>();
 	if (cnst)
-		return {"$" + std::to_string(cnst->value_), std::nullopt};
+		return {num_to_string(cnst->value_), std::nullopt};
 
 	UNREACHABLE("simple_src is a reg or cnst");
 }
@@ -421,8 +428,8 @@ void generator::visit_cnst(tree::cnst &c)
 {
 	assem::temp dst(4, types::signedness::SIGNED);
 
-	EMIT(complex_move("`d0", "$" + std::to_string((int32_t)c.value_), {dst},
-			  {}, 4, 4, types::signedness::SIGNED));
+	EMIT(complex_move("`d0", num_to_string(c.value_), {dst}, {}, 4, 4,
+			  types::signedness::SIGNED));
 
 	ret_ = dst;
 }
@@ -442,9 +449,7 @@ bool generator::opt_mul(tree::binop &b)
 	b.lhs()->accept(*this);
 	auto lhs = ret_;
 
-	std::string repr("$");
-	repr += std::to_string(cnst->value_);
-	repr += ", `d0";
+	std::string repr = num_to_string(cnst->value_) + ", `d0";
 
 	assem::temp dst;
 
@@ -466,9 +471,7 @@ bool generator::opt_add(tree::binop &b)
 	b.lhs()->accept(*this);
 	auto lhs = ret_;
 
-	std::string repr("$");
-	repr += std::to_string(cnst->value_);
-	repr += ", `d0";
+	std::string repr = num_to_string(cnst->value_) + ", `d0";
 
 	assem::temp dst;
 	EMIT(simple_move(dst, lhs));

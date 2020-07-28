@@ -1,3 +1,5 @@
+include(Fmt)
+
 add_library(IR STATIC
         src/mach/amd64/amd64-access.cc
         src/mach/amd64/amd64-target.cc
@@ -36,5 +38,8 @@ target_include_directories(IR
 )
 
 target_link_libraries(IR
-        PUBLIC utils
+        PUBLIC
+                utils
+        PRIVATE
+                fmt::fmt
 )
