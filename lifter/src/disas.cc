@@ -18,6 +18,11 @@ std::string disas_insn::as_str() const
 			   insn_->op_str);
 }
 
+std::string disas_insn::insn_name() const
+{
+	return cs_insn_name(handle_, insn_->id);
+}
+
 std::string disas_insn::group_name(unsigned int group) const
 {
 	return cs_group_name(handle_, group);
@@ -39,11 +44,7 @@ void disas_bb::append(const disas_insn &insn)
 {
 	ASSERT(!complete_, "Basic block already completed");
 	complete_ = insn.ends_bb();
-
-	if (complete_)
-		end_insn_ = insn;
-	else
-		insns_.push_back(insn);
+	insns_.push_back(insn);
 }
 
 std::string disas_bb::dump() const
@@ -51,7 +52,6 @@ std::string disas_bb::dump() const
 	std::string ret;
 	for (const auto &insn : insns_)
 		ret += insn.as_str() + '\n';
-	ret += end_insn_.as_str() + '\n';
 	return ret;
 }
 

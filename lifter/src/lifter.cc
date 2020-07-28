@@ -39,6 +39,25 @@ mach::aarch64::regs creg_to_reg(arm64_reg r)
 	UNREACHABLE("Register not supported");
 }
 
+ir::tree::rstm lifter::set_state_field(const std::string &name,
+				       ir::tree::rexp val)
+{
+	return amd_target_->make_move(
+		amd_target_->make_mem(amd_target_->make_binop(
+			ops::binop::PLUS, bank_->exp(),
+			amd_target_->make_cnst(bank_type_->member_offset(name)),
+			new types::pointer_ty(amd_target_->gpr_type()))),
+		val);
+}
+
+ir::tree::rexp lifter::get_state_field(const std::string &name)
+{
+	return amd_target_->make_mem(amd_target_->make_binop(
+		ops::binop::PLUS, bank_->exp(),
+		amd_target_->make_cnst(bank_type_->member_offset(name)),
+		new types::pointer_ty(amd_target_->gpr_type())));
+}
+
 ir::tree::rexp lifter::translate_gpr(arm64_reg r)
 {
 	auto reg = creg_to_reg(r);
@@ -186,6 +205,105 @@ ir::tree::rstm lifter::arm64_handle_MOVK(const disas_insn &insn)
 			      dest->ty_));
 }
 
+ir::tree::rstm lifter::next_address(ir::tree::rexp addr)
+{
+	return amd_target_->make_move(
+		amd_target_->make_temp(amd_target_->rv(),
+				       amd_target_->gpr_type()),
+		addr);
+}
+
+ir::tree::rstm lifter::arm64_handle_RET(const disas_insn &insn)
+{
+	const cs_arm64 *mach_det = insn.mach_detail();
+	auto xn = mach_det->op_count == 0 ? ARM64_REG_X30
+					  : mach_det->operands[0].reg;
+
+	return next_address(translate_gpr(xn));
+}
+
+ir::tree::rstm lifter::arm64_handle_BL(const disas_insn &insn)
+{
+	const cs_arm64 *mach_det = insn.mach_detail();
+	auto imm = mach_det->operands[0];
+
+	return amd_target_->make_seq({
+		amd_target_->make_move(
+			translate_gpr(ARM64_REG_X30),
+			amd_target_->make_cnst(insn.address() + 4)),
+		amd_target_->make_move(
+			amd_target_->make_temp(amd_target_->rv(),
+					       amd_target_->gpr_type()),
+			amd_target_->make_cnst(imm.imm)),
+	});
+}
+
+ir::tree::rstm lifter::set_cmp_values(ir::tree::rexp lhs, ir::tree::rexp rhs,
+				      enum flag_op op)
+{
+	return amd_target_->make_seq({
+		set_state_field("flag_a", lhs),
+		set_state_field("flag_b", rhs),
+		set_state_field("flag_op", amd_target_->make_cnst(op)),
+	});
+}
+
+ir::tree::rstm lifter::arm64_handle_CMP_imm(cs_arm64_op xn, cs_arm64_op imm)
+{
+	return set_cmp_values(translate_gpr(xn.reg),
+			      shift(amd_target_->make_cnst(imm.imm),
+				    imm.shift.type, imm.shift.value),
+			      flag_op::CMP);
+}
+
+ir::tree::rstm lifter::arm64_handle_CMP(const disas_insn &insn)
+{
+	const cs_arm64 *mach_det = insn.mach_detail();
+	auto xn = mach_det->operands[0];
+	auto other = mach_det->operands[1];
+	if (other.type == ARM64_OP_IMM)
+		return arm64_handle_CMP_imm(xn, other);
+
+	UNREACHABLE("Unimplemented cmp form");
+}
+
+ir::tree::rstm lifter::arm64_handle_B(const disas_insn &insn)
+{
+	const cs_arm64 *mach_det = insn.mach_detail();
+	auto lbl = mach_det->operands[0];
+	ASSERT(lbl.type == ARM64_OP_IMM, "only branch to labels");
+
+	if (mach_det->cc == ARM64_CC_INVALID || mach_det->cc == ARM64_CC_AL
+	    || mach_det->cc == ARM64_CC_NV) {
+		return next_address(amd_target_->make_cnst(lbl.imm));
+	}
+
+	auto fail_addr = insn.address() + 4;
+	auto ok_addr = lbl.imm;
+
+	auto fail_label = make_unique("fail");
+	auto ok_label = make_unique("ok");
+	auto end_label = make_unique("end");
+
+	if (mach_det->cc == ARM64_CC_EQ) {
+		return amd_target_->make_seq({
+			amd_target_->make_cjump(ops::cmpop::EQ,
+						get_state_field("flag_a"),
+						get_state_field("flag_b"),
+						ok_label, fail_label),
+			amd_target_->make_label(ok_label),
+			next_address(amd_target_->make_cnst(ok_addr)),
+			amd_target_->make_jump(
+				amd_target_->make_name(end_label), {end_label}),
+			amd_target_->make_label(fail_label),
+			next_address(amd_target_->make_cnst(fail_addr)),
+			amd_target_->make_label(end_label),
+		});
+	}
+
+	UNREACHABLE("Unhandled B form");
+}
+
 ir::tree::rstm lifter::lift(const disas_insn &insn)
 {
 	switch (insn.id()) {
@@ -194,9 +312,13 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(ADD);
 		HANDLER(LDR);
 		HANDLER(MOVK);
+		HANDLER(RET);
+		HANDLER(BL);
+		HANDLER(CMP);
+		HANDLER(B);
 	default:
-		std::cerr << "Unimplemented instruction " << insn.as_str()
-			  << '\n';
+		fmt::print("Unimplemented instruction {} ({})\n", insn.as_str(),
+			   insn.insn_name());
 		UNREACHABLE("Unimplemented instruction");
 	}
 }
@@ -208,7 +330,7 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 
 	auto frame = amd_target_->make_frame(
 		fmt::format("bb_{x}", bb.address()), {false},
-		{new types::pointer_ty(bank_type_)}, false);
+		{new types::pointer_ty(bank_type_)}, true);
 	bank_ = frame->formals()[0];
 
 	const auto &insns = bb.insns();
@@ -238,11 +360,24 @@ lifter::lifter()
 		types.push_back(arm_target_->gpr_type());
 	}
 
-	bank_type_ = new types::struct_ty("register_bank", names, types);
+	bank_type_ = new types::struct_ty(
+		"state",
+		{
+			"regs",
+			"flag_a",
+			"flag_b",
+			"flag_op",
+		},
+		{
+			new types::array_ty(amd_target_->gpr_type(), 32),
+			amd_target_->gpr_type(), // flag_a
+			amd_target_->gpr_type(), // flag_b
+			amd_target_->gpr_type(), // flag_op
+		});
 
-	// fun basic_block(register_bank* bank) void
+	// fun basic_block(state* bank) int<8>
 	bb_type_ =
-		new types::fun_ty(amd_target_->void_type(),
+		new types::fun_ty(amd_target_->gpr_type(),
 				  {new types::pointer_ty(bank_type_)}, false);
 }
 } // namespace lifter

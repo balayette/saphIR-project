@@ -10,6 +10,17 @@
 
 namespace lifter
 {
+enum flag_op {
+	CMP,
+};
+
+struct state {
+	uint64_t regs[32];
+	uint64_t flag_a;
+	uint64_t flag_b;
+	uint64_t flag_op;
+};
+
 class lifter
 {
       public:
@@ -22,8 +33,14 @@ class lifter
       private:
 	ir::tree::rstm lift(const disas_insn &insn);
 	ir::tree::rexp translate_gpr(arm64_reg r);
+	ir::tree::rstm set_state_field(const std::string &name,
+				       ir::tree::rexp val);
+	ir::tree::rexp get_state_field(const std::string &name);
+	ir::tree::rstm set_cmp_values(ir::tree::rexp lhs, ir::tree::rexp rhs,
+				      enum flag_op op);
 	ir::tree::rexp shift(ir::tree::rexp exp, arm64_shifter shifter,
 			     unsigned value);
+	ir::tree::rstm next_address(ir::tree::rexp addr);
 
 	ir::tree::rstm arm64_handle_MOV_reg_reg(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_MOV(const disas_insn &insn);
@@ -35,12 +52,17 @@ class lifter
 	ir::tree::rstm arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op label);
 	ir::tree::rstm arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op reg);
 	ir::tree::rstm arm64_handle_MOVK(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_RET(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_BL(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_CMP(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_CMP_imm(cs_arm64_op xn, cs_arm64_op imm);
+	ir::tree::rstm arm64_handle_B(const disas_insn &insn);
 
 	utils::ref<mach::amd64::amd64_target> amd_target_;
 	utils::ref<mach::aarch64::aarch64_target> arm_target_;
 
 	utils::ref<mach::access> bank_;
-	utils::ref<types::ty> bank_type_;
+	utils::ref<types::struct_ty> bank_type_;
 	utils::ref<types::ty> bb_type_;
 };
 } // namespace lifter

@@ -15,6 +15,7 @@ class disas_insn
 
 	size_t address() const;
 	std::string as_str() const;
+	std::string insn_name() const;
 
 	const cs_insn &insn() const { return *insn_; }
 	const cs_detail *detail() const { return insn_->detail; }
@@ -49,7 +50,6 @@ class disas_bb
       private:
 	size_t addr_;
 	std::vector<disas_insn> insns_;
-	disas_insn end_insn_;
 	bool complete_;
 };
 
