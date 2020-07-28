@@ -1,51 +1,104 @@
 #include "lifter/lifter.hh"
+#include <fstream>
+#include "ir/visitors/ir-pretty-printer.hh"
 #include "keystone/keystone.h"
+#include "elf/elf.hh"
+#include "utils/fs.hh"
+#include "ir/canon/linearize.hh"
+#include "ir/canon/bb.hh"
+#include "ir/canon/trace.hh"
+#include "backend/regalloc.hh"
 
-const char *code =
-	"mov x1, x0\n"
-	"mov x0, x1\n"
-	"mov x2, #123\n"
-	"movz x2, #2345, lsl 16\n"
-	"add w2, w3, w3, lsl 12\n"
-	"add x0, x0, x2\n"
-	"add x0, x0, #1\n"
-	"b #124\n"
-	"add x3, x3, x3\n"
-	"ret\n";
-
-int main()
+std::pair<void *, size_t> assemble(mach::target &target,
+				   std::vector<assem::rinstr> &instrs,
+				   utils::label body_lbl, utils::label epi_lbl)
 {
+	std::string text;
+
+	text += fmt::format(
+		"\tpush %rbp\n"
+		"\tmov %rsp, %rbp\n"
+		"\tjmp .L_{}\n",
+		body_lbl.get());
+
+	for (auto &i : instrs) {
+		if (i->repr().size() == 0)
+			continue;
+		if (!i.as<assem::label>())
+			text += '\t';
+		text += i->to_string([&](utils::temp t, unsigned sz) {
+			return target.register_repr(t, sz);
+		}) + '\n';
+	}
+
+	text += fmt::format(
+		"\tleave\n"
+		"\tret\n");
+
 	ks_engine *ks;
-	ASSERT(ks_open(KS_ARCH_ARM64, KS_MODE_LITTLE_ENDIAN, &ks) == KS_ERR_OK,
+	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks) == KS_ERR_OK,
 	       "Couldn't init keystone");
+	ks_option(ks, KS_OPT_SYNTAX, KS_OPT_SYNTAX_ATT);
 
-	uint8_t *assembled;
+	uint8_t *out;
 	size_t size, count;
-	ASSERT(ks_asm(ks, code, 0, &assembled, &size, &count) == KS_ERR_OK,
-	       "Couldn't assemble");
+	if (ks_asm(ks, text.c_str(), 0, &out, &size, &count) != KS_ERR_OK) {
+		std::cout << ks_strerror(ks_errno(ks)) << '\n';
+		UNREACHABLE("Couldn't assemble");
+	}
 
-	std::cout << "Assembled to " << size << " bytes, " << count
-		  << " instructions\n";
+	fmt::print("Assembled to {} instruction ({} bytes)\n", count, size);
+
+	void *map = mmap(NULL, size, PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS,
+			 -1, 0);
+	ASSERT(map != MAP_FAILED, "Couldn't mmap");
+	std::memcpy(map, out, size);
+	mprotect(map, size, PROT_READ | PROT_EXEC);
+
+	return std::make_pair(map, size);
+}
+
+int main(int argc, char *argv[])
+{
+	if (argc != 2) {
+		std::cerr << "usage: lifter_main <binary>\n";
+		return 2;
+	}
+
+	utils::mapped_file file(argv[1]);
+	elf::elf bin(file);
+
+	auto entry = bin.ehdr().entry();
+
+	const elf::program_header *code = bin.segment_for_address(entry);
+	ASSERT(code, "No segment for entry point");
 
 	lifter::lifter lifter;
-	lifter::disas disas(assembled, size);
+	lifter::disas disas;
 
-	std::vector<lifter::disas_bb> bbs;
-	lifter::disas_bb bb;
+	auto code_view = code->contents(file) + (entry - code->vaddr());
 
-	for (size_t i = 0; i < count; i++) {
-		auto insn = disas[i];
-		bb.append(insn);
-		if (bb.complete()) {
-			bbs.push_back(bb);
-			bb = {};
-		}
-	}
+	auto bb = disas.next(code_view.data(), code_view.size(), entry);
+	std::cout << bb.dump() << '\n';
 
-	ASSERT(bb.insns().size() == 0, "Unfinished basic block");
+	auto ff = lifter.lift(bb);
 
-	for (const auto &bb : bbs) {
-		std::cout << "Lifting basic block:\n" << bb.dump() << '\n';
-		lifter.lift(bb);
-	}
+	auto canon = ir::canon(ff.body_);
+	auto bbs = ir::create_bbs(canon, ff.body_lbl_, ff.epi_lbl_);
+
+	auto traces = ir::create_traces(bbs, ff.body_lbl_);
+	auto trace = ir::optimize_traces(traces);
+	trace.push_back(lifter.amd64_target().make_label(ff.epi_lbl_));
+
+	auto generator = lifter.amd64_target().make_asm_generator();
+	generator->codegen(trace);
+	auto instrs = generator->output();
+	ff.frame_->proc_entry_exit_2(instrs);
+
+	backend::regalloc::alloc(instrs, ff);
+
+	auto [map, size] = assemble(lifter.amd64_target(), instrs, ff.body_lbl_,
+				    ff.epi_lbl_);
+
+	fmt::print("Basic block: {} ({} bytes)\n", map, size);
 }

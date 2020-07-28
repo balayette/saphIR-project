@@ -1,4 +1,5 @@
 include(CapstoneKeystone)
+include(Fmt)
 
 add_library(lifter STATIC
         src/lifter.cc
@@ -15,6 +16,8 @@ target_link_libraries(lifter
                 IR
                 utils
                 capstone-static
+        PRIVATE
+                fmt::fmt
 )
 
 add_executable(lifter_main
@@ -25,4 +28,5 @@ target_link_libraries(lifter_main
         PRIVATE
                 lifter
                 keystone
+                elf_loader
 )

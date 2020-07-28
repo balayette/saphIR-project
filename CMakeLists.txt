@@ -20,7 +20,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set (CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic")
+set (CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -g")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
@@ -28,3 +28,4 @@ add_subdirectory(compiler/)
 add_subdirectory(saphIR/)
 add_subdirectory(utils/)
 add_subdirectory(lifter/)
+add_subdirectory(elf/)
