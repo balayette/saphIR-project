@@ -11,7 +11,9 @@ emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
 	       "Couldn't init keystone");
 	ks_option(ks_, KS_OPT_SYNTAX, KS_OPT_SYNTAX_ATT);
-	std::memset(regs_.regs, 0, sizeof(regs_.regs));
+	std::memset(state_.regs, 0, sizeof(state_.regs));
+
+	pc_ = bin_.ehdr().entry();
 }
 
 emu::~emu()
@@ -23,16 +25,18 @@ emu::~emu()
 
 void emu::run()
 {
-	pc_ = bin_.ehdr().entry();
+	while (true) {
+		const auto &chunk = find_or_compile(pc_);
+		fmt::print("Chunk for {:#x} @ {}\n", pc_, chunk.map);
 
-	const auto &chunk = find_or_compile(pc_);
-	fmt::print("Chunk for {:#x} @ {}\n", pc_, chunk.map);
+		fmt::print(state_dump());
+		bb_fn fn = (bb_fn)(chunk.map);
+		size_t next = fn(&state_);
+		fmt::print("Exited basic block. Next: {:#x}\n", next);
+		fmt::print(state_dump());
 
-	fmt::print(state_dump());
-	bb_fn fn = (bb_fn)(chunk.map);
-	fn(&regs_);
-	fmt::print("Exited basic block\n");
-	fmt::print(state_dump());
+		pc_ = next;
+	}
 }
 
 std::string emu::state_dump() const
@@ -41,7 +45,7 @@ std::string emu::state_dump() const
 
 	repr += fmt::format("pc: {:#x}\n", pc_);
 	for (size_t i = 0; i < 32;) {
-		repr += fmt::format("r{:02}: {:#016x} ", i, regs_.regs[i]);
+		repr += fmt::format("r{:02}: {:#016x} ", i, state_.regs[i]);
 		i++;
 		if (i % 8 == 0)
 			repr += '\n';
@@ -112,6 +116,8 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 	text += fmt::format(
 		"\tleave\n"
 		"\tret\n");
+
+	fmt::print(text);
 
 	uint8_t *out;
 	size_t size, count;

@@ -7,10 +7,6 @@
 
 namespace dyn
 {
-struct register_bank {
-	uint64_t regs[32];
-};
-
 struct chunk {
 	void *map;
 	size_t size;
@@ -22,11 +18,11 @@ class emu
 	emu(utils::mapped_file &file);
 	~emu();
 	void run();
-	register_bank &regs() { return regs_; }
-        std::string state_dump() const;
+	lifter::state &state() { return state_; }
+	std::string state_dump() const;
 
       private:
-	using bb_fn = void (*)(register_bank *);
+	using bb_fn = size_t (*)(lifter::state *);
 
 	const chunk &find_or_compile(size_t pc);
 	chunk compile(size_t pc);
@@ -40,7 +36,7 @@ class emu
 	lifter::lifter lifter_;
 	lifter::disas disas_;
 
-	register_bank regs_;
+	lifter::state state_;
 	size_t pc_;
 
 	std::unordered_map<size_t, chunk> bb_cache_;
