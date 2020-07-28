@@ -9,6 +9,7 @@ See the subdirectories for more detailed descriptions.
 
 * `saphIR/`: The IR itself
 * `compiler/`: A compiler frontend that targets `saphIR`
+* `lifter/`: An ARM64 to saphIR lifter
 
 ## Building
 ```
