@@ -1,5 +1,6 @@
 #include "elf/elf.hh"
 #include <iostream>
+#include "utils/misc.hh"
 #include "fmt/format.h"
 
 namespace elf
@@ -45,7 +46,8 @@ std::string elf_header::dump() const
 	return repr;
 }
 
-utils::bufview<uint8_t> section_header::contents(utils::mapped_file &file) const
+utils::bufview<uint8_t>
+section_header::contents(const utils::mapped_file &file) const
 {
 	return utils::bufview(file.ptr<uint8_t>(offset_), size_);
 }
@@ -67,7 +69,8 @@ std::string section_header::dump() const
 	return repr;
 }
 
-utils::bufview<uint8_t> program_header::contents(utils::mapped_file &file) const
+utils::bufview<uint8_t>
+program_header::contents(const utils::mapped_file &file) const
 {
 	return utils::bufview(file.ptr<uint8_t>(offset_), filesz_);
 }
@@ -142,5 +145,41 @@ void elf::build_program_headers(utils::mapped_file &file,
 
 	for (size_t i = 0; i < ehdr->e_phnum; i++)
 		phdrs_.emplace_back(program_header(phdrs[i]));
+}
+
+std::pair<void *, size_t> map_elf(const elf &elf,
+				  const utils::mapped_file &file)
+{
+	size_t min = ~0;
+	size_t max = 0;
+
+	for (const auto &segment : elf.phdrs()) {
+		if (segment.type() != PT_LOAD)
+			continue;
+		if (segment.vaddr() < min)
+			min = segment.vaddr();
+		if (segment.vaddr() + segment.memsz() > max)
+			max = segment.vaddr() + segment.memsz();
+	}
+
+	min = ROUND_DOWN(min, 4096);
+	max = ROUND_UP(max, 4096);
+	size_t size = max - min;
+
+	void *map = mmap((void *)min, size, PROT_READ | PROT_WRITE,
+			 MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+	ASSERT(map != MAP_FAILED, "Couldn't map elf");
+
+	for (const auto &segment : elf.phdrs()) {
+		if (segment.type() != PT_LOAD)
+			continue;
+
+		auto contents = segment.contents(file).data();
+
+		memcpy((uint8_t *)map + (segment.vaddr() - min), contents,
+		       segment.filesz());
+	}
+
+	return {map, size};
 }
 } // namespace elf

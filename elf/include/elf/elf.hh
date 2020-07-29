@@ -57,7 +57,7 @@ class section_header
 	Elf64_Xword align() const { return align_; }
 	Elf64_Xword entsize() const { return entsize_; }
 
-	utils::bufview<uint8_t> contents(utils::mapped_file &file) const;
+	utils::bufview<uint8_t> contents(const utils::mapped_file &file) const;
 
 	std::string dump() const;
 
@@ -91,7 +91,7 @@ class program_header
 	Elf64_Xword memsz() const { return memsz_; }
 	Elf64_Xword align() const { return align_; }
 
-	utils::bufview<uint8_t> contents(utils::mapped_file &file) const;
+	utils::bufview<uint8_t> contents(const utils::mapped_file &file) const;
 
 	std::string dump() const;
 
@@ -110,8 +110,8 @@ class elf
       public:
 	elf(utils::mapped_file &file);
 	const elf_header &ehdr() { return ehdr_; }
-	const std::vector<section_header> &shdrs() { return shdrs_; }
-	const std::vector<program_header> &phdrs() { return phdrs_; }
+	const std::vector<section_header> &shdrs() const { return shdrs_; }
+	const std::vector<program_header> &phdrs() const { return phdrs_; }
 
 	const section_header *section_by_name(const std::string &name);
 	const program_header *segment_for_address(size_t addr);
@@ -127,4 +127,10 @@ class elf
 	std::vector<section_header> shdrs_;
 	std::vector<program_header> phdrs_;
 };
+
+/*
+ * Map a static ELF in memory
+ */
+std::pair<void *, size_t> map_elf(const elf &elf,
+				  const utils::mapped_file &file);
 } // namespace elf
