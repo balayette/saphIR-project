@@ -12,9 +12,9 @@ class mapped_file
 	~mapped_file();
 
 	template <typename Dest>
-	void read(Dest *dest, size_t offt, size_t num = 1);
+	void read(Dest *dest, size_t offt, size_t num = 1) const;
 
-	template <typename Dest, typename Size> Dest *ptr(Size offt);
+	template <typename Dest, typename Size> Dest *ptr(Size offt) const;
 
 	void *data() { return data_; }
 	const std::string &filename() const { return filename_; }
