@@ -2,6 +2,7 @@
 #include "ir/canon/bb.hh"
 #include "ir/canon/linearize.hh"
 #include "ir/canon/trace.hh"
+#include "utils/misc.hh"
 #include "backend/regalloc.hh"
 #include "mach/aarch64/aarch64-common.hh"
 
@@ -17,6 +18,10 @@ emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 	stack_ = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
 		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + 4096;
+
+        auto [elf_map, size] = elf::map_elf(bin_, file_);
+        elf_map_ = elf_map;
+        elf_map_sz_ = size;
 
 	pc_ = bin_.ehdr().entry();
 }
@@ -74,11 +79,11 @@ std::string emu::state_dump() const
 {
 	std::string repr;
 
-	repr += fmt::format("pc : {:#016x} ", pc_);
+	repr += fmt::format("pc : {:#018x} ", pc_);
 	int line_count = 1;
 
 	for (size_t i = 0; i < 32; i++) {
-		repr += fmt::format("r{:02}: {:#016x} ", i, state_.regs[i]);
+		repr += fmt::format("r{:02}: {:#018x} ", i, state_.regs[i]);
 		if (++line_count % 3 == 0)
 			repr += '\n';
 	}

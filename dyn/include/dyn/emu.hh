@@ -42,6 +42,8 @@ class emu
 	void *stack_;
 	lifter::state state_;
 	size_t pc_;
+	void *elf_map_;
+	size_t elf_map_sz_;
 
 	std::unordered_map<size_t, chunk> bb_cache_;
 };
