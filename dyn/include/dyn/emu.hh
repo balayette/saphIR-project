@@ -24,6 +24,9 @@ class emu
       private:
 	using bb_fn = size_t (*)(lifter::state *);
 
+	void push(size_t val);
+	void push(const void *data, size_t sz);
+
 	const chunk &find_or_compile(size_t pc);
 	chunk compile(size_t pc);
 	chunk assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
@@ -36,6 +39,7 @@ class emu
 	lifter::lifter lifter_;
 	lifter::disas disas_;
 
+	void *stack_;
 	lifter::state state_;
 	size_t pc_;
 
