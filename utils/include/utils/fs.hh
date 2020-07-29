@@ -17,6 +17,7 @@ class mapped_file
 	template <typename Dest, typename Size> Dest *ptr(Size offt);
 
 	void *data() { return data_; }
+	const std::string &filename() const { return filename_; }
 
       private:
 	std::string filename_;
