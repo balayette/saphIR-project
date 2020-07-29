@@ -20,8 +20,7 @@
 #define ADD(L, R, T) amd_target_->make_binop(ops::binop::PLUS, L, R, T)
 #define BINOP(Op, L, R, T) amd_target_->make_binop(ops::binop::Op, L, R, T)
 #define SEQ(...) amd_target_->make_seq({__VA_ARGS__})
-#define CJUMP(Op, L, R, T, F)                                                  \
-	amd_target_->make_cjump(ops::cmpop::Op, L, R, T, F)
+#define CJUMP(Op, L, R, T, F) amd_target_->make_cjump(Op, L, R, T, F)
 #define JUMP(L, A) amd_target_->make_jump(L, A)
 
 namespace lifter
@@ -218,6 +217,7 @@ ir::tree::rstm lifter::arm64_handle_LDR(const disas_insn &insn)
 	if (base.type == ARM64_OP_IMM)
 		return arm64_handle_LDR_imm(xt, base);
 
+        /* ONLY ONE CASE */
 	if (mach_det->op_count == 2)
 		return arm64_handle_LDR_reg(xt, base);
 
@@ -317,7 +317,7 @@ ir::tree::rstm lifter::arm64_handle_B(const disas_insn &insn)
 		 * end:
 		 */
 		return SEQ(
-			CJUMP(EQ, get_state_field("flag_a"),
+			CJUMP(ops::cmpop::EQ, get_state_field("flag_a"),
 			      get_state_field("flag_b"), ok_label, fail_label),
 			LABEL(ok_label), next_address(CNST(ok_addr)),
 			JUMP(NAME(end_label), {end_label}), LABEL(fail_label),
@@ -470,7 +470,7 @@ ir::tree::rstm lifter::arm64_handle_STR_base_offset(cs_arm64_op xt,
 	utils::ref<types::ty> ptr_ty = new types::pointer_ty(t->ty_);
 
 	auto addr = translate_mem_op(dst.mem);
-        addr->ty_ = ptr_ty;
+	addr->ty_ = ptr_ty;
 
 	return MOVE(MEM(addr), t);
 }
@@ -524,6 +524,34 @@ ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
 	UNREACHABLE("Unimplemted");
 }
 
+ir::tree::rstm lifter::conditional_jump(ops::cmpop op, ir::tree::rexp lhs,
+					ir::tree::rexp rhs,
+					ir::tree::rexp true_addr,
+					ir::tree::rexp false_addr)
+{
+	auto fail_label = make_unique("fail");
+	auto ok_label = make_unique("ok");
+	auto end_label = make_unique("end");
+
+	return SEQ(CJUMP(op, lhs, rhs, ok_label, fail_label), LABEL(ok_label),
+		   next_address(true_addr), JUMP(NAME(end_label), {end_label}),
+		   LABEL(fail_label), next_address(false_addr),
+		   LABEL(end_label));
+}
+
+ir::tree::rstm lifter::arm64_handle_CBZ(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto xt = mach_det->operands[0];
+	auto label = mach_det->operands[1];
+
+	auto fail_addr = insn.address() + 4;
+
+	return conditional_jump(ops::cmpop::EQ, GPR(xt.reg), CNST(0),
+				CNST(label.imm), CNST(fail_addr));
+}
+
 ir::tree::rstm lifter::lift(const disas_insn &insn)
 {
 	switch (insn.id()) {
@@ -540,6 +568,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(LDP);
 		HANDLER(ADRP);
 		HANDLER(STR);
+		HANDLER(CBZ);
 	default:
 		fmt::print("Unimplemented instruction {} ({})\n", insn.as_str(),
 			   insn.insn_name());

@@ -42,6 +42,10 @@ class lifter
 	ir::tree::rexp shift(ir::tree::rexp exp, arm64_shifter shifter,
 			     unsigned value);
 	ir::tree::rstm next_address(ir::tree::rexp addr);
+	ir::tree::rstm conditional_jump(ops::cmpop op, ir::tree::rexp lhs,
+					ir::tree::rexp rhs,
+					ir::tree::rexp true_addr,
+					ir::tree::rexp false_addr);
 
 	ir::tree::rstm arm64_handle_MOV_reg_reg(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_MOV(const disas_insn &insn);
@@ -82,6 +86,7 @@ class lifter
 						    cs_arm64_op dst);
 	ir::tree::rstm arm64_handle_STR_post(cs_arm64_op xt, cs_arm64_op dst,
 					     cs_arm64_op imm);
+	ir::tree::rstm arm64_handle_CBZ(const disas_insn &insn);
 
 	utils::ref<mach::amd64::amd64_target> amd_target_;
 	utils::ref<mach::aarch64::aarch64_target> arm_target_;
