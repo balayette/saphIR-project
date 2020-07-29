@@ -33,6 +33,7 @@ class lifter
       private:
 	ir::tree::rstm lift(const disas_insn &insn);
 	ir::tree::rexp translate_gpr(arm64_reg r);
+	ir::tree::rexp translate_mem_op(arm64_op_mem r);
 	ir::tree::rstm set_state_field(const std::string &name,
 				       ir::tree::rexp val);
 	ir::tree::rexp get_state_field(const std::string &name);
@@ -57,6 +58,30 @@ class lifter
 	ir::tree::rstm arm64_handle_CMP(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_CMP_imm(cs_arm64_op xn, cs_arm64_op imm);
 	ir::tree::rstm arm64_handle_B(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_STP(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_STP_post(cs_arm64_op xt1, cs_arm64_op xt2,
+					     cs_arm64_op xn, cs_arm64_op imm);
+	ir::tree::rstm arm64_handle_STP_pre(cs_arm64_op xt1, cs_arm64_op xt2,
+					    cs_arm64_op xn);
+	ir::tree::rstm arm64_handle_STP_base_offset(cs_arm64_op xt1,
+						    cs_arm64_op xt2,
+						    cs_arm64_op xn);
+	ir::tree::rstm arm64_handle_LDP(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_LDP_post(cs_arm64_op xt1, cs_arm64_op xt2,
+					     cs_arm64_op xn, cs_arm64_op imm);
+	ir::tree::rstm arm64_handle_LDP_pre(cs_arm64_op xt1, cs_arm64_op xt2,
+					    cs_arm64_op xn);
+	ir::tree::rstm arm64_handle_LDP_base_offset(cs_arm64_op xt1,
+						    cs_arm64_op xt2,
+						    cs_arm64_op xn);
+	ir::tree::rstm arm64_handle_ADRP(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_STR(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst);
+	ir::tree::rstm arm64_handle_STR_pre(cs_arm64_op xt, cs_arm64_op dst);
+	ir::tree::rstm arm64_handle_STR_base_offset(cs_arm64_op xt,
+						    cs_arm64_op dst);
+	ir::tree::rstm arm64_handle_STR_post(cs_arm64_op xt, cs_arm64_op dst,
+					     cs_arm64_op imm);
 
 	utils::ref<mach::amd64::amd64_target> amd_target_;
 	utils::ref<mach::aarch64::aarch64_target> arm_target_;
