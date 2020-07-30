@@ -32,6 +32,8 @@ class emu
 	chunk assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 		       utils::label body_lbl);
 
+	void flag_update();
+
 	utils::mapped_file &file_;
 	elf::elf bin_;
 	ks_engine *ks_;

@@ -18,10 +18,11 @@ emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 	stack_ = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
 		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + 4096;
+	state_.nzcv = 0;
 
-        auto [elf_map, size] = elf::map_elf(bin_, file_);
-        elf_map_ = elf_map;
-        elf_map_sz_ = size;
+	auto [elf_map, size] = elf::map_elf(bin_, file_);
+	elf_map_ = elf_map;
+	elf_map_sz_ = size;
 
 	pc_ = bin_.ehdr().entry();
 }
@@ -68,27 +69,67 @@ void emu::run()
 		const auto &chunk = find_or_compile(pc_);
 		fmt::print("Chunk for {:#x} @ {}\n", pc_, chunk.map);
 		bb_fn fn = (bb_fn)(chunk.map);
+		fmt::print(state_dump());
 		pc_ = fn(&state_);
+		switch (state_.exit_reason) {
+		case lifter::BB_END:
+			break;
+		case lifter::SET_FLAGS:
+			flag_update();
+			break;
+		default:
+			UNREACHABLE("Unimplemented exit reason");
+		}
 		fmt::print("Exited basic block.\n");
 		fmt::print(state_dump());
 	}
+
+	fmt::print("FINAL STATE\n");
 	fmt::print(state_dump());
+}
+
+void emu::flag_update()
+{
+	ASSERT(state_.flag_op == lifter::CMP, "Unhandled flag update");
+
+	state_.nzcv = 0;
+
+	uint64_t res = 0;
+	int64_t sres = 0;
+
+	auto lhs = state_.flag_a;
+	auto rhs = state_.flag_b;
+
+	if (lhs == rhs)
+		state_.nzcv |= lifter::Z;
+	if (lhs < rhs)
+		state_.nzcv |= lifter::N;
+	if (__builtin_usubl_overflow(lhs, rhs, &res))
+		state_.nzcv |= lifter::C;
+	if (__builtin_ssubl_overflow(lhs, rhs, &sres))
+		state_.nzcv |= lifter::V;
 }
 
 std::string emu::state_dump() const
 {
 	std::string repr;
 
-	repr += fmt::format("pc : {:#018x} ", pc_);
+	repr += fmt::format("pc  : {:#018x} ", pc_);
 	int line_count = 1;
 
 	for (size_t i = 0; i < 32; i++) {
-		repr += fmt::format("r{:02}: {:#018x} ", i, state_.regs[i]);
+		repr += fmt::format("r{:02} : {:#018x} ", i, state_.regs[i]);
 		if (++line_count % 3 == 0)
 			repr += '\n';
 	}
 
-	return repr + '\n';
+	repr += fmt::format("nzcv: {}{}{}{}\n",
+			    state_.nzcv & lifter::N ? 'N' : 'n',
+			    state_.nzcv & lifter::Z ? 'Z' : 'z',
+			    state_.nzcv & lifter::C ? 'C' : 'c',
+			    state_.nzcv & lifter::V ? 'V' : 'v');
+
+	return repr;
 }
 
 const chunk &emu::find_or_compile(size_t pc)

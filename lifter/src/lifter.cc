@@ -22,6 +22,8 @@
 #define SEQ(...) amd_target_->make_seq({__VA_ARGS__})
 #define CJUMP(Op, L, R, T, F) amd_target_->make_cjump(Op, L, R, T, F)
 #define JUMP(L, A) amd_target_->make_jump(L, A)
+#define CALL(F, A, T) amd_target_->make_call(F, A, T)
+#define SEXP(E) amd_target_->make_sexp(E)
 
 namespace lifter
 {
@@ -199,13 +201,39 @@ ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm)
 	return MOVE(GPR(xt.reg), CNST(imm.imm));
 }
 
-ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op reg)
+ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src)
 {
-	auto dest = translate_gpr(xt.reg);
-	auto src = translate_gpr(reg.reg);
-	src->ty_ = new types::pointer_ty(dest->ty_);
+	return MOVE(GPR(xt.reg), MEM(translate_mem_op(src.mem)));
+}
 
-	return MOVE(GPR(xt.reg), MEM(src));
+ir::tree::rstm lifter::arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src)
+{
+	auto base = GPR(src.mem.base);
+
+	return SEQ(arm64_handle_LDR_base_offset(xt, src),
+		   MOVE(base, ADD(base, CNST(src.mem.disp), base->ty_)));
+}
+
+ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
+						    cs_arm64_op src)
+{
+	auto t = GPR(xt.reg);
+
+	auto addr = translate_mem_op(src.mem);
+	addr->ty_ = new types::pointer_ty(t->ty_);
+
+	return MOVE(t, MEM(addr));
+}
+
+ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
+					     cs_arm64_op imm)
+{
+	auto t = GPR(xt.reg);
+	auto base = GPR(src.mem.base);
+	base->ty_ = new types::pointer_ty(t->ty_);
+
+	return SEQ(MOVE(t, MEM(base)),
+		   MOVE(base, ADD(base, CNST(imm.imm), base->ty_)));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR(const disas_insn &insn)
@@ -214,12 +242,33 @@ ir::tree::rstm lifter::arm64_handle_LDR(const disas_insn &insn)
 
 	cs_arm64_op xt = mach_det->operands[0];
 	cs_arm64_op base = mach_det->operands[1];
+
+	/*
+	 * ldr x0, label
+	 */
 	if (base.type == ARM64_OP_IMM)
 		return arm64_handle_LDR_imm(xt, base);
 
-        /* ONLY ONE CASE */
-	if (mach_det->op_count == 2)
-		return arm64_handle_LDR_reg(xt, base);
+	if (mach_det->op_count == 2) {
+		/*
+		 * ldr x0, [x1]
+		 * ldr x0, [x1, x2]
+		 */
+		if (is_offset_addressing(base.mem)
+		    || is_base_reg_addressing(base.mem))
+			return arm64_handle_LDR_reg(xt, base);
+
+		if (mach_det->writeback)
+			return arm64_handle_LDR_pre(xt, base);
+		else
+			return arm64_handle_LDR_base_offset(xt, base);
+	}
+	if (mach_det->op_count == 3) {
+		/*
+		 * ldr x0, [x1], #imm
+		 */
+		return arm64_handle_LDR_post(xt, base, mach_det->operands[2]);
+	}
 
 	UNREACHABLE("Unimplemented LDR form");
 }
@@ -240,7 +289,8 @@ ir::tree::rstm lifter::arm64_handle_MOVK(const disas_insn &insn)
 
 ir::tree::rstm lifter::next_address(ir::tree::rexp addr)
 {
-	return MOVE(RTEMP(amd_target_->rv()), addr);
+	return SEQ(set_state_field("exit_reason", CNST(BB_END)),
+		   MOVE(RTEMP(amd_target_->rv()), addr));
 }
 
 ir::tree::rstm lifter::arm64_handle_RET(const disas_insn &insn)
@@ -261,18 +311,21 @@ ir::tree::rstm lifter::arm64_handle_BL(const disas_insn &insn)
 		   next_address(CNST(imm.imm)));
 }
 
-ir::tree::rstm lifter::set_cmp_values(ir::tree::rexp lhs, ir::tree::rexp rhs,
-				      enum flag_op op)
+ir::tree::rstm lifter::set_cmp_values(uint64_t address, ir::tree::rexp lhs,
+				      ir::tree::rexp rhs, enum flag_op op)
 {
 	return SEQ(set_state_field("flag_a", lhs),
 		   set_state_field("flag_b", rhs),
-		   set_state_field("flag_op", CNST(op)));
+		   set_state_field("flag_op", CNST(op)),
+		   set_state_field("exit_reason", CNST(SET_FLAGS)),
+		   MOVE(RTEMP(amd_target_->rv()), CNST(address + 4)));
 }
 
-ir::tree::rstm lifter::arm64_handle_CMP_imm(cs_arm64_op xn, cs_arm64_op imm)
+ir::tree::rstm lifter::arm64_handle_CMP_imm(uint64_t address, cs_arm64_op xn,
+					    cs_arm64_op imm)
 {
 	return set_cmp_values(
-		GPR(xn.reg),
+		address, GPR(xn.reg),
 		shift(CNST(imm.imm), imm.shift.type, imm.shift.value),
 		flag_op::CMP);
 }
@@ -283,9 +336,66 @@ ir::tree::rstm lifter::arm64_handle_CMP(const disas_insn &insn)
 	auto xn = mach_det->operands[0];
 	auto other = mach_det->operands[1];
 	if (other.type == ARM64_OP_IMM)
-		return arm64_handle_CMP_imm(xn, other);
+		return arm64_handle_CMP_imm(insn.address(), xn, other);
 
 	UNREACHABLE("Unimplemented cmp form");
+}
+
+ir::tree::rstm lifter::arm64_handle_CCMP_imm(uint64_t address, cs_arm64_op xn,
+					     cs_arm64_op imm, cs_arm64_op nzcv,
+					     arm64_cc cond)
+{
+	/*
+	 * if cond then
+	 *      cmp xn, imm
+	 * else
+	 *      flag_update(nzcv)
+	 *
+	 * cjump cond, tcond fcond
+	 * tcond:
+	 * set_cmp_values(xn, imm) # sets the next block address
+	 * jmp end
+	 * fcond:
+	 * flag_update(nzcv)
+	 * next_address(address + 4)
+	 * end:
+	 */
+
+	utils::label tcond;
+	utils::label fcond;
+	utils::label end;
+
+	uint64_t translated_cond;
+	if (cond == ARM64_CC_EQ)
+		translated_cond = Z;
+	else
+		UNREACHABLE("Unimplemented condition check");
+
+	auto cj = cc_jump(translated_cond, tcond, fcond);
+	auto set = set_cmp_values(
+		address, GPR(xn.reg),
+		shift(CNST(imm.imm), imm.shift.type, imm.shift.value),
+		flag_op::CMP);
+	auto update = set_state_field("nzcv", CNST(nzcv.imm));
+
+	return SEQ(cj, LABEL(tcond), set, JUMP(NAME(end), {end}), LABEL(fcond),
+		   update, next_address(CNST(address + 4)), LABEL(end));
+}
+
+ir::tree::rstm lifter::arm64_handle_CCMP(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto xn = mach_det->operands[0];
+	auto other = mach_det->operands[1];
+	auto nzcv = mach_det->operands[2];
+	auto cond = mach_det->cc;
+
+	if (other.type == ARM64_OP_IMM)
+		return arm64_handle_CCMP_imm(insn.address(), xn, other, nzcv,
+					     cond);
+
+	UNREACHABLE("Unimplemented CCMP");
 }
 
 ir::tree::rstm lifter::arm64_handle_B(const disas_insn &insn)
@@ -302,27 +412,10 @@ ir::tree::rstm lifter::arm64_handle_B(const disas_insn &insn)
 	auto fail_addr = insn.address() + 4;
 	auto ok_addr = lbl.imm;
 
-	auto fail_label = make_unique("fail");
-	auto ok_label = make_unique("ok");
-	auto end_label = make_unique("end");
-
-	if (mach_det->cc == ARM64_CC_EQ) {
-		/*
-		 * cjump flag_a == flag_b {ok, nok}
-		 * ok:
-		 * next_addr = ok_addr
-		 * jump end
-		 * nok:
-		 * next_addr = fail_addr
-		 * end:
-		 */
-		return SEQ(
-			CJUMP(ops::cmpop::EQ, get_state_field("flag_a"),
-			      get_state_field("flag_b"), ok_label, fail_label),
-			LABEL(ok_label), next_address(CNST(ok_addr)),
-			JUMP(NAME(end_label), {end_label}), LABEL(fail_label),
-			next_address(CNST(fail_addr)), LABEL(end_label));
-	}
+	if (mach_det->cc == ARM64_CC_EQ)
+		return cc_jump(Z, CNST(ok_addr), CNST(fail_addr));
+	if (mach_det->cc == ARM64_CC_NE)
+		return cc_jump(Z, CNST(fail_addr), CNST(ok_addr));
 
 	UNREACHABLE("Unhandled B form");
 }
@@ -497,7 +590,6 @@ ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
 	auto addr = translate_mem_op(dst.mem);
 
 	if (mach_det->op_count == 2) {
-
 		/*
 		 * str x0, [x1]
 		 * str x0, [x1, x2]
@@ -522,6 +614,45 @@ ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
 	}
 
 	UNREACHABLE("Unimplemted");
+}
+
+ir::tree::rstm lifter::cc_jump(uint64_t cc, ir::tree::rexp true_addr,
+			       ir::tree::rexp false_addr)
+{
+	/*
+	 * cjump (ncvz & cc) == cc, ok, fail
+	 * ok:
+	 * next_address(true_addr)
+	 * jump end
+	 * fail:
+	 * next_address(false_addr)
+	 * end:
+	 */
+
+	auto cond = BINOP(BITAND, get_state_field("nzcv"), CNST(cc),
+			  amd_target_->gpr_type());
+	return conditional_jump(ops::cmpop::EQ, cond, CNST(cc), true_addr,
+				false_addr);
+}
+ir::tree::rstm lifter::cc_jump(uint64_t cc, utils::label true_label,
+			       utils::label false_label)
+{
+	/*
+	 * cjump (ncvz & cc) == cc, ok, fail
+	 * ok:
+	 * jump true_label
+	 * fail:
+	 * jump false_label
+	 * end:
+	 */
+
+	utils::label ok_label;
+	utils::label fail_label;
+
+	auto cond = BINOP(BITAND, get_state_field("nzcv"), CNST(cc),
+			  amd_target_->gpr_type());
+
+	return CJUMP(ops::cmpop::EQ, cond, CNST(cc), true_label, false_label);
 }
 
 ir::tree::rstm lifter::conditional_jump(ops::cmpop op, ir::tree::rexp lhs,
@@ -552,6 +683,21 @@ ir::tree::rstm lifter::arm64_handle_CBZ(const disas_insn &insn)
 				CNST(label.imm), CNST(fail_addr));
 }
 
+ir::tree::rstm lifter::arm64_handle_CBNZ(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto xt = mach_det->operands[0];
+	auto label = mach_det->operands[1];
+
+	auto fail_addr = insn.address() + 4;
+
+	return conditional_jump(ops::cmpop::NEQ, GPR(xt.reg), CNST(0),
+				CNST(label.imm), CNST(fail_addr));
+}
+
+ir::tree::rstm lifter::arm64_handle_NOP(const disas_insn &) { return SEQ(); }
+
 ir::tree::rstm lifter::lift(const disas_insn &insn)
 {
 	switch (insn.id()) {
@@ -562,6 +708,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(MOVK);
 		HANDLER(RET);
 		HANDLER(BL);
+		HANDLER(CCMP);
 		HANDLER(CMP);
 		HANDLER(B);
 		HANDLER(STP);
@@ -569,6 +716,8 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(ADRP);
 		HANDLER(STR);
 		HANDLER(CBZ);
+		HANDLER(CBNZ);
+		HANDLER(NOP);
 	default:
 		fmt::print("Unimplemented instruction {} ({})\n", insn.as_str(),
 			   insn.insn_name());
@@ -613,19 +762,26 @@ lifter::lifter()
 		types.push_back(arm_target_->gpr_type());
 	}
 
+	update_flags_ty_ = new types::fun_ty(amd_target_->void_type(),
+					     {amd_target_->gpr_type()}, false),
+
 	bank_type_ = new types::struct_ty(
 		"state",
 		{
 			"regs",
+			"nzcv",
 			"flag_a",
 			"flag_b",
 			"flag_op",
+			"exit_reason",
 		},
 		{
 			new types::array_ty(amd_target_->gpr_type(), 32),
+			amd_target_->gpr_type(), // nzcv
 			amd_target_->gpr_type(), // flag_a
 			amd_target_->gpr_type(), // flag_b
 			amd_target_->gpr_type(), // flag_op
+			amd_target_->gpr_type(),
 		});
 
 	// fun basic_block(state* bank) int<8>

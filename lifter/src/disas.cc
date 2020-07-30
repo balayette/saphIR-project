@@ -30,9 +30,12 @@ std::string disas_insn::group_name(unsigned int group) const
 
 bool disas_insn::ends_bb() const
 {
+	auto *mach_det = mach_detail();
+
 	return cs_insn_group(handle_, insn_.get(), ARM64_GRP_JUMP)
 	       || cs_insn_group(handle_, insn_.get(), ARM64_GRP_CALL)
-	       || cs_insn_group(handle_, insn_.get(), ARM64_GRP_RET);
+	       || cs_insn_group(handle_, insn_.get(), ARM64_GRP_RET)
+	       || mach_det->update_flags;
 }
 
 bool disas_insn::is_ret() const
