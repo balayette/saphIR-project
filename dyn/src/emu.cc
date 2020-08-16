@@ -6,6 +6,9 @@
 #include "backend/regalloc.hh"
 #include "mach/aarch64/aarch64-common.hh"
 
+#include <unistd.h>
+#include <sys/types.h>
+
 namespace dyn
 {
 emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
@@ -77,6 +80,9 @@ void emu::run()
 		case lifter::SET_FLAGS:
 			flag_update();
 			break;
+		case lifter::SYSCALL:
+			syscall();
+			break;
 		default:
 			UNREACHABLE("Unimplemented exit reason");
 		}
@@ -108,6 +114,27 @@ void emu::flag_update()
 		state_.nzcv |= lifter::C;
 	if (__builtin_ssubl_overflow(lhs, rhs, &sres))
 		state_.nzcv |= lifter::V;
+}
+
+void emu::syscall()
+{
+	fmt::print("Syscall {:#x}\n", state_.regs[mach::aarch64::regs::R8]);
+	switch (state_.regs[mach::aarch64::regs::R8]) {
+	case 0xae:
+		state_.regs[mach::aarch64::regs::R0] = getuid();
+		break;
+	case 0xaf:
+		state_.regs[mach::aarch64::regs::R0] = geteuid();
+		break;
+	case 0xb0:
+		state_.regs[mach::aarch64::regs::R0] = getgid();
+		break;
+	case 0xb1:
+		state_.regs[mach::aarch64::regs::R0] = getegid();
+		break;
+	default:
+		UNREACHABLE("Unimplemented syscall wrapper");
+	}
 }
 
 std::string emu::state_dump() const

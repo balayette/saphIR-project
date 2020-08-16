@@ -33,6 +33,7 @@ class emu
 		       utils::label body_lbl);
 
 	void flag_update();
+	void syscall();
 
 	utils::mapped_file &file_;
 	elf::elf bin_;
