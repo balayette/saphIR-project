@@ -120,6 +120,37 @@ static tree::rexp access_to_exp(mach::access &access)
 }
 
 /*
+ * Return a move statement with sign/zero extension of the source if
+ * necessary.
+ *
+ * Destination type size <= source type size -> no extension
+ * Destination unsigned -> zero extension
+ * Destination signed -> sign extension
+ */
+tree::rstm movext(tree::rexp dst, tree::rexp src)
+{
+	auto dst_ty = dst->ty();
+	auto src_ty = src->ty();
+	auto &target = dst->target_;
+
+	ASSERT(dst_ty->get_signedness() != types::signedness::INVALID,
+	       "Invalid destination signedness");
+	ASSERT(src_ty->get_signedness() != types::signedness::INVALID,
+	       "Invalid source signedness");
+
+	if (dst_ty->assem_size() <= src_ty->assem_size())
+		return target.make_move(dst, src);
+	else if (dst_ty->get_signedness() == types::signedness::UNSIGNED)
+		return target.make_move(dst,
+					target.make_zext(src, dst_ty->clone()));
+	else if (dst_ty->get_signedness() == types::signedness::SIGNED)
+		return target.make_move(dst,
+					target.make_sext(src, dst_ty->clone()));
+
+	UNREACHABLE("All cases are handled");
+}
+
+/*
  * lhs and rhs are binop(...), with type array_ty
  */
 utils::ref<exp> translate_visitor::array_copy(ir::tree::rexp lhs,
@@ -139,9 +170,9 @@ utils::ref<exp> translate_visitor::array_copy(ir::tree::rexp lhs,
 	utils::temp dst_temp;
 	utils::temp src_temp;
 
-	s->children_.push_back(target_.make_move(
+	s->children_.push_back(movext(
 		target_.make_temp(dst_temp, target_.integer_type()), dst_base));
-	s->children_.push_back(target_.make_move(
+	s->children_.push_back(movext(
 		target_.make_temp(src_temp, target_.integer_type()), src_base));
 
 	size_t offt = 0;
@@ -194,9 +225,9 @@ utils::ref<exp> translate_visitor::struct_copy(ir::tree::rexp lhs,
 	utils::temp dst_temp;
 	utils::temp src_temp;
 
-	s->children_.push_back(target_.make_move(
+	s->children_.push_back(movext(
 		target_.make_temp(dst_temp, target_.integer_type()), dst_base));
-	s->children_.push_back(target_.make_move(
+	s->children_.push_back(movext(
 		target_.make_temp(src_temp, target_.integer_type()), src_base));
 
 	size_t offt = 0;
@@ -263,7 +294,7 @@ translate_visitor::braceinit_copy_to_array(ir::tree::rexp lhs,
 	auto exps = rhs->exps();
 
 	utils::temp base_temp;
-	s->children_.push_back(target_.make_move(
+	s->children_.push_back(movext(
 		target_.make_temp(base_temp, target_.integer_type()), base));
 
 	size_t offt = 0;
@@ -307,7 +338,7 @@ translate_visitor::braceinit_copy_to_struct(ir::tree::rexp lhs,
 	auto exps = rhs->exps();
 
 	utils::temp base_temp;
-	s->children_.push_back(target_.make_move(
+	s->children_.push_back(movext(
 		target_.make_temp(base_temp, target_.integer_type()), base));
 
 	size_t offt = 0;
@@ -356,7 +387,7 @@ utils::ref<exp> translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
 	// scalars
 	// XXX: functions can't return structs by value (it is ABI dependant)
 	if (types::is_scalar(&lhs->ty_)) {
-		return new NX(target_.make_move(lhs, rhs));
+		return new NX(movext(lhs, rhs));
 	}
 
 	// lhs is a struct
@@ -433,17 +464,15 @@ void translate_visitor::visit_bin(bin &e)
 		auto seq = target_.make_seq({
 			cond1->un_cx(f_label, t_label),
 			target_.make_label(t_label),
-			target_.make_move(
-				target_.make_temp(result,
-						  target_.integer_type()),
-				cond2->un_ex()),
+			movext(target_.make_temp(result,
+						 target_.integer_type()),
+			       cond2->un_ex()),
 			target_.make_jump(target_.make_name(done_label),
 					  {done_label}),
 			target_.make_label(f_label),
-			target_.make_move(
-				target_.make_temp(result,
-						  target_.integer_type()),
-				target_.make_cnst(0)),
+			movext(target_.make_temp(result,
+						 target_.integer_type()),
+			       target_.make_cnst(0)),
 			target_.make_label(done_label),
 		});
 
@@ -480,16 +509,14 @@ void translate_visitor::visit_bin(bin &e)
 			new CX(ops::cmpop::EQ, right, target_.make_cnst(1));
 
 		auto seq = target_.make_seq({
-			target_.make_move(
-				target_.make_temp(result,
-						  target_.integer_type()),
-				cond1->un_ex()),
+			movext(target_.make_temp(result,
+						 target_.integer_type()),
+			       cond1->un_ex()),
 			cond2->un_cx(done_label, f_label),
 			target_.make_label(f_label),
-			target_.make_move(
-				target_.make_temp(result,
-						  target_.integer_type()),
-				cond3->un_ex()),
+			movext(target_.make_temp(result,
+						 target_.integer_type()),
+			       cond3->un_ex()),
 			target_.make_label(done_label),
 		});
 
@@ -677,9 +704,9 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 		reg_in.push_back(reg);
 
 		rm.e_->accept(*this);
-		pre->children_.push_back(target_.make_move(
-			target_.make_temp(reg, target_.integer_type()),
-			ret_->un_ex()));
+		pre->children_.push_back(
+			movext(target_.make_temp(reg, target_.integer_type()),
+			       ret_->un_ex()));
 	}
 
 	auto post = target_.make_seq({});
@@ -688,9 +715,9 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 		reg_out.push_back(reg);
 
 		rm.e_->accept(*this);
-		post->children_.push_back(target_.make_move(
-			ret_->un_ex(),
-			target_.make_temp(reg, target_.integer_type())));
+		post->children_.push_back(
+			movext(ret_->un_ex(),
+			       target_.make_temp(reg, target_.integer_type())));
 	}
 
 	for (auto &rm : s.reg_clob_)
@@ -727,8 +754,7 @@ void translate_visitor::visit_ret(ret &s)
 	s.e_->accept(*this);
 	auto lhs = ret_->un_ex();
 	ret_ = new NX(target_.make_seq({
-		target_.make_move(target_.make_temp(target_.rv(), fty->ret_ty_),
-				  lhs),
+		movext(target_.make_temp(target_.rv(), fty->ret_ty_), lhs),
 		target_.make_jump(target_.make_name(ret_lbl_), {ret_lbl_}),
 	}));
 }
