@@ -53,15 +53,11 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 			continue;
 		}
 
-		std::cout << "Reached the end of a block\n";
-
 		// End the block and start a new one.
-
 		if (bb_begin == seq->children_.begin()) {
 			// First block, we need to add a label if it doesn't
 			// have one, and tell the prologue to jump to it.
 			// If the block already has a label, we use it.
-			std::cout << " The block is the first block\n";
 			if (stmts.size() > 0
 			    && stmts.front()->kind() == tree::tree_kind::label)
 				body = stmts.front().as<tree::label>()->name_;
@@ -70,7 +66,6 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 				stmts.insert(stmts.begin(),
 					     target.make_label(body));
 			}
-			std::cout << " Body label: " << body << '\n';
 		}
 
 		auto child = *ichild;
@@ -79,21 +74,17 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 		// the jump in the block.
 		// Otherwise, add a jump to the label
 		if (is_jump(child->kind())) {
-			std::cout << " The block was ended by a jump\n";
 			stmts.push_back(*ichild);
 			++ichild;
 		} else {
-			std::cout << " The block was ended by a label\n";
 			auto lbl = child.as<tree::label>();
 			stmts.emplace_back(target.make_jump(
 				target.make_name(lbl->name_), {lbl->name_}));
-			std::cout << "  Added a jump to " << lbl->name_ << '\n';
 		}
 
 		// At this point we have a complete basic block.
 		// If the basic block is a single jump, then we can remove it,
 		// because no label => no one can jump to it.
-		std::cout << " Block completed\n";
 		if (stmts.size() > 1 && !is_jump(stmts.front()->kind())) {
 			bb block(stmts.begin(), stmts.end());
 			basic_blocks.push_back(block);
@@ -109,7 +100,6 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 	}
 
 	if (bb_begin != seq->children_.end()) {
-		std::cout << "Adding the epilogue block\n";
 		bb block(bb_begin, seq->children_.end());
 		block.instrs_.push_back(target.make_jump(
 			target.make_name(epilogue), {epilogue}));
@@ -119,10 +109,6 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 
 	std::unordered_map<utils::label, bb> ret;
 	for (auto block : basic_blocks) {
-		std::cout << "Block " << block.entry() << " ->";
-		for (auto s : block.successors())
-			std::cout << " " << s;
-		std::cout << "\n";
 		ret.insert({block.entry(), block});
 	}
 

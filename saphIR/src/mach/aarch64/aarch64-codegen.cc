@@ -372,6 +372,7 @@ void generator::visit_asm_block(ir::tree::asm_block &s)
 
 void generator::emit(assem::rinstr ins)
 {
+#if 0
 	unsigned width = 80;
 	std::stringstream str;
 	str << ins->repr();
@@ -389,6 +390,7 @@ void generator::emit(assem::rinstr ins)
 	str << ins->to_string() << '\n';
 
 	std::cout << str.str();
+#endif
 
 	instrs_.push_back(ins);
 }

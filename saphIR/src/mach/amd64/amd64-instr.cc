@@ -61,9 +61,6 @@ std::string simple_move::to_string(
 	unsigned dsize = dst.size_;
 	std::string move_kind = "mov";
 
-	std::cout << "to_string " << src_str_ << ", " << dst_str_ << " "
-		  << ssize << " -> " << dsize << '\n';
-
 	if (ssize > dsize)
 		ssize = dsize; // mov %rax, %ebx => mov %eax, %ebx
 
@@ -114,9 +111,6 @@ std::string complex_move::to_string(
 	unsigned ssize = src_sz_;
 	unsigned dsize = dst_sz_;
 	std::string move_kind = "mov";
-
-	std::cout << "to_string " << src_str_ << ", " << dst_str_ << " "
-		  << ssize << " -> " << dsize << '\n';
 
 	if (ssize == dsize)
 		move_kind += size_str(ssize);
