@@ -128,4 +128,33 @@ target::make_asm_block(const std::vector<std::string> &lines,
 }
 
 #undef F
+
+/*
+ * Return a move statement with sign/zero extension of the source if
+ * necessary.
+ *
+ * Destination type size <= source type size -> no extension
+ * Destination unsigned -> zero extension
+ * Destination signed -> sign extension
+ */
+ir::tree::move *target::move_ext(ir::tree::rexp dst, ir::tree::rexp src)
+{
+	auto dst_ty = dst->ty();
+	auto src_ty = src->ty();
+
+	ASSERT(dst_ty->get_signedness() != types::signedness::INVALID,
+	       "Invalid destination signedness");
+	ASSERT(src_ty->get_signedness() != types::signedness::INVALID,
+	       "Invalid source signedness");
+
+	if (dst_ty->assem_size() <= src_ty->assem_size())
+		return make_move(dst, src);
+	else if (dst_ty->get_signedness() == types::signedness::UNSIGNED)
+		return make_move(dst, make_zext(src, dst_ty->clone()));
+	else if (dst_ty->get_signedness() == types::signedness::SIGNED)
+		return make_move(dst, make_sext(src, dst_ty->clone()));
+
+	UNREACHABLE("All cases are handled");
+}
+
 } // namespace mach

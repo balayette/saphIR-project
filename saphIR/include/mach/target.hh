@@ -156,5 +156,10 @@ struct target {
 		       const std::vector<utils::temp> &reg_in,
 		       const std::vector<utils::temp> &reg_out,
 		       const std::vector<utils::temp> &reg_clob);
+
+	/*
+	 * IR helpers
+	 */
+	ir::tree::move *move_ext(ir::tree::rexp dst, ir::tree::rexp src);
 };
 } // namespace mach
