@@ -39,6 +39,10 @@ void default_ir_visitor::visit_eseq(tree::eseq &n)
 	n.rhs()->accept(*this);
 }
 
+void default_ir_visitor::visit_sext(tree::sext &n) { n.e()->accept(*this); }
+
+void default_ir_visitor::visit_zext(tree::zext &n) { n.e()->accept(*this); }
+
 void default_ir_visitor::visit_move(tree::move &n)
 {
 	n.lhs()->accept(*this);

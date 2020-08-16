@@ -16,6 +16,8 @@ class default_ir_visitor : public ir_visitor
 	virtual void visit_mem(tree::mem &n) override;
 	virtual void visit_call(tree::call &n) override;
 	virtual void visit_eseq(tree::eseq &n) override;
+	virtual void visit_sext(tree::sext &n) override;
+	virtual void visit_zext(tree::zext &n) override;
 	virtual void visit_move(tree::move &n) override;
 	virtual void visit_sexp(tree::sexp &n) override;
 	virtual void visit_jump(tree::jump &n) override;

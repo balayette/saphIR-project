@@ -31,6 +31,8 @@ enum class tree_kind {
 	mem,
 	call,
 	eseq,
+	sext,
+	zext,
 	move,
 	sexp,
 	jump,
@@ -68,6 +70,8 @@ struct exp : public ir_node {
 
 	size_t size() const { return ty_->size(); }
 	size_t assem_size() const { return ty_->assem_size(); }
+
+	utils::ref<types::ty> ty() const { return ty_; }
 
 	utils::ref<types::ty> ty_;
 };
@@ -219,6 +223,28 @@ struct eseq : public exp {
 
 	rstm lhs() { return children_[0].as<stm>(); }
 	rexp rhs() { return children_[1].as<exp>(); }
+};
+
+struct sext : public exp {
+	sext(mach::target &target, rexp e, utils::ref<types::ty> type)
+	    : exp(target, type)
+	{
+		children_ = {e};
+	}
+	TREE_KIND(sext)
+
+	rexp e() { return children_[0].as<exp>(); }
+};
+
+struct zext : public exp {
+	zext(mach::target &target, rexp e, utils::ref<types::ty> type)
+	    : exp(target, type)
+	{
+		children_ = {e};
+	}
+	TREE_KIND(zext)
+
+	rexp e() { return children_[0].as<exp>(); }
 };
 
 struct move : public stm {

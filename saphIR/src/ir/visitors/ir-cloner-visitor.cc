@@ -82,6 +82,16 @@ void ir_cloner_visitor::visit_eseq(tree::eseq &n)
 				 recurse<tree::exp>(n.rhs()));
 }
 
+void ir_cloner_visitor::visit_sext(tree::sext &n)
+{
+	ret_ = target_.make_sext(recurse<tree::exp>(n.e()), n.ty_->clone());
+}
+
+void ir_cloner_visitor::visit_zext(tree::zext &n)
+{
+	ret_ = target_.make_zext(recurse<tree::exp>(n.e()), n.ty_->clone());
+}
+
 void ir_cloner_visitor::visit_move(tree::move &n)
 {
 	ret_ = target_.make_move(recurse<tree::exp>(n.lhs()),

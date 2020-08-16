@@ -13,6 +13,8 @@ struct unaryop;
 struct mem;
 struct call;
 struct eseq;
+struct sext;
+struct zext;
 struct move;
 struct sexp;
 struct jump;
@@ -34,6 +36,8 @@ class ir_visitor
 	virtual void visit_mem(tree::mem &n) = 0;
 	virtual void visit_call(tree::call &n) = 0;
 	virtual void visit_eseq(tree::eseq &n) = 0;
+	virtual void visit_sext(tree::sext &n) = 0;
+	virtual void visit_zext(tree::zext &n) = 0;
 	virtual void visit_move(tree::move &n) = 0;
 	virtual void visit_sexp(tree::sexp &n) = 0;
 	virtual void visit_jump(tree::jump &n) = 0;

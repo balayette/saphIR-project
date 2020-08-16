@@ -139,6 +139,8 @@ struct target {
 				  const std::vector<ir::tree::rexp> &args,
 				  utils::ref<types::ty> type);
 	ir::tree::eseq *make_eseq(ir::tree::rstm lhs, ir::tree::rexp rhs);
+	ir::tree::sext *make_sext(ir::tree::rexp e, utils::ref<types::ty> type);
+	ir::tree::zext *make_zext(ir::tree::rexp e, utils::ref<types::ty> type);
 	ir::tree::move *make_move(ir::tree::rexp lhs, ir::tree::rexp rhs);
 	ir::tree::sexp *make_sexp(ir::tree::rexp e);
 	ir::tree::jump *make_jump(ir::tree::rexp dest,

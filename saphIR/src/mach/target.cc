@@ -85,6 +85,14 @@ ir::tree::eseq *target::make_eseq(ir::tree::rstm lhs, ir::tree::rexp rhs)
 {
 	F(eseq, lhs, rhs);
 }
+ir::tree::sext *target::make_sext(ir::tree::rexp e, utils::ref<types::ty> type)
+{
+	F(sext, e, type);
+}
+ir::tree::zext *target::make_zext(ir::tree::rexp e, utils::ref<types::ty> type)
+{
+	F(zext, e, type);
+}
 ir::tree::move *target::make_move(ir::tree::rexp lhs, ir::tree::rexp rhs)
 {
 	F(move, lhs, rhs);

@@ -5,7 +5,7 @@ ir_pretty_printer::ir_pretty_printer(std::ostream &os) : os_(os), lvl_(0) {}
 
 void ir_pretty_printer::visit_cnst(tree::cnst &n)
 {
-	indent() << "(const " << n.value_ << ")\n";
+	indent() << "(const " << (int64_t)n.value_ << ")\n";
 }
 
 void ir_pretty_printer::visit_braceinit(tree::braceinit &n)
@@ -25,7 +25,7 @@ void ir_pretty_printer::visit_name(tree::name &n)
 
 void ir_pretty_printer::visit_temp(tree::temp &n)
 {
-	indent() << "(temp " << n.temp_ << ")\n";
+	indent() << "(temp " << n.temp_ << "_" << n.ty_->assem_size() << ")\n";
 }
 
 void ir_pretty_printer::visit_binop(tree::binop &n)
@@ -49,7 +49,7 @@ void ir_pretty_printer::visit_unaryop(tree::unaryop &n)
 
 void ir_pretty_printer::visit_mem(tree::mem &n)
 {
-	indent() << "(mem\n";
+	indent() << "(mem" << n.ty_->assem_size() << '\n';
 	lvl_++;
 	n.e()->accept(*this);
 	lvl_--;
@@ -73,6 +73,24 @@ void ir_pretty_printer::visit_eseq(tree::eseq &n)
 	lvl_++;
 	n.lhs()->accept(*this);
 	n.rhs()->accept(*this);
+	lvl_--;
+	indent() << ")\n";
+}
+
+void ir_pretty_printer::visit_sext(tree::sext &n)
+{
+	indent() << "(sext" << n.ty_->assem_size() << "\n";
+	lvl_++;
+	n.e()->accept(*this);
+	lvl_--;
+	indent() << ")\n";
+}
+
+void ir_pretty_printer::visit_zext(tree::zext &n)
+{
+	indent() << "(zext" << n.ty_->assem_size() << "\n";
+	lvl_++;
+	n.e()->accept(*this);
 	lvl_--;
 	indent() << ")\n";
 }
