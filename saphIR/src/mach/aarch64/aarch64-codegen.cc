@@ -124,6 +124,28 @@ void generator::visit_name(tree::name &n)
 	ret_ = ret;
 }
 
+void generator::visit_zext(tree::zext &z)
+{
+	assem::temp dst(z.ty()->assem_size(), z.ty()->get_signedness());
+
+	z.e()->accept(*this);
+	auto src = ret_;
+	EMIT(simple_move(dst, src));
+
+	ret_ = dst;
+}
+
+void generator::visit_sext(tree::sext &s)
+{
+	assem::temp dst(s.ty()->assem_size(), s.ty()->get_signedness());
+
+	s.e()->accept(*this);
+	auto src = ret_;
+	EMIT(simple_move(dst, src));
+
+	ret_ = dst;
+}
+
 void generator::visit_move(tree::move &mv)
 {
 	auto signedness = mv.lhs()->ty_->get_signedness();
