@@ -1,6 +1,7 @@
 #include "mach/amd64/amd64-codegen.hh"
 #include "mach/amd64/amd64-instr.hh"
 #include "mach/amd64/amd64-common.hh"
+#include "ir/visitors/ir-pretty-printer.hh"
 #include "utils/assert.hh"
 #include "utils/misc.hh"
 #include "fmt/format.h"
@@ -277,6 +278,22 @@ std::pair<std::string, assem::temp> reg_deref_str(tree::rexp e,
 	UNREACHABLE("what");
 }
 
+std::pair<assem::temp, int64_t> offset_addressing(tree::rexp e)
+{
+	if (is_reg_disp(e)) {
+		auto binop = e.as<tree::binop>();
+		auto reg = binop->lhs().as<tree::temp>();
+		auto cnst = binop->rhs().as<tree::cnst>();
+
+		return {reg->temp_, cnst->value_};
+	} else if (is_reg(e)) {
+		auto reg = e.as<tree::temp>();
+		return {reg->temp_, 0};
+	}
+
+	UNREACHABLE("Not offset addressing");
+}
+
 std::pair<std::string, std::optional<assem::temp>>
 simple_src_str(tree::rexp e, std::string regstr)
 {
@@ -348,28 +365,21 @@ void generator::visit_move(tree::move &mv)
 				      mv.lhs()->ty_->get_signedness());
 
 		auto mem = mv.rhs().as<tree::mem>();
-		auto [s, t2] = reg_deref_str(mem->e(), "`s0");
+		auto [base, offset] = offset_addressing(mem->e());
 
-		EMIT(complex_move("`d0", s, {t1}, {t2}, mv.lhs()->assem_size(),
-				  mv.rhs()->assem_size(), signedness));
+		EMIT(load(t1, base, offset, mem->ty_->assem_size()));
 		return;
 	}
-	if (is_mem_reg(mv.lhs()) && is_simple_source(mv.rhs())) {
+	if (is_mem_reg(mv.lhs()) && is_reg(mv.rhs())) {
 		// mov %t2, 3(%t1)
-		auto [s1, t2] = simple_src_str(mv.rhs(), "`s0");
+		auto t2 = assem::temp(mv.rhs().as<tree::temp>()->temp_,
+				      mv.lhs()->ty_->assem_size(),
+				      mv.rhs()->ty_->get_signedness());
 
 		auto mem = mv.lhs().as<tree::mem>();
-		auto [s2, t1] = reg_deref_str(
-			mem->e(), t2 == std::nullopt ? "`s0" : "`s1");
+		auto [base, offset] = offset_addressing(mem->e());
 
-		if (t2 == std::nullopt)
-			EMIT(complex_move(s2, s1, {}, {t1},
-					  mv.lhs()->assem_size(),
-					  mv.rhs()->assem_size(), signedness));
-		else
-			EMIT(complex_move(s2, s1, {}, {*t2, t1},
-					  mv.lhs()->assem_size(),
-					  mv.rhs()->assem_size(), signedness));
+		EMIT(store(base, offset, t2, t2.size_));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
@@ -380,15 +390,14 @@ void generator::visit_move(tree::move &mv)
 		assem::temp t3(mv.lhs()->ty_->assem_size());
 
 		auto mem1 = mv.rhs().as<tree::mem>();
-		auto [s1, t2] = reg_deref_str(mem1->e(), "`s0");
-		EMIT(complex_move("`d0", s1, {t3}, {t2}, mv.lhs()->assem_size(),
-				  mv.rhs()->assem_size(), signedness));
+		auto [base, offset] = offset_addressing(mem1->e());
+
+		EMIT(load(t3, base, offset, mem1->ty_->assem_size()));
 
 		auto mem2 = mv.lhs().as<tree::mem>();
-		auto [s2, t1] = reg_deref_str(mem2->e(), "`s1");
-		EMIT(complex_move(s2, "`s0", {}, {t3, t1},
-				  mv.lhs()->assem_size(),
-				  mv.rhs()->assem_size(), signedness));
+		auto [sbase, soffset] = offset_addressing(mem2->e());
+
+		EMIT(store(sbase, soffset, t3, t3.size_));
 		return;
 	}
 
@@ -398,11 +407,9 @@ void generator::visit_move(tree::move &mv)
 		lmem->e()->accept(*this);
 		auto lhs = ret_;
 		mv.rhs()->accept(*this);
-		auto rhs = assem::temp(ret_, mv.lhs()->assem_size());
+		auto rhs = ret_;
 
-		EMIT(complex_move("(`s1)", "`s0", {}, {rhs, lhs},
-				  mv.lhs()->assem_size(),
-				  mv.lhs()->assem_size(), signedness));
+		EMIT(store(lhs, 0, rhs, mv.lhs()->ty_->assem_size()));
 		return;
 	}
 
@@ -419,8 +426,8 @@ void generator::visit_mem(tree::mem &mm)
 	assem::temp dst(mm.ty_->assem_size());
 
 	mm.e()->accept(*this);
-	EMIT(complex_move("`d0", "(`s0)", {dst}, {ret_}, mm.ty_->assem_size(),
-			  mm.ty_->assem_size(), types::signedness::INVALID));
+
+	EMIT(load(dst, ret_, 0, mm.ty_->assem_size()));
 	ret_ = dst;
 }
 
@@ -437,6 +444,28 @@ void generator::visit_cnst(tree::cnst &c)
 void generator::visit_temp(tree::temp &t)
 {
 	ret_ = assem::temp(t.temp_, t.assem_size(), t.ty_->get_signedness());
+}
+
+void generator::visit_zext(tree::zext &z)
+{
+	assem::temp dst(z.ty()->assem_size(), z.ty()->get_signedness());
+
+	z.e()->accept(*this);
+	auto src = ret_;
+	EMIT(simple_move(dst, src));
+
+	ret_ = dst;
+}
+
+void generator::visit_sext(tree::sext &s)
+{
+	assem::temp dst(s.ty()->assem_size(), s.ty()->get_signedness());
+
+	s.e()->accept(*this);
+	auto src = ret_;
+	EMIT(simple_move(dst, src));
+
+	ret_ = dst;
 }
 
 bool generator::opt_mul(tree::binop &b)

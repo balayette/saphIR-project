@@ -223,7 +223,8 @@ struct struct_ty : public composite_ty {
 
 	virtual signedness get_signedness() const override
 	{
-		return signedness::INVALID;
+		// structs behave as pointers
+		return signedness::UNSIGNED;
 	}
 
 	std::vector<utils::ref<types::ty>> types_;

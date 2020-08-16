@@ -63,4 +63,34 @@ struct complex_move : public move {
 
 	types::signedness sign_;
 };
+
+/*
+ * A load is a mem2reg move such as mov 0x10(%rax), %rbx
+ */
+struct load : public move {
+	load(assem::temp dst, assem::temp base, int64_t disp, size_t sz);
+
+	virtual std::string
+	to_string(std::function<std::string(utils::temp, unsigned)> f)
+		const override;
+
+	assem::temp dest_;
+	assem::temp base_;
+	int64_t disp_;
+	size_t sz_;
+};
+
+/*
+ * A store is a reg2mem such as mov %rbx, 0x10(%rax)
+ */
+struct store : public move {
+	store(assem::temp dst, int64_t disp, assem::temp src, size_t sz);
+
+	virtual std::string
+	to_string(std::function<std::string(utils::temp, unsigned)> f)
+		const override;
+
+	int64_t disp_;
+        size_t sz_;
+};
 } // namespace assem::amd64

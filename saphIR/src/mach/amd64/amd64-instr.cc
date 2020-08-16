@@ -1,4 +1,5 @@
 #include "mach/amd64/amd64-instr.hh"
+#include "fmt/format.h"
 
 namespace assem::amd64
 {
@@ -130,7 +131,6 @@ std::string complex_move::to_string(
 	} else
 		move_kind += size_str(dsize);
 
-
 	std::vector<std::string> src;
 	std::vector<std::string> dst;
 
@@ -143,4 +143,70 @@ std::string complex_move::to_string(
 				  src, dst);
 }
 
+
+load::load(assem::temp dst, assem::temp base, int64_t disp, size_t sz)
+    : move(std::string(dst), fmt::format("{:#x}({})", disp, std::string(base)),
+	   {dst}, {base}),
+      dest_(dst), base_(base), disp_(disp), sz_(sz)
+{
+}
+
+std::string
+load::to_string(std::function<std::string(utils::temp, unsigned)> f) const
+{
+	auto ssize = sz_;
+	auto dsize = dest_.size_;
+
+	std::string repr("mov");
+
+	/*
+	 * movzlq 0x10(%rax), %rdi => movl 0x10(%rax), %edi
+	 */
+	if (ssize == 4 && dsize == 8
+	    && dest_.is_signed_ == types::signedness::UNSIGNED)
+		dsize = ssize;
+
+	if (ssize == dsize)
+		repr += size_str(ssize);
+	else if (ssize < dsize) {
+		if (dest_.is_signed_ == types::signedness::SIGNED)
+			repr += "s";
+		else
+			repr += "z";
+		repr += size_str(ssize) + size_str(dsize);
+	} else
+		UNREACHABLE("Impossible memory load");
+
+	repr += " ";
+	if (disp_ != 0)
+		repr += fmt::format("{:#x}", disp_);
+
+	repr += "(`s0), `d0";
+
+	return assem::format_repr(repr, {f(src_[0].temp_, src_[0].size_)},
+				  {f(dst_[0].temp_, dsize)});
+}
+
+store::store(assem::temp dst, int64_t disp, assem::temp src, size_t sz)
+    : move(fmt::format("{:#x}({})", disp, std::string(dst)), std::string(src),
+	   {}, {src, dst}),
+      disp_(disp), sz_(sz)
+{
+}
+
+std::string
+store::to_string(std::function<std::string(utils::temp, unsigned)> f) const
+{
+	auto ssize = sz_;
+
+	std::string repr = fmt::format("mov{} `s0, ", size_str(ssize));
+
+	if (disp_ != 0)
+		repr += fmt::format("{:#x}", disp_);
+	repr += "(`s1)";
+
+	return assem::format_repr(
+		repr,
+		{f(src_[0].temp_, ssize), f(src_[1].temp_, src_[1].size_)}, {});
+}
 } // namespace assem::amd64
