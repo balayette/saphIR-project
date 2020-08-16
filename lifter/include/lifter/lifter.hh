@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <utility>
 #include "mach/target.hh"
 #include "mach/amd64/amd64-target.hh"
 #include "mach/aarch64/aarch64-target.hh"
@@ -24,6 +25,7 @@ enum flag_op {
 enum exit_reasons {
 	BB_END = 0,
 	SET_FLAGS,
+	SYSCALL,
 };
 
 struct state {
@@ -61,9 +63,9 @@ class lifter
 					ir::tree::rexp rhs,
 					ir::tree::rexp true_addr,
 					ir::tree::rexp false_addr);
-	ir::tree::rstm cc_jump(uint64_t cc, ir::tree::rexp true_addr,
+	ir::tree::rstm cc_jump(arm64_cc cc, ir::tree::rexp true_addr,
 			       ir::tree::rexp false_addr);
-	ir::tree::rstm cc_jump(uint64_t cc, utils::label true_label,
+	ir::tree::rstm cc_jump(arm64_cc cc, utils::label true_label,
 			       utils::label false_label);
 
 	ir::tree::rstm arm64_handle_MOV_reg_reg(const disas_insn &insn);
@@ -75,14 +77,18 @@ class lifter
 	ir::tree::rexp arm64_handle_ADD_imm(cs_arm64_op rn, cs_arm64_op imm);
 	ir::tree::rexp arm64_handle_ADD_reg(cs_arm64_op rn, cs_arm64_op rm);
 
-	ir::tree::rstm arm64_handle_LDR(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_LDR(const disas_insn &insn, size_t sz = 8);
 	ir::tree::rstm arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op label);
-	ir::tree::rstm arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src);
-	ir::tree::rstm arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src);
+	ir::tree::rstm arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
+					    size_t sz);
+	ir::tree::rstm arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
+					    size_t sz);
 	ir::tree::rstm arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
-					     cs_arm64_op imm);
+					     cs_arm64_op imm, size_t sz);
 	ir::tree::rstm arm64_handle_LDR_base_offset(cs_arm64_op xt,
-						    cs_arm64_op src);
+						    cs_arm64_op src, size_t sz);
+
+	ir::tree::rstm arm64_handle_LDRH(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_MOVK(const disas_insn &insn);
 
@@ -93,6 +99,8 @@ class lifter
 	ir::tree::rstm arm64_handle_CMP(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_CMP_imm(uint64_t address, cs_arm64_op xn,
 					    cs_arm64_op imm);
+	ir::tree::rstm arm64_handle_CMP_reg(uint64_t address, cs_arm64_op xn,
+					    cs_arm64_op xm);
 
 	ir::tree::rstm arm64_handle_CCMP(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_CCMP_imm(uint64_t address, cs_arm64_op xn,
@@ -133,6 +141,17 @@ class lifter
 	ir::tree::rstm arm64_handle_CBNZ(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_NOP(const disas_insn &insn);
+
+	ir::tree::rstm arm64_handle_SVC(const disas_insn &insn);
+
+	ir::tree::rstm translate_CSINC(arm64_reg xd, arm64_reg xn, arm64_reg xm,
+				       arm64_cc cc);
+	ir::tree::rstm arm64_handle_CSET(const disas_insn &insn);
+
+	arm64_cc invert_cc(arm64_cc);
+
+	std::tuple<ops::cmpop, ir::tree::rexp, ir::tree::rexp>
+	translate_cc(arm64_cc cond);
 
 	utils::ref<mach::amd64::amd64_target> amd_target_;
 	utils::ref<mach::aarch64::aarch64_target> arm_target_;

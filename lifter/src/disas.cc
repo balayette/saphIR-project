@@ -35,6 +35,7 @@ bool disas_insn::ends_bb() const
 	return cs_insn_group(handle_, insn_.get(), ARM64_GRP_JUMP)
 	       || cs_insn_group(handle_, insn_.get(), ARM64_GRP_CALL)
 	       || cs_insn_group(handle_, insn_.get(), ARM64_GRP_RET)
+	       || cs_insn_group(handle_, insn_.get(), ARM64_GRP_INT)
 	       || mach_det->update_flags;
 }
 
