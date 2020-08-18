@@ -59,7 +59,7 @@ std::string label_to_asm(const utils::label &lbl)
 	return ret;
 }
 
-static std::string num_to_string(int32_t num)
+static std::string num_to_string(int64_t num)
 {
 	return fmt::format("${:#x}", num);
 }
@@ -433,10 +433,10 @@ void generator::visit_mem(tree::mem &mm)
 
 void generator::visit_cnst(tree::cnst &c)
 {
-	assem::temp dst(4, types::signedness::SIGNED);
+	assem::temp dst(c.ty_->assem_size(), c.ty_->get_signedness());
 
-	EMIT(complex_move("`d0", num_to_string(c.value_), {dst}, {}, 4, 4,
-			  types::signedness::SIGNED));
+	EMIT(complex_move("`d0", num_to_string(c.value_), {dst}, {}, dst.size_,
+			  dst.size_, types::signedness::SIGNED));
 
 	ret_ = dst;
 }
@@ -514,10 +514,12 @@ bool generator::opt_add(tree::binop &b)
 
 void generator::visit_binop(tree::binop &b)
 {
+	/*
 	if (b.op_ == ops::binop::PLUS && opt_add(b))
 		return;
 	else if (b.op_ == ops::binop::MULT && opt_mul(b))
 		return;
+	*/
 
 	auto oper_sz = std::max(b.lhs()->assem_size(), b.rhs()->assem_size());
 	if (b.op_ == ops::binop::MULT)
@@ -583,12 +585,12 @@ void generator::visit_binop(tree::binop &b)
 			   reg_to_assem_temp(regs::RDX)},
 			  {reg_to_assem_temp(regs::RAX)}, {}));
 		// quotient in %rax, remainder in %rdx
-		EMIT(oper("idivq `s0",
-			  {reg_to_assem_temp(regs::RAX),
-			   reg_to_assem_temp(regs::RDX)},
-			  {dst, reg_to_assem_temp(regs::RAX),
-			   reg_to_assem_temp(regs::RAX)},
-			  {}));
+		EMIT(sized_oper("idiv", "`s0",
+				{reg_to_assem_temp(regs::RAX),
+				 reg_to_assem_temp(regs::RDX)},
+				{dst, reg_to_assem_temp(regs::RAX),
+				 reg_to_assem_temp(regs::RAX)},
+				dst.size_));
 		if (b.op_ == ops::binop::DIV)
 			EMIT(simple_move(
 				dst, reg_to_assem_temp(regs::RAX, oper_sz)));

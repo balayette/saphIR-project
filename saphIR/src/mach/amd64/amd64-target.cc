@@ -184,6 +184,13 @@ utils::ref<types::ty> amd64_target::integer_type(types::signedness signedness)
 						   *this);
 }
 
+utils::ref<types::ty> amd64_target::integer_type(types::signedness signedness,
+						 size_t sz)
+{
+	return std::make_shared<types::builtin_ty>(types::type::INT, sz,
+						   signedness, *this);
+}
+
 utils::ref<types::ty> amd64_target::boolean_type()
 {
 	return std::make_shared<types::builtin_ty>(

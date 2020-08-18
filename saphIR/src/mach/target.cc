@@ -1,4 +1,5 @@
 #include "mach/target.hh"
+#include "fmt/format.h"
 
 namespace mach
 {
@@ -45,6 +46,12 @@ asm_function::asm_function(const std::string &prologue,
 #define F(Node, ...) return new ir::tree::Node(*this, __VA_ARGS__)
 
 ir::tree::cnst *target::make_cnst(uint64_t value) { F(cnst, value); }
+
+ir::tree::cnst *target::make_cnst(uint64_t value, types::signedness signedness,
+				  size_t sz)
+{
+	F(cnst, value, signedness, sz);
+}
 
 ir::tree::braceinit *
 target::make_braceinit(utils::ref<types::ty> &ty,

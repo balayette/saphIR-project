@@ -68,6 +68,8 @@ struct amd64_target : public mach::target {
 	utils::ref<types::ty>
 	integer_type(types::signedness signedness =
 			     types::signedness::SIGNED) override;
+	virtual utils::ref<types::ty> integer_type(types::signedness signedness,
+						   size_t sz) override;
 	utils::ref<types::ty> boolean_type() override;
 	utils::ref<types::ty> gpr_type() override;
 

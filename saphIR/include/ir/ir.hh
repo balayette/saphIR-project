@@ -85,6 +85,8 @@ using rstm = utils::ref<stm>;
 
 struct cnst : public exp {
 	cnst(mach::target &target, uint64_t value);
+	cnst(mach::target &target, uint64_t value, types::signedness signedness,
+	     size_t size);
 
 	TREE_KIND(cnst)
 

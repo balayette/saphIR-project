@@ -101,6 +101,8 @@ struct target {
 	virtual utils::ref<types::ty> string_type();
 	virtual utils::ref<types::ty> integer_type(
 		types::signedness signedness = types::signedness::SIGNED) = 0;
+	virtual utils::ref<types::ty> integer_type(types::signedness signedness,
+						   size_t sz) = 0;
 	virtual utils::ref<types::ty> boolean_type() = 0;
 	virtual utils::ref<types::ty> gpr_type() = 0;
 
@@ -121,6 +123,8 @@ struct target {
 	 * IR nodes builders
 	 */
 	ir::tree::cnst *make_cnst(uint64_t value);
+	ir::tree::cnst *make_cnst(uint64_t value, types::signedness signedness,
+				  size_t sz);
 	ir::tree::braceinit *
 	make_braceinit(utils::ref<types::ty> &ty,
 		       const std::vector<ir::tree::rexp> &exps);

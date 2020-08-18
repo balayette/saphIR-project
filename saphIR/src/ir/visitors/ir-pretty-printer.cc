@@ -5,7 +5,8 @@ ir_pretty_printer::ir_pretty_printer(std::ostream &os) : os_(os), lvl_(0) {}
 
 void ir_pretty_printer::visit_cnst(tree::cnst &n)
 {
-	indent() << "(const " << (int64_t)n.value_ << ")\n";
+	indent() << "(const" << n.ty_->assem_size() << " " << (int64_t)n.value_
+		 << ")\n";
 }
 
 void ir_pretty_printer::visit_braceinit(tree::braceinit &n)

@@ -65,7 +65,7 @@ void generator::visit_label(tree::label &l)
 
 void generator::visit_cnst(tree::cnst &c)
 {
-	assem::temp dst(4);
+	assem::temp dst(c.ty_->assem_size(), c.ty_->get_signedness());
 	ret_ = dst;
 
 	int64_t imm = c.value_;
@@ -77,7 +77,7 @@ void generator::visit_cnst(tree::cnst &c)
 		return;
 	}
 
-	uint32_t val = c.value_;
+	uint64_t val = c.value_;
 	EMIT(oper("mov `d0, #" + std::to_string(val & 0xffff), {dst}, {}, {}));
 	if (val > 0xffff) {
 		std::string repr("movk `d0, #"
@@ -85,22 +85,18 @@ void generator::visit_cnst(tree::cnst &c)
 				 + ", lsl 16");
 		EMIT(oper(repr, {dst}, {dst}, {}));
 	}
-#if 0
-        UNREACHABLE(
-                "This is unreachable as long as constants are 4 bytes large.");
-        if (val > 0xffffffff) {
-                std::string repr("movk `d0, #"
-                                 + std::to_string((val >> 32) & 0xffff)
-                                 + ", lsl 32");
-                EMIT(oper(repr, {dst}, {dst}, {}));
-        }
-        if (val > 0xffffffffffff) {
-                std::string repr("movk `d0, #"
-                                 + std::to_string((val >> 48) & 0xffff)
-                                 + ", lsl 48");
-                EMIT(oper(repr, {dst}, {dst}, {}));
-        }
-#endif
+	if (val > 0xffffffff) {
+		std::string repr("movk `d0, #"
+				 + std::to_string((val >> 32) & 0xffff)
+				 + ", lsl 32");
+		EMIT(oper(repr, {dst}, {dst}, {}));
+	}
+	if (val > 0xffffffffffff) {
+		std::string repr("movk `d0, #"
+				 + std::to_string((val >> 48) & 0xffff)
+				 + ", lsl 48");
+		EMIT(oper(repr, {dst}, {dst}, {}));
+	}
 
 	ret_ = dst;
 }
