@@ -10,6 +10,7 @@ namespace dyn
 struct chunk {
 	void *map;
 	size_t size;
+	size_t insn_count;
 };
 
 class emu
@@ -33,7 +34,7 @@ class emu
 		       utils::label body_lbl);
 
 	void flag_update();
-	void syscall();
+	int syscall();
 
 	utils::mapped_file &file_;
 	elf::elf bin_;

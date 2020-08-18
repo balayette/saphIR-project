@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <chrono>
 
 namespace dyn
 {
@@ -68,11 +69,19 @@ void emu::run()
 	push(filename.c_str(), filename.size() + 1);
 	push(1);
 
-	for (int i = 0; i < 100; i++) {
+	size_t executed = 0;
+
+	std::chrono::high_resolution_clock clock;
+	auto start = clock.now();
+
+	int done = -1;
+	size_t bb_count = 0;
+	while (done < 0 && bb_count < 1000000) {
 		const auto &chunk = find_or_compile(pc_);
 		fmt::print("Chunk for {:#x} @ {}\n", pc_, chunk.map);
 		bb_fn fn = (bb_fn)(chunk.map);
 		fmt::print(state_dump());
+		executed += chunk.insn_count;
 		pc_ = fn(&state_);
 		switch (state_.exit_reason) {
 		case lifter::BB_END:
@@ -81,7 +90,7 @@ void emu::run()
 			flag_update();
 			break;
 		case lifter::SYSCALL:
-			syscall();
+			done = syscall();
 			break;
 		default:
 			UNREACHABLE("Unimplemented exit reason");
@@ -90,8 +99,20 @@ void emu::run()
 		fmt::print(state_dump());
 	}
 
+	auto end = clock.now();
+
 	fmt::print("FINAL STATE\n");
 	fmt::print(state_dump());
+	double secs = std::chrono::duration_cast<std::chrono::microseconds>(
+			      end - start)
+			      .count()
+		      / 1000000.0;
+	fmt::print("Executed {} instructions in {} secs\n", executed, secs);
+	fmt::print("{} instructions / sec\n", (size_t)(executed / secs));
+	if (done >= 0)
+		fmt::print("Program exited with status code {}\n", done);
+	else
+		fmt::print("Program exited after reaching exec limit\n");
 }
 
 void emu::flag_update()
@@ -116,10 +137,12 @@ void emu::flag_update()
 		state_.nzcv |= lifter::V;
 }
 
-void emu::syscall()
+int emu::syscall()
 {
 	fmt::print("Syscall {:#x}\n", state_.regs[mach::aarch64::regs::R8]);
 	switch (state_.regs[mach::aarch64::regs::R8]) {
+	case 0x5d:
+		return state_.regs[mach::aarch64::regs::R0];
 	case 0xae:
 		state_.regs[mach::aarch64::regs::R0] = getuid();
 		break;
@@ -135,6 +158,8 @@ void emu::syscall()
 	default:
 		UNREACHABLE("Unimplemented syscall wrapper");
 	}
+
+	return -1;
 }
 
 std::string emu::state_dump() const
@@ -194,7 +219,10 @@ chunk emu::compile(size_t pc)
 
 	backend::regalloc::alloc(instrs, ff);
 
-	return assemble(lifter_.amd64_target(), instrs, ff.body_lbl_);
+	auto ret = assemble(lifter_.amd64_target(), instrs, ff.body_lbl_);
+	ret.insn_count = bb.size();
+
+	return ret;
 }
 
 chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
@@ -240,6 +268,6 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 	mprotect(map, size, PROT_READ | PROT_EXEC);
 
 	ks_free(out);
-	return {map, size};
+	return {map, size, 0};
 }
 } // namespace dyn

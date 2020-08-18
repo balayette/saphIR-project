@@ -46,6 +46,7 @@ class disas_bb
 	size_t address() const { return addr_; }
 
 	std::string dump() const;
+	size_t size() const { return insns_.size(); }
 
       private:
 	size_t addr_;
