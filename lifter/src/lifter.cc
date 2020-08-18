@@ -201,7 +201,10 @@ ir::tree::rstm lifter::arm64_handle_ADD(const disas_insn &insn)
 
 ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm)
 {
-	return MOVE(GPR(xt.reg), CNST(imm.imm));
+	auto *cnst = CNST(imm.imm);
+	cnst->ty_ = new types::pointer_ty(arm_target_->gpr_type());
+
+	return MOVE(GPR(xt.reg), MEM(cnst));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
