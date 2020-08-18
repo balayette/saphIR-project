@@ -378,7 +378,8 @@ void translate_visitor::visit_ref(ref &e)
 
 void translate_visitor::visit_num(num &e)
 {
-	ret_ = new EX(target_.make_cnst(e.value_));
+	ret_ = new EX(
+		target_.make_cnst(e.value_, types::signedness::SIGNED, 4));
 }
 
 void translate_visitor::visit_call(call &e)
