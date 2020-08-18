@@ -148,6 +148,12 @@ class lifter
 				       arm64_cc cc);
 	ir::tree::rstm arm64_handle_CSET(const disas_insn &insn);
 
+	ir::tree::rstm translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
+				      int imms);
+	ir::tree::rstm arm64_handle_UBFIZ(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_UBFX(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_LSR(const disas_insn &insn);
+
 	arm64_cc invert_cc(arm64_cc);
 
 	std::tuple<ops::cmpop, ir::tree::rexp, ir::tree::rexp>

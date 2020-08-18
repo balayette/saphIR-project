@@ -27,6 +27,27 @@
 
 namespace lifter
 {
+/*
+ * % is the remainder and not the modulo
+ */
+static int64_t mod(int64_t a, int64_t b)
+{
+	int r = a % b;
+	return r < 0 ? r + b : r;
+}
+
+static uint64_t mask_one_range(uint64_t lo, uint64_t hi)
+{
+	uint64_t count = hi - lo + 1;
+	uint64_t mask;
+	if (count == 64)
+		mask = ~0;
+	else
+		mask = (1ull << count) - 1;
+
+	return mask << lo;
+}
+
 bool is_gpr(arm64_reg r)
 {
 	if (r >= ARM64_REG_W0 && r <= ARM64_REG_W30)
@@ -34,6 +55,19 @@ bool is_gpr(arm64_reg r)
 	if (r >= ARM64_REG_X0 && r <= ARM64_REG_X28)
 		return true;
 	return r == ARM64_REG_X29 || r == ARM64_REG_X30 || r == ARM64_REG_SP;
+}
+
+uint64_t register_size(arm64_reg r)
+{
+	if ((r >= ARM64_REG_W0 && r <= ARM64_REG_W30) || r == ARM64_REG_WZR)
+		return 32;
+	if (r >= ARM64_REG_X0 && r <= ARM64_REG_X28)
+		return 64;
+	if (r == ARM64_REG_X29 || r == ARM64_REG_X30 || r == ARM64_REG_SP
+	    || r == ARM64_REG_XZR)
+		return 64;
+
+	UNREACHABLE("Unknown register size");
 }
 
 static bool is_offset_addressing(arm64_op_mem m)
@@ -782,6 +816,82 @@ ir::tree::rstm lifter::translate_CSINC(arm64_reg xd, arm64_reg xn, arm64_reg xm,
 		   LABEL(end));
 }
 
+ir::tree::rstm lifter::translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
+				      int imms)
+{
+	auto reset = MOVE(GPR(rd), CNST(0));
+
+	/*
+	 * If <imms> is greater than or equal to <immr> , this copies a
+	 * bitfield of ( <imms> - <immr> +1) bits starting from bit position
+	 * <immr> in the source register to the least significant bits of the
+	 * destination register.
+	 */
+	if (imms >= immr) {
+		uint64_t mask = mask_one_range(immr, imms);
+		fmt::print("Mask: {:#x}\n", mask);
+
+		auto bits = BINOP(BITAND, GPR(rn), CNST(mask),
+				  arm_target_->gpr_type());
+		auto shifted = BINOP(BITRSHIFT, bits, CNST(immr),
+				     arm_target_->gpr_type());
+		return SEQ(reset, MOVE(GPR(rd), shifted));
+	}
+
+	/*
+	 * If <imms> is less than <immr> , this copies a bitfield of
+	 * (<imms> + 1) bits from the least significant bits of the source
+	 * register to bit position (regsize - <immr>) of the destination
+	 * register, where regsize is the destination register size of 32
+	 * or 64 bits.
+	 */
+
+	auto regsize = register_size(rd);
+
+	uint64_t mask = mask_one_range(0, imms);
+	fmt::print("Mask: {:#x}\n", mask);
+	auto bits = BINOP(BITAND, GPR(rn), CNST(mask), arm_target_->gpr_type());
+	auto shifted = BINOP(BITLSHIFT, bits, CNST(regsize - immr),
+			     arm_target_->gpr_type());
+
+	return SEQ(reset, MOVE(GPR(rd), shifted));
+}
+
+ir::tree::rstm lifter::arm64_handle_UBFIZ(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	return translate_UBFM(mach_det->operands[0].reg,
+			      mach_det->operands[1].reg,
+			      mod(-mach_det->operands[2].imm,
+				  register_size(mach_det->operands[0].reg)),
+			      mach_det->operands[3].imm - 1);
+}
+
+ir::tree::rstm lifter::arm64_handle_UBFX(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	return translate_UBFM(
+		mach_det->operands[0].reg, mach_det->operands[1].reg,
+		mach_det->operands[2].imm,
+		mach_det->operands[2].imm + mach_det->operands[3].imm - 1);
+}
+
+ir::tree::rstm lifter::arm64_handle_LSR(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto third = mach_det->operands[2];
+
+	if (third.type == ARM64_OP_IMM)
+		return translate_UBFM(rd, rn, third.imm, register_size(rd) - 1);
+	else
+		UNREACHABLE("Unimplemented LSR register");
+}
+
 arm64_cc lifter::invert_cc(arm64_cc cc)
 {
 	switch (cc) {
@@ -825,6 +935,9 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(NOP);
 		HANDLER(SVC);
 		HANDLER(CSET);
+		HANDLER(UBFIZ);
+		HANDLER(UBFX);
+		HANDLER(LSR);
 	default:
 		fmt::print("Unimplemented instruction {} ({})\n", insn.as_str(),
 			   insn.insn_name());
