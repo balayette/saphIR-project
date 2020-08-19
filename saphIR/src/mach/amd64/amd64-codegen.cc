@@ -585,7 +585,11 @@ void generator::visit_binop(tree::binop &b)
 			   reg_to_assem_temp(regs::RDX)},
 			  {reg_to_assem_temp(regs::RAX)}, {}));
 		// quotient in %rax, remainder in %rdx
-		EMIT(sized_oper("idiv", "`s0",
+		EMIT(sized_oper(b.ty_->get_signedness()
+						== types::signedness::SIGNED
+					? "idiv"
+					: "div",
+				"`s0",
 				{reg_to_assem_temp(regs::RAX),
 				 reg_to_assem_temp(regs::RDX)},
 				{dst, reg_to_assem_temp(regs::RAX),

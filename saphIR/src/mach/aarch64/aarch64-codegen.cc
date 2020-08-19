@@ -303,7 +303,10 @@ void generator::visit_binop(tree::binop &b)
 	else if (b.op_ == ops::binop::MULT)
 		EMIT(oper("mul `d0, `s0, `s1", {dst}, {lhs, rhs}, {}));
 	else if (b.op_ == ops::binop::DIV || b.op_ == ops::binop::MOD) {
-		EMIT(oper("sdiv `d0, `s0, `s1", {dst}, {lhs, rhs}, {}));
+		if (b.ty_->get_signedness() == types::signedness::SIGNED)
+			EMIT(oper("sdiv `d0, `s0, `s1", {dst}, {lhs, rhs}, {}));
+		else
+			EMIT(oper("udiv `d0, `s0, `s1", {dst}, {lhs, rhs}, {}));
 		if (b.op_ == ops::binop::MOD)
 			EMIT(oper("msub `d0, `s0, `s1, `s2", {dst},
 				  {dst, rhs, lhs}, {}));
