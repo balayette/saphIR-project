@@ -664,7 +664,6 @@ void generator::emit(assem::rinstr ins)
 
 	std::cout << str.str();
 #endif
-
 	instrs_.push_back(ins);
 }
 } // namespace mach::amd64

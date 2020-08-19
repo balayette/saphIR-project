@@ -23,6 +23,7 @@ emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + 4096;
 	state_.nzcv = 0;
+	state_.tpidr_el0 = 0;
 
 	auto [elf_map, size] = elf::map_elf(bin_, file_);
 	elf_map_ = elf_map;
@@ -168,6 +169,10 @@ int emu::syscall()
 	case 0xb1:
 		state_.regs[mach::aarch64::regs::R0] = getegid();
 		break;
+	case 0xd6:
+		state_.regs[mach::aarch64::regs::R0] =
+			brk((void *)state_.regs[mach::aarch64::regs::R0]);
+		break;
 	default:
 		UNREACHABLE("Unimplemented syscall wrapper");
 	}
@@ -193,6 +198,7 @@ std::string emu::state_dump() const
 			    state_.nzcv & lifter::Z ? 'Z' : 'z',
 			    state_.nzcv & lifter::C ? 'C' : 'c',
 			    state_.nzcv & lifter::V ? 'V' : 'v');
+        repr += fmt::format("TLS: {:#x}\n", state_.tpidr_el0);
 
 	return repr;
 }
