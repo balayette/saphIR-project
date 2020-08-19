@@ -117,24 +117,37 @@ void emu::run()
 
 void emu::flag_update()
 {
-	ASSERT(state_.flag_op == lifter::CMP, "Unhandled flag update");
+	// Doesn't work with 32 bits compares I think
+	if (state_.flag_op == lifter::CMP) {
+		state_.nzcv = 0;
 
-	state_.nzcv = 0;
+                /*
+                 * Ugly, but this is how the ARM manual does it
+                 */
+		__uint128_t usum = (__uint128_t)state_.flag_a
+				   + (__uint128_t)~state_.flag_b + 1;
+		__int128_t ssum = (__int128_t)state_.flag_a
+				  + (__int128_t)~state_.flag_b + 1;
 
-	uint64_t res = 0;
-	int64_t sres = 0;
+		uint64_t result = usum;
 
-	auto lhs = state_.flag_a;
-	auto rhs = state_.flag_b;
-
-	if (lhs == rhs)
-		state_.nzcv |= lifter::Z;
-	if (lhs < rhs)
-		state_.nzcv |= lifter::N;
-	if (__builtin_usubl_overflow(lhs, rhs, &res))
-		state_.nzcv |= lifter::C;
-	if (__builtin_ssubl_overflow(lhs, rhs, &sres))
-		state_.nzcv |= lifter::V;
+		if (result & (1ull << 63))
+			state_.nzcv |= lifter::N;
+		if (result == 0)
+			state_.nzcv |= lifter::Z;
+		if ((__uint128_t)result != usum)
+			state_.nzcv |= lifter::C;
+		if ((__int128_t)result != ssum)
+			state_.nzcv |= lifter::V;
+	} else if (state_.flag_op == lifter::ANDS32) {
+		state_.nzcv = 0;
+		uint32_t res = state_.flag_a & state_.flag_b;
+		if (res & (1 << 31))
+			state_.nzcv |= lifter::N;
+		if (res == 0)
+			state_.nzcv |= lifter::Z;
+	} else
+		UNREACHABLE("Unimplemented flag update");
 }
 
 int emu::syscall()
