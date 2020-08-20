@@ -6,12 +6,25 @@
 #include "backend/regalloc.hh"
 #include "mach/aarch64/aarch64-common.hh"
 
+#include <asm/unistd.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <chrono>
 
 namespace dyn
 {
+static inline int64_t syscall1(uint64_t syscall_nr, uint64_t arg1)
+{
+	int64_t ret;
+
+	asm volatile("syscall\n"
+		     : "=a"(ret)
+		     : "a"(syscall_nr), "D"(arg1)
+		     : "memory", "rcx", "r11");
+
+	return ret;
+}
+
 emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 {
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
@@ -157,8 +170,8 @@ int emu::syscall()
 		state_.regs[mach::aarch64::regs::R0] = getegid();
 		break;
 	case 0xd6:
-		state_.regs[mach::aarch64::regs::R0] =
-			brk((void *)state_.regs[mach::aarch64::regs::R0]);
+		state_.regs[mach::aarch64::regs::R0] = syscall1(
+			__NR_brk, state_.regs[mach::aarch64::regs::R0]);
 		break;
 	default:
 		UNREACHABLE("Unimplemented syscall wrapper");
