@@ -1,3 +1,4 @@
+#pragma once
 #include "lifter/lifter.hh"
 #include "lifter/disas.hh"
 #include "utils/fs.hh"
@@ -33,6 +34,9 @@ class emu
 	chunk assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 		       utils::label body_lbl);
 
+	template <typename N>
+	void add_with_carry(N x, N y, int carry);
+
 	void flag_update();
 	int syscall();
 
@@ -52,3 +56,5 @@ class emu
 	std::unordered_map<size_t, chunk> bb_cache_;
 };
 } // namespace dyn
+
+#include "emu.hxx"

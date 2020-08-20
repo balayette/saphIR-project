@@ -118,30 +118,17 @@ void emu::run()
 
 void emu::flag_update()
 {
-	// Doesn't work with 32 bits compares I think
-	if (state_.flag_op == lifter::CMP) {
-		state_.nzcv = 0;
+	state_.nzcv = 0;
 
-                /*
-                 * Ugly, but this is how the ARM manual does it
-                 */
-		__uint128_t usum = (__uint128_t)state_.flag_a
-				   + (__uint128_t)~state_.flag_b + 1;
-		__int128_t ssum = (__int128_t)state_.flag_a
-				  + (__int128_t)~state_.flag_b + 1;
-
-		uint64_t result = usum;
-
-		if (result & (1ull << 63))
-			state_.nzcv |= lifter::N;
-		if (result == 0)
-			state_.nzcv |= lifter::Z;
-		if ((__uint128_t)result != usum)
-			state_.nzcv |= lifter::C;
-		if ((__int128_t)result != ssum)
-			state_.nzcv |= lifter::V;
-	} else if (state_.flag_op == lifter::ANDS32) {
-		state_.nzcv = 0;
+	if (state_.flag_op == lifter::CMP32)
+		add_with_carry<uint32_t>(state_.flag_a, ~state_.flag_b, 1);
+	else if (state_.flag_op == lifter::CMP64)
+		add_with_carry<uint64_t>(state_.flag_a, ~state_.flag_b, 1);
+	else if (state_.flag_op == lifter::ADDS32)
+		add_with_carry<uint32_t>(state_.flag_a, state_.flag_b, 0);
+	else if (state_.flag_op == lifter::ADDS64)
+		add_with_carry<uint64_t>(state_.flag_a, state_.flag_b, 0);
+	else if (state_.flag_op == lifter::ANDS32) {
 		uint32_t res = state_.flag_a & state_.flag_b;
 		if (res & (1 << 31))
 			state_.nzcv |= lifter::N;
