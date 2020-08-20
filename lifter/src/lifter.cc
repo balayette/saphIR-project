@@ -233,6 +233,9 @@ ir::tree::rexp lifter::arm64_handle_ADD_reg(cs_arm64_op rn, cs_arm64_op rm)
 ir::tree::rstm lifter::arm64_handle_ADD(const disas_insn &insn)
 {
 	const cs_arm64 *mach_det = insn.mach_detail();
+	if (mach_det->update_flags)
+		return arm64_handle_ADDS(insn);
+
 	ASSERT(mach_det->op_count == 3, "Impossible operand count");
 
 	cs_arm64_op rd = mach_det->operands[0];
@@ -246,6 +249,43 @@ ir::tree::rstm lifter::arm64_handle_ADD(const disas_insn &insn)
 
 	return MOVE(GPR(rd.reg), op);
 }
+
+ir::tree::rstm lifter::translate_ADDS(size_t addr, arm64_reg rd, arm64_reg rn,
+				      cs_arm64_op rm)
+{
+	ir::tree::rexp lhs = GPR(rn);
+	ir::tree::rexp rhs = shift_or_extend(GPR(rm.reg), rm.shift.type,
+					     rm.shift.value, rm.ext);
+
+	ir::tree::rexp res = BINOP(PLUS, lhs, rhs, arm_target_->gpr_type());
+
+	return SEQ(MOVE(GPR8(rd), res),
+		   set_cmp_values(addr, lhs, rhs,
+				  register_size(rd) == 32 ? flag_op::ADDS32
+							  : flag_op::ADDS64));
+}
+
+ir::tree::rstm lifter::arm64_handle_ADDS(const disas_insn &insn)
+{
+	const cs_arm64 *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto rm = mach_det->operands[2];
+
+	return translate_ADDS(insn.address(), rd, rn, rm);
+}
+
+ir::tree::rstm lifter::arm64_handle_CMN(const disas_insn &insn)
+{
+	const cs_arm64 *mach_det = insn.mach_detail();
+
+	auto rn = mach_det->operands[0].reg;
+	auto rm = mach_det->operands[1];
+
+	return translate_ADDS(insn.address(), ARM64_REG_XZR, rn, rm);
+}
+
 
 ir::tree::rexp lifter::extend(ir::tree::rexp e, arm64_extender ext)
 {
@@ -483,12 +523,14 @@ ir::tree::rstm lifter::arm64_handle_CMP_imm(uint64_t address, cs_arm64_op xn,
 	return set_cmp_values(
 		address, GPR(xn.reg),
 		shift(CNST(imm.imm), imm.shift.type, imm.shift.value),
-		flag_op::CMP);
+		register_size(xn.reg) == 32 ? flag_op::CMP32 : flag_op::CMP64);
 }
 ir::tree::rstm lifter::arm64_handle_CMP_reg(uint64_t address, cs_arm64_op xn,
 					    cs_arm64_op xm)
 {
-	return set_cmp_values(address, GPR(xn.reg), GPR(xm.reg), flag_op::CMP);
+	return set_cmp_values(address, GPR(xn.reg), GPR(xm.reg),
+			      register_size(xn.reg) == 32 ? flag_op::CMP32
+							  : flag_op::CMP64);
 }
 
 ir::tree::rstm lifter::arm64_handle_CMP(const disas_insn &insn)
@@ -533,7 +575,7 @@ ir::tree::rstm lifter::arm64_handle_CCMP_imm(uint64_t address, cs_arm64_op xn,
 	auto set = set_cmp_values(
 		address, GPR(xn.reg),
 		shift(CNST(imm.imm), imm.shift.type, imm.shift.value),
-		flag_op::CMP);
+		register_size(xn.reg) == 32 ? flag_op::CMP32 : flag_op::CMP64);
 	auto update = set_state_field("nzcv", CNST(nzcv.imm));
 
 	return SEQ(cj, LABEL(tcond), set, JUMP(NAME(end), {end}), LABEL(fcond),
@@ -775,6 +817,9 @@ ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
 
 ir::tree::meta_cx lifter::translate_cc(arm64_cc cond)
 {
+	// XXX: Rewrite this using shared/functions/system/ConditionHolds from
+	// the manual
+
 	auto nzcv = get_state_field("nzcv");
 
 	if (cond == ARM64_CC_EQ) {
@@ -1040,6 +1085,8 @@ arm64_cc lifter::invert_cc(arm64_cc cc)
 		return ARM64_CC_NE;
 	case ARM64_CC_NE:
 		return ARM64_CC_EQ;
+	case ARM64_CC_HS:
+		return ARM64_CC_LO;
 	default:
 		UNREACHABLE("Unimplemented invert_cc");
 	}
@@ -1279,6 +1326,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(MOVN);
 		HANDLER(MOVZ);
 		HANDLER(ADD);
+		HANDLER(CMN);
 		HANDLER(LDR);
 		HANDLER(LDRH);
 		HANDLER(LDRB);

@@ -198,7 +198,7 @@ std::string emu::state_dump() const
 			    state_.nzcv & lifter::Z ? 'Z' : 'z',
 			    state_.nzcv & lifter::C ? 'C' : 'c',
 			    state_.nzcv & lifter::V ? 'V' : 'v');
-        repr += fmt::format("TLS: {:#x}\n", state_.tpidr_el0);
+	repr += fmt::format("TLS: {:#x}\n", state_.tpidr_el0);
 
 	return repr;
 }

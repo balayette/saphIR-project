@@ -19,9 +19,12 @@ constexpr uint64_t C = 0b0010;
 constexpr uint64_t V = 0b0001;
 
 enum flag_op {
-	CMP,
+	CMP32,
+	CMP64,
 	ANDS32,
 	ANDS64,
+	ADDS32,
+	ADDS64,
 };
 
 enum exit_reasons {
@@ -98,6 +101,11 @@ class lifter
 	ir::tree::rstm arm64_handle_ADD(const disas_insn &insn);
 	ir::tree::rexp arm64_handle_ADD_imm(cs_arm64_op rn, cs_arm64_op imm);
 	ir::tree::rexp arm64_handle_ADD_reg(cs_arm64_op rn, cs_arm64_op rm);
+
+	ir::tree::rstm translate_ADDS(size_t addr, arm64_reg rd, arm64_reg rn,
+				      cs_arm64_op rm);
+	ir::tree::rstm arm64_handle_ADDS(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_CMN(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_LDR_size(const disas_insn &insn, size_t sz);
 	ir::tree::rstm arm64_handle_LDR(const disas_insn &insn);
