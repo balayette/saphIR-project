@@ -25,6 +25,7 @@
 #define JUMP(L, A) amd_target_->make_jump(L, A)
 #define CALL(F, A, T) amd_target_->make_call(F, A, T)
 #define SEXP(E) amd_target_->make_sexp(E)
+#define CX(Op, L, R) ir::tree::meta_cx(*amd_target_, Op, L, R)
 
 namespace lifter
 {
@@ -772,45 +773,61 @@ ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
 	UNREACHABLE("Unimplemted");
 }
 
-std::tuple<ops::cmpop, ir::tree::rexp, ir::tree::rexp>
-lifter::translate_cc(arm64_cc cond)
+ir::tree::meta_cx lifter::translate_cc(arm64_cc cond)
 {
 	auto nzcv = get_state_field("nzcv");
 
-	ops::cmpop op;
-	ir::tree::rexp lhs, rhs;
+	if (cond == ARM64_CC_EQ) {
+		return CX(ops::cmpop::EQ,
+			  BINOP(BITAND, nzcv, CNST(Z), amd_target_->gpr_type()),
+			  CNST(Z));
+	}
+	if (cond == ARM64_CC_NE) {
+		return CX(ops::cmpop::NEQ,
+			  BINOP(BITAND, nzcv, CNST(Z), amd_target_->gpr_type()),
+			  CNST(Z));
+	}
+	if (cond == ARM64_CC_HS) {
+		return CX(ops::cmpop::EQ,
+			  BINOP(BITAND, nzcv, CNST(C), amd_target_->gpr_type()),
+			  CNST(C));
+	}
+	if (cond == ARM64_CC_HI) {
+		return CX(ops::cmpop::EQ,
+			  BINOP(BITAND, nzcv, CNST(C | Z),
+				amd_target_->gpr_type()),
+			  CNST(C));
+	}
+	if (cond == ARM64_CC_HI) {
+		return CX(ops::cmpop::EQ,
+			  BINOP(BITAND, nzcv, CNST(C | Z),
+				amd_target_->gpr_type()),
+			  CNST(C));
+	}
+	if (cond == ARM64_CC_LO) {
+		return CX(ops::cmpop::EQ,
+			  BINOP(BITAND, nzcv, CNST(C), amd_target_->gpr_type()),
+			  CNST(0));
+	}
+	if (cond == ARM64_CC_LE) {
+		utils::label zon, zoff;
+		auto zcheck = CX(
+			ops::cmpop::EQ,
+			BINOP(BITAND, nzcv, CNST(Z), amd_target_->gpr_type()),
+			CNST(Z));
 
-	switch (cond) {
-	case ARM64_CC_EQ:
-		op = ops::cmpop::EQ;
-		lhs = BINOP(BITAND, nzcv, CNST(Z), amd_target_->gpr_type());
-		rhs = CNST(Z);
-		break;
-	case ARM64_CC_NE:
-		op = ops::cmpop::NEQ;
-		lhs = BINOP(BITAND, nzcv, CNST(Z), amd_target_->gpr_type());
-		rhs = CNST(Z);
-		break;
-	case ARM64_CC_HS:
-		op = ops::cmpop::EQ;
-		lhs = BINOP(BITAND, nzcv, CNST(C), amd_target_->gpr_type());
-		rhs = CNST(C);
-		break;
-	case ARM64_CC_HI:
-		op = ops::cmpop::EQ;
-		lhs = BINOP(BITAND, nzcv, CNST(C | Z), amd_target_->gpr_type());
-		rhs = CNST(C);
-		break;
-	case ARM64_CC_LO:
-		op = ops::cmpop::EQ;
-		lhs = BINOP(BITAND, nzcv, CNST(C), amd_target_->gpr_type());
-		rhs = CNST(0);
-		break;
-	default:
-		UNREACHABLE("Unimplemented translate_cc");
+		auto nbit = BINOP(
+			BITRSHIFT,
+			BINOP(BITAND, nzcv, CNST(N), amd_target_->gpr_type()),
+			CNST(3), amd_target_->gpr_type());
+		auto vbit =
+			BINOP(BITAND, nzcv, CNST(V), amd_target_->gpr_type());
+		auto nvdiff = CX(ops::cmpop::NEQ, nbit, vbit);
+
+		return CX(ops::cmpop::EQ, zcheck.un_ex(), nvdiff.un_ex());
 	}
 
-	return std::make_tuple(op, lhs, rhs);
+	UNREACHABLE("Unimplemented translate_cc");
 }
 
 ir::tree::rstm lifter::cc_jump(arm64_cc cc, ir::tree::rexp true_addr,
@@ -826,8 +843,7 @@ ir::tree::rstm lifter::cc_jump(arm64_cc cc, ir::tree::rexp true_addr,
 	 * end:
 	 */
 
-	auto [op, lhs, rhs] = translate_cc(cc);
-	return conditional_jump(op, lhs, rhs, true_addr, false_addr);
+	return conditional_jump(translate_cc(cc), true_addr, false_addr);
 }
 ir::tree::rstm lifter::cc_jump(arm64_cc cc, utils::label true_label,
 			       utils::label false_label)
@@ -841,15 +857,10 @@ ir::tree::rstm lifter::cc_jump(arm64_cc cc, utils::label true_label,
 	 * end:
 	 */
 
-	utils::label ok_label;
-	utils::label fail_label;
-
-	auto [op, lhs, rhs] = translate_cc(cc);
-	return CJUMP(op, lhs, rhs, true_label, false_label);
+	return translate_cc(cc).un_cx(true_label, false_label);
 }
 
-ir::tree::rstm lifter::conditional_jump(ops::cmpop op, ir::tree::rexp lhs,
-					ir::tree::rexp rhs,
+ir::tree::rstm lifter::conditional_jump(ir::tree::meta_cx cx,
 					ir::tree::rexp true_addr,
 					ir::tree::rexp false_addr)
 {
@@ -857,10 +868,11 @@ ir::tree::rstm lifter::conditional_jump(ops::cmpop op, ir::tree::rexp lhs,
 	auto ok_label = make_unique("ok");
 	auto end_label = make_unique("end");
 
-	return SEQ(CJUMP(op, lhs, rhs, ok_label, fail_label), LABEL(ok_label),
-		   next_address(true_addr), JUMP(NAME(end_label), {end_label}),
-		   LABEL(fail_label), next_address(false_addr),
-		   LABEL(end_label));
+	auto cj = cx.un_cx(ok_label, fail_label);
+
+	return SEQ(cj, LABEL(ok_label), next_address(true_addr),
+		   JUMP(NAME(end_label), {end_label}), LABEL(fail_label),
+		   next_address(false_addr), LABEL(end_label));
 }
 
 ir::tree::rstm lifter::arm64_handle_CBZ(const disas_insn &insn)
@@ -872,7 +884,7 @@ ir::tree::rstm lifter::arm64_handle_CBZ(const disas_insn &insn)
 
 	auto fail_addr = insn.address() + 4;
 
-	return conditional_jump(ops::cmpop::EQ, GPR(xt.reg), CNST(0),
+	return conditional_jump(CX(ops::cmpop::EQ, GPR(xt.reg), CNST(0)),
 				CNST(label.imm), CNST(fail_addr));
 }
 
@@ -885,7 +897,7 @@ ir::tree::rstm lifter::arm64_handle_CBNZ(const disas_insn &insn)
 
 	auto fail_addr = insn.address() + 4;
 
-	return conditional_jump(ops::cmpop::NEQ, GPR(xt.reg), CNST(0),
+	return conditional_jump(CX(ops::cmpop::NEQ, GPR(xt.reg), CNST(0)),
 				CNST(label.imm), CNST(fail_addr));
 }
 
@@ -917,10 +929,9 @@ ir::tree::rstm lifter::translate_CSINC(arm64_reg xd, arm64_reg xn, arm64_reg xm,
 	 * end:
 	 */
 
-	auto [op, lhs, rhs] = translate_cc(cc);
 	utils::label t, f, end;
 
-	auto cj = CJUMP(op, lhs, rhs, t, f);
+	auto cj = translate_cc(cc).un_cx(t, f);
 
 	return SEQ(cj, LABEL(t), MOVE(GPR8(xd), GPR(xn)),
 		   JUMP(NAME(end), {end}), LABEL(f),
@@ -1061,10 +1072,9 @@ ir::tree::rstm lifter::arm64_handle_CSEL(const disas_insn &insn)
 	 * end:
 	 */
 
-	auto [op, lhs, rhs] = translate_cc(cc);
 	utils::label t, f, end;
 
-	auto cj = CJUMP(op, lhs, rhs, t, f);
+	auto cj = translate_cc(cc).un_cx(t, f);
 
 	return SEQ(cj, LABEL(t), MOVE(GPR8(rd), GPR(rn)),
 		   JUMP(NAME(end), {end}), LABEL(f), MOVE(GPR8(rd), GPR(rm)),
@@ -1131,10 +1141,11 @@ ir::tree::rstm lifter::arm64_handle_TBZ(const disas_insn &insn)
 
 	auto fail_addr = insn.address() + 4;
 
-	return conditional_jump(
-		ops::cmpop::NEQ,
-		BINOP(BITAND, GPR(rt), CNST(1 << bit), arm_target_->gpr_type()),
-		CNST(1 << bit), CNST(dest), CNST(fail_addr));
+	return conditional_jump(CX(ops::cmpop::NEQ,
+				   BINOP(BITAND, GPR(rt), CNST(1 << bit),
+					 arm_target_->gpr_type()),
+				   CNST(1 << bit)),
+				CNST(dest), CNST(fail_addr));
 }
 
 ir::tree::rstm lifter::arm64_handle_TBNZ(const disas_insn &insn)
@@ -1147,10 +1158,11 @@ ir::tree::rstm lifter::arm64_handle_TBNZ(const disas_insn &insn)
 
 	auto fail_addr = insn.address() + 4;
 
-	return conditional_jump(
-		ops::cmpop::EQ,
-		BINOP(BITAND, GPR(rt), CNST(1 << bit), arm_target_->gpr_type()),
-		CNST(1 << bit), CNST(dest), CNST(fail_addr));
+	return conditional_jump(CX(ops::cmpop::EQ,
+				   BINOP(BITAND, GPR(rt), CNST(1 << bit),
+					 arm_target_->gpr_type()),
+				   CNST(1 << bit)),
+				CNST(dest), CNST(fail_addr));
 }
 
 ir::tree::rstm lifter::arm64_handle_MRS(const disas_insn &insn)
@@ -1229,10 +1241,10 @@ ir::tree::rstm lifter::arm64_handle_UDIV(const disas_insn &insn)
 ir::tree::rstm lifter::translate_MADD(arm64_reg rd, arm64_reg rn, arm64_reg rm,
 				      arm64_reg ra)
 {
-	return MOVE(GPR8(rd),
-		    BINOP(PLUS,
-			  BINOP(MULT, GPR(rn), GPR(rm), arm_target_->gpr_type()),
-			  GPR(ra), arm_target_->gpr_type()));
+	return MOVE(GPR8(rd), BINOP(PLUS,
+				    BINOP(MULT, GPR(rn), GPR(rm),
+					  arm_target_->gpr_type()),
+				    GPR(ra), arm_target_->gpr_type()));
 }
 
 ir::tree::rstm lifter::arm64_handle_MUL(const disas_insn &insn)

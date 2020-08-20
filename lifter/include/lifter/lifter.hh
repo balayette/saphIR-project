@@ -67,8 +67,7 @@ class lifter
 				       unsigned s, arm64_extender ext);
 	ir::tree::rexp extend(ir::tree::rexp e, arm64_extender ext);
 	ir::tree::rstm next_address(ir::tree::rexp addr);
-	ir::tree::rstm conditional_jump(ops::cmpop op, ir::tree::rexp lhs,
-					ir::tree::rexp rhs,
+	ir::tree::rstm conditional_jump(ir::tree::meta_cx cx,
 					ir::tree::rexp true_addr,
 					ir::tree::rexp false_addr);
 	ir::tree::rstm cc_jump(arm64_cc cc, ir::tree::rexp true_addr,
@@ -198,8 +197,7 @@ class lifter
 
 	arm64_cc invert_cc(arm64_cc);
 
-	std::tuple<ops::cmpop, ir::tree::rexp, ir::tree::rexp>
-	translate_cc(arm64_cc cond);
+	ir::tree::meta_cx translate_cc(arm64_cc cond);
 
 	utils::ref<mach::amd64::amd64_target> amd_target_;
 	utils::ref<mach::aarch64::aarch64_target> arm_target_;
