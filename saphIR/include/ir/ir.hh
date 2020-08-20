@@ -340,4 +340,57 @@ struct asm_block : public stm {
 	std::vector<utils::temp> reg_out_;
 	std::vector<utils::temp> reg_clob_;
 };
+
+class meta_exp
+{
+      public:
+	meta_exp(mach::target &target) : target_(target) {}
+	virtual ~meta_exp() = default;
+
+	virtual rexp un_ex() = 0;
+	virtual rstm un_nx() = 0;
+	virtual rstm un_cx(const utils::label &t, const utils::label &f) = 0;
+
+      protected:
+	mach::target &target_;
+};
+
+class meta_cx : public meta_exp
+{
+      public:
+	meta_cx(mach::target &target, ops::cmpop op, rexp l, rexp r);
+
+	rexp un_ex() override;
+	rstm un_nx() override;
+	rstm un_cx(const utils::label &t, const utils::label &f) override;
+
+      private:
+	ops::cmpop op_;
+	rexp l_;
+	rexp r_;
+};
+
+class meta_ex : public meta_exp
+{
+      public:
+	meta_ex(mach::target &target, rexp e);
+	rexp un_ex() override;
+	rstm un_nx() override;
+	rstm un_cx(const utils::label &t, const utils::label &f) override;
+
+      private:
+	rexp e_;
+};
+
+class meta_nx : public meta_exp
+{
+      public:
+	meta_nx(mach::target &target, rstm s);
+	rexp un_ex() override;
+	rstm un_nx() override;
+	rstm un_cx(const utils::label &t, const utils::label &f) override;
+
+      private:
+	rstm s_;
+};
 } // namespace ir::tree

@@ -14,95 +14,9 @@ namespace frontend::translate
 {
 using namespace ir;
 
-#define CX(Op, L, R) cx(target_, Op, L, R)
-#define EX(E) ex(target_, E)
-#define NX(S) nx(target_, S)
-
-cx::cx(mach::target &target, ops::cmpop op, tree::rexp l, tree::rexp r)
-    : exp(target), op_(op), l_(l), r_(r)
-{
-#if TRANS_DEBUG
-	ir::ir_pretty_printer p(std::cout);
-	std::cout << "cx: " << ops::cmpop_to_string(op) << '\n';
-	l_->accept(p);
-	r_->accept(p);
-#endif
-}
-
-tree::rexp cx::un_ex()
-{
-	utils::temp ret;
-	auto t_lbl = utils::label();
-	auto f_lbl = utils::label();
-	auto e_lbl = utils::label();
-
-	auto *lt = target_.make_label(t_lbl);
-	auto *lf = target_.make_label(f_lbl);
-	auto *le = target_.make_label(e_lbl);
-
-	auto *je = target_.make_jump(target_.make_name(e_lbl), {e_lbl});
-	auto *cj = target_.make_cjump(op_, l_, r_, t_lbl, f_lbl);
-
-	auto *movt = target_.make_move(
-		target_.make_temp(ret, target_.integer_type()),
-		target_.make_cnst(1));
-	auto *movf = target_.make_move(
-		target_.make_temp(ret, target_.integer_type()),
-		target_.make_cnst(0));
-
-	auto *body = target_.make_seq({cj, lt, movt, je, lf, movf, le});
-
-	tree::rexp value = target_.make_temp(ret, target_.integer_type());
-
-	return target_.make_eseq(body, value);
-}
-
-tree::rstm cx::un_nx()
-{
-	return target_.make_seq({target_.make_sexp(l_), target_.make_sexp(r_)});
-}
-
-tree::rstm cx::un_cx(const utils::label &t, const utils::label &f)
-{
-	return target_.make_cjump(op_, l_, r_, t, f);
-}
-
-ex::ex(mach::target &target, ir::tree::rexp e) : exp(target), e_(e)
-{
-#if TRANS_DEBUG
-	ir::ir_pretty_printer p(std::cout);
-	std::cout << "ex:\n";
-	e_->accept(p);
-#endif
-}
-
-tree::rexp ex::un_ex() { return e_; }
-
-tree::rstm ex::un_nx() { return target_.make_sexp(e_); }
-
-tree::rstm ex::un_cx(const utils::label &t, const utils::label &f)
-{
-	return target_.make_cjump(ops::cmpop::NEQ, e_, target_.make_cnst(0), t,
-				  f);
-}
-
-nx::nx(mach::target &target, ir::tree::rstm s) : exp(target), s_(s)
-{
-#if TRANS_DEBUG
-	ir::ir_pretty_printer p(std::cout);
-	std::cout << "nx:\n";
-	s_->accept(p);
-#endif
-}
-
-tree::rexp nx::un_ex() { ASSERT(false, "Can't un_ex an nx"); }
-
-tree::rstm nx::un_nx() { return s_; }
-
-tree::rstm nx::un_cx(const utils::label &, const utils::label &)
-{
-	ASSERT(false, "Can't un_cx an nx");
-}
+#define CX(Op, L, R) tree::meta_cx(target_, Op, L, R)
+#define EX(E) tree::meta_ex(target_, E)
+#define NX(S) tree::meta_nx(target_, S)
 
 /*
  * References to structs need to return the address of the struct, but
@@ -122,8 +36,8 @@ static tree::rexp access_to_exp(mach::access &access)
 /*
  * lhs and rhs are binop(...), with type array_ty
  */
-utils::ref<exp> translate_visitor::array_copy(ir::tree::rexp lhs,
-					      ir::tree::rexp rhs)
+utils::ref<meta_exp> translate_visitor::array_copy(ir::tree::rexp lhs,
+						   ir::tree::rexp rhs)
 {
 	std::cout << "array_copy(" << lhs->ty_->to_string() << ", "
 		  << rhs->ty_->to_string() << ")\n";
@@ -177,8 +91,8 @@ utils::ref<exp> translate_visitor::array_copy(ir::tree::rexp lhs,
 /*
  * lhs and rhs are binop(...), with type struct_ty
  */
-utils::ref<exp> translate_visitor::struct_copy(ir::tree::rexp lhs,
-					       ir::tree::rexp rhs)
+utils::ref<meta_exp> translate_visitor::struct_copy(ir::tree::rexp lhs,
+						    ir::tree::rexp rhs)
 {
 	std::cout << "struct_copy(" << lhs->ty_->to_string() << ", "
 		  << rhs->ty_->to_string() << ")\n";
@@ -233,7 +147,7 @@ utils::ref<exp> translate_visitor::struct_copy(ir::tree::rexp lhs,
  * lhs is a binop(...), with type struct_ty
  * lhs is a binop(...), with type array_ty
  */
-utils::ref<exp>
+utils::ref<meta_exp>
 translate_visitor::braceinit_copy(ir::tree::rexp lhs,
 				  utils::ref<ir::tree::braceinit> rhs)
 {
@@ -245,7 +159,7 @@ translate_visitor::braceinit_copy(ir::tree::rexp lhs,
 	UNREACHABLE("Only structs and arrays can make it to this function");
 }
 
-utils::ref<exp>
+utils::ref<meta_exp>
 translate_visitor::braceinit_copy_to_array(ir::tree::rexp lhs,
 					   utils::ref<ir::tree::braceinit> rhs)
 {
@@ -289,7 +203,7 @@ translate_visitor::braceinit_copy_to_array(ir::tree::rexp lhs,
 	return new NX(s);
 }
 
-utils::ref<exp>
+utils::ref<meta_exp>
 translate_visitor::braceinit_copy_to_struct(ir::tree::rexp lhs,
 					    utils::ref<ir::tree::braceinit> rhs)
 {
@@ -334,7 +248,8 @@ translate_visitor::braceinit_copy_to_struct(ir::tree::rexp lhs,
 }
 
 
-utils::ref<exp> translate_visitor::copy(ir::tree::rexp lhs, ir::tree::rexp rhs)
+utils::ref<meta_exp> translate_visitor::copy(ir::tree::rexp lhs,
+					     ir::tree::rexp rhs)
 {
 	std::cout << "copy(" << lhs->ty_->to_string() << ", "
 		  << rhs->ty_->to_string() << ")\n";
@@ -426,9 +341,9 @@ void translate_visitor::visit_bin(bin &e)
 		utils::temp result;
 		utils::label f_label, t_label, t2_label, done_label;
 
-		utils::ref<cx> cond1 =
+		utils::ref<meta_cx> cond1 =
 			new CX(ops::cmpop::EQ, left, target_.make_cnst(0));
-		utils::ref<cx> cond2 =
+		utils::ref<meta_cx> cond2 =
 			new CX(ops::cmpop::NEQ, right, target_.make_cnst(0));
 
 		auto seq = target_.make_seq({
@@ -471,13 +386,13 @@ void translate_visitor::visit_bin(bin &e)
 		utils::temp result;
 		utils::label f_label, done_label;
 
-		utils::ref<cx> cond1 =
+		utils::ref<meta_cx> cond1 =
 			new CX(ops::cmpop::EQ, left, target_.make_cnst(1));
-		utils::ref<cx> cond2 = new CX(
+		utils::ref<meta_cx> cond2 = new CX(
 			ops::cmpop::EQ,
 			target_.make_temp(result, target_.integer_type()),
 			target_.make_cnst(1));
-		utils::ref<cx> cond3 =
+		utils::ref<meta_cx> cond3 =
 			new CX(ops::cmpop::EQ, right, target_.make_cnst(1));
 
 		auto seq = target_.make_seq({
@@ -815,8 +730,8 @@ void translate_visitor::visit_addrof(addrof &e)
  * e.e_ is a binop(...), which points to the struct
  * if the member is a struct, then don't emit the mem node
  */
-utils::ref<exp> translate_visitor::struct_access(ir::tree::rexp lhs,
-						 const symbol &member)
+utils::ref<meta_exp> translate_visitor::struct_access(ir::tree::rexp lhs,
+						      const symbol &member)
 {
 	auto st = lhs->ty_.as<types::struct_ty>();
 	if (!st) {

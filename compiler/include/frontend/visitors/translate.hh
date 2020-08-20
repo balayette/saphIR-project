@@ -10,63 +10,7 @@
 
 namespace frontend::translate
 {
-class exp
-{
-      public:
-	exp(mach::target &target) : target_(target) {}
-	virtual ~exp() = default;
-
-	virtual ir::tree::rexp un_ex() = 0;
-	virtual ir::tree::rstm un_nx() = 0;
-	virtual ir::tree::rstm un_cx(const utils::label &t,
-				     const utils::label &f) = 0;
-
-      protected:
-	mach::target &target_;
-};
-
-class cx : public exp
-{
-      public:
-	cx(mach::target &target, ops::cmpop op, ir::tree::rexp l,
-	   ir::tree::rexp r);
-
-	ir::tree::rexp un_ex() override;
-	ir::tree::rstm un_nx() override;
-	ir::tree::rstm un_cx(const utils::label &t,
-			     const utils::label &f) override;
-
-      private:
-	ops::cmpop op_;
-	ir::tree::rexp l_;
-	ir::tree::rexp r_;
-};
-
-class ex : public exp
-{
-      public:
-	ex(mach::target &target, ir::tree::rexp e);
-	ir::tree::rexp un_ex() override;
-	ir::tree::rstm un_nx() override;
-	ir::tree::rstm un_cx(const utils::label &t,
-			     const utils::label &f) override;
-
-      private:
-	ir::tree::rexp e_;
-};
-
-class nx : public exp
-{
-      public:
-	nx(mach::target &target, ir::tree::rstm s);
-	ir::tree::rexp un_ex() override;
-	ir::tree::rstm un_nx() override;
-	ir::tree::rstm un_cx(const utils::label &t,
-			     const utils::label &f) override;
-
-      private:
-	ir::tree::rstm s_;
-};
+using namespace ir::tree;
 
 class translate_visitor : public default_visitor
 {
@@ -97,20 +41,22 @@ class translate_visitor : public default_visitor
 	void visit_braceinit(braceinit &e) override;
 	void visit_subscript(subscript &e) override;
 
-	utils::ref<exp> struct_access(ir::tree::rexp lhs, const symbol &member);
-	utils::ref<exp>
+	utils::ref<meta_exp> struct_access(ir::tree::rexp lhs,
+					   const symbol &member);
+	utils::ref<meta_exp>
 	braceinit_copy_to_struct(ir::tree::rexp lhs,
 				 utils::ref<ir::tree::braceinit> rhs);
-	utils::ref<exp>
+	utils::ref<meta_exp>
 	braceinit_copy_to_array(ir::tree::rexp lhs,
 				utils::ref<ir::tree::braceinit> rhs);
-	utils::ref<exp> braceinit_copy(ir::tree::rexp lhs,
-				       utils::ref<ir::tree::braceinit> rhs);
-	utils::ref<exp> struct_copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
-	utils::ref<exp> array_copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
-	utils::ref<exp> copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
+	utils::ref<meta_exp>
+	braceinit_copy(ir::tree::rexp lhs, utils::ref<ir::tree::braceinit> rhs);
+	utils::ref<meta_exp> struct_copy(ir::tree::rexp lhs,
+					 ir::tree::rexp rhs);
+	utils::ref<meta_exp> array_copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
+	utils::ref<meta_exp> copy(ir::tree::rexp lhs, ir::tree::rexp rhs);
 
-	utils::ref<exp> ret_;
+	utils::ref<meta_exp> ret_;
 	utils::scoped_var<utils::label> ret_lbl_;
 	std::unordered_map<utils::label, str_lit> str_lits_;
 	std::vector<mach::fun_fragment> funs_;
