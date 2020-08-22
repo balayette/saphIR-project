@@ -843,33 +843,37 @@ ir::tree::meta_cx lifter::translate_cc(arm64_cc cond)
 				amd_target_->gpr_type()),
 			  CNST(C));
 	}
-	if (cond == ARM64_CC_HI) {
-		return CX(ops::cmpop::EQ,
-			  BINOP(BITAND, nzcv, CNST(C | Z),
-				amd_target_->gpr_type()),
-			  CNST(C));
-	}
 	if (cond == ARM64_CC_LO) {
 		return CX(ops::cmpop::EQ,
 			  BINOP(BITAND, nzcv, CNST(C), amd_target_->gpr_type()),
 			  CNST(0));
 	}
-	if (cond == ARM64_CC_LE) {
-		utils::label zon, zoff;
-		auto zcheck = CX(
-			ops::cmpop::EQ,
-			BINOP(BITAND, nzcv, CNST(Z), amd_target_->gpr_type()),
-			CNST(Z));
-
+	if (cond == ARM64_CC_LS) {
+		auto ret = translate_cc(ARM64_CC_HI);
+		return CX(ops::cmpop::EQ, ret.un_ex(), CNST(0));
+	}
+	if (cond == ARM64_CC_GT) {
 		auto nbit = BINOP(
 			BITRSHIFT,
 			BINOP(BITAND, nzcv, CNST(N), amd_target_->gpr_type()),
 			CNST(3), amd_target_->gpr_type());
 		auto vbit =
 			BINOP(BITAND, nzcv, CNST(V), amd_target_->gpr_type());
-		auto nvdiff = CX(ops::cmpop::NEQ, nbit, vbit);
+		auto nveq = CX(ops::cmpop::EQ, nbit, vbit);
 
-		return CX(ops::cmpop::EQ, zcheck.un_ex(), nvdiff.un_ex());
+		auto zcheck = CX(
+			ops::cmpop::EQ,
+			BINOP(BITAND, nzcv, CNST(Z), amd_target_->gpr_type()),
+			CNST(0));
+
+		return CX(ops::cmpop::EQ,
+			  BINOP(AND, nveq.un_ex(), zcheck.un_ex(),
+				amd_target_->gpr_type()),
+			  CNST(1));
+	}
+	if (cond == ARM64_CC_LE) {
+		auto ret = translate_cc(ARM64_CC_GT);
+		return CX(ops::cmpop::EQ, ret.un_ex(), CNST(0));
 	}
 
 	UNREACHABLE("Unimplemented translate_cc");
@@ -1087,6 +1091,8 @@ arm64_cc lifter::invert_cc(arm64_cc cc)
 		return ARM64_CC_EQ;
 	case ARM64_CC_HS:
 		return ARM64_CC_LO;
+	case ARM64_CC_HI:
+		return ARM64_CC_LS;
 	default:
 		UNREACHABLE("Unimplemented invert_cc");
 	}
@@ -1188,10 +1194,10 @@ ir::tree::rstm lifter::arm64_handle_TBZ(const disas_insn &insn)
 
 	auto fail_addr = insn.address() + 4;
 
-	return conditional_jump(CX(ops::cmpop::NEQ,
+	return conditional_jump(CX(ops::cmpop::EQ,
 				   BINOP(BITAND, GPR(rt), CNST(1 << bit),
 					 arm_target_->gpr_type()),
-				   CNST(1 << bit)),
+				   CNST(0)),
 				CNST(dest), CNST(fail_addr));
 }
 
@@ -1205,10 +1211,10 @@ ir::tree::rstm lifter::arm64_handle_TBNZ(const disas_insn &insn)
 
 	auto fail_addr = insn.address() + 4;
 
-	return conditional_jump(CX(ops::cmpop::EQ,
+	return conditional_jump(CX(ops::cmpop::NEQ,
 				   BINOP(BITAND, GPR(rt), CNST(1 << bit),
 					 arm_target_->gpr_type()),
-				   CNST(1 << bit)),
+				   CNST(0)),
 				CNST(dest), CNST(fail_addr));
 }
 
