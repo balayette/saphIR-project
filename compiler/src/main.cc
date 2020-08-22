@@ -15,6 +15,7 @@
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
+#include "ir/canon/simplify.hh"
 #include "backend/cfg.hh"
 #include "backend/liveness.hh"
 #include "backend/regalloc.hh"
@@ -142,7 +143,8 @@ int main(int argc, char *argv[])
 	for (auto &frag : frags) {
 		std::cout << "Precannon:\n";
 		frag.body_->accept(pir);
-		auto canoned = ir::canon(frag.body_);
+		auto simplified = ir::simplify(frag.body_);
+		auto canoned = ir::canon(simplified);
 		std::cout << "\nCannoned:\n";
 		canoned->accept(pir);
 		std::cout << "--\n";
