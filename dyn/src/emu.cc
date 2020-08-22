@@ -35,7 +35,7 @@ emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 	stack_ = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
 		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + 4096;
-	state_.nzcv = 0;
+	state_.nzcv = lifter::Z;
 	state_.tpidr_el0 = 0;
 
 	auto [elf_map, size] = elf::map_elf(bin_, file_);
@@ -131,16 +131,17 @@ void emu::run()
 
 void emu::flag_update()
 {
+	fmt::print("CMP {:#x} {:#x}\n", state_.flag_a, state_.flag_b);
 	state_.nzcv = 0;
 
 	if (state_.flag_op == lifter::CMP32)
-		add_with_carry<uint32_t>(state_.flag_a, ~state_.flag_b, 1);
+		add_with_carry(32, state_.flag_a, ~(uint64_t)state_.flag_b, 1);
 	else if (state_.flag_op == lifter::CMP64)
-		add_with_carry<uint64_t>(state_.flag_a, ~state_.flag_b, 1);
+		add_with_carry(64, state_.flag_a, ~(uint64_t)state_.flag_b, 1);
 	else if (state_.flag_op == lifter::ADDS32)
-		add_with_carry<uint32_t>(state_.flag_a, state_.flag_b, 0);
+		add_with_carry(32, state_.flag_a, state_.flag_b, 0);
 	else if (state_.flag_op == lifter::ADDS64)
-		add_with_carry<uint64_t>(state_.flag_a, state_.flag_b, 0);
+		add_with_carry(64, state_.flag_a, state_.flag_b, 0);
 	else if (state_.flag_op == lifter::ANDS32) {
 		uint32_t res = state_.flag_a & state_.flag_b;
 		if (res & (1 << 31))
@@ -288,5 +289,42 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 
 	ks_free(out);
 	return {map, size, 0};
+}
+
+#define UInt(x) ((__uint128_t)x)
+#define SInt(x) ((__int128_t)x)
+
+static inline uint64_t Bits64(const uint64_t bits, const uint32_t msbit,
+			      const uint32_t lsbit)
+{
+	return (bits >> lsbit) & ((1ull << (msbit - lsbit + 1)) - 1);
+}
+
+static inline uint64_t Bit64(const uint64_t bits, const uint32_t bit)
+{
+	return (bits >> bit) & 1ull;
+}
+
+void emu::add_with_carry(size_t N, uint64_t x, uint64_t y, int carry)
+{
+	fmt::print("add_with_carry({}, {:#x}, {:#x}, {})\n", N, x, y, carry);
+	__uint128_t usum = UInt(x) + UInt(y) + UInt(carry);
+	int64_t ssum;
+	bool overflow = __builtin_saddl_overflow(SInt(x), SInt(y), &ssum);
+	if (!overflow)
+		overflow = __builtin_saddl_overflow(ssum, SInt(carry), &ssum);
+
+	uint64_t result = usum;
+	if (N < 64)
+		result = Bits64(result, N - 1, 0);
+
+	if (Bit64(result, N - 1))
+		state_.nzcv |= lifter::N;
+	if (result == 0)
+		state_.nzcv |= lifter::Z;
+	if (UInt(result) != usum)
+		state_.nzcv |= lifter::C;
+	if (overflow)
+		state_.nzcv |= lifter::V;
 }
 } // namespace dyn
