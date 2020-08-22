@@ -283,11 +283,16 @@ ir::tree::rstm lifter::arm64_handle_ADDS(const disas_insn &insn)
 ir::tree::rstm lifter::arm64_handle_CMN(const disas_insn &insn)
 {
 	const cs_arm64 *mach_det = insn.mach_detail();
+	ASSERT(mach_det->op_count == 2, "Too many operands");
 
 	auto rn = mach_det->operands[0].reg;
-	auto rm = mach_det->operands[1];
+	auto snd = mach_det->operands[1];
 
-	return translate_ADDS(insn.address(), ARM64_REG_XZR, rn, rm);
+	if (snd.type == ARM64_OP_REG)
+		return translate_ADDS(insn.address(), ARM64_REG_XZR, rn, snd);
+
+	return set_cmp_values(insn.address(), GPR(rn), CNST(snd.imm),
+			      register_size(rn) == 32 ? ADDS32 : ADDS64);
 }
 
 
