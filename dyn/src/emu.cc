@@ -1,6 +1,7 @@
 #include "dyn/emu.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/linearize.hh"
+#include "ir/canon/simplify.hh"
 #include "ir/canon/trace.hh"
 #include "utils/misc.hh"
 #include "backend/regalloc.hh"
@@ -92,11 +93,16 @@ void emu::run()
 	size_t bb_count = 0;
 	while (done < 0 && bb_count < 1000000) {
 		const auto &chunk = find_or_compile(pc_);
-		fmt::print("Chunk for {:#x} @ {}\n", pc_, chunk.map);
+		/* Not printing the message if we exited because of a
+		 * comparison to print one message per QEMU chunk and
+		 * make debugging easier
+		 */
+		if (state_.exit_reason != lifter::SET_FLAGS)
+			fmt::print("Chunk for {:#x} @ {}\n", pc_, chunk.map);
 		bb_fn fn = (bb_fn)(chunk.map);
 		fmt::print(state_dump());
 		executed += chunk.insn_count;
-		pc_ = fn(&state_);
+		auto next = fn(&state_);
 		switch (state_.exit_reason) {
 		case lifter::BB_END:
 			break;
@@ -109,6 +115,7 @@ void emu::run()
 		default:
 			UNREACHABLE("Unimplemented exit reason");
 		}
+		pc_ = next;
 		fmt::print("Exited basic block.\n");
 		fmt::print(state_dump());
 	}
@@ -225,7 +232,8 @@ chunk emu::compile(size_t pc)
 
 	auto ff = lifter_.lift(bb);
 
-	auto canon = ir::canon(ff.body_);
+	auto simplified = ir::simplify(ff.body_);
+	auto canon = ir::canon(simplified);
 	auto bbs = ir::create_bbs(canon, ff.body_lbl_, ff.epi_lbl_);
 
 	auto traces = ir::create_traces(bbs, ff.body_lbl_);
