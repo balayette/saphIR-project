@@ -9,6 +9,10 @@
 	case ARM64_INS_##Kind:                                                 \
 		return arm64_handle_##Kind(insn)
 
+#define NOPHANDLER(Kind)                                                       \
+	case ARM64_INS_##Kind:                                                 \
+		return SEQ()
+
 #define MOVE(D, S) lifter_move(D, S)
 #define MEM(E) amd_target_->make_mem(E)
 #define LABEL(L) amd_target_->make_label(L)
@@ -613,6 +617,15 @@ ir::tree::rstm lifter::arm64_handle_B(const disas_insn &insn)
 	auto ok_addr = lbl.imm;
 
 	return cc_jump(mach_det->cc, CNST(ok_addr), CNST(fail_addr));
+}
+
+ir::tree::rstm lifter::arm64_handle_BR(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rn = mach_det->operands[0].reg;
+
+	return next_address(GPR(rn));
 }
 
 ir::tree::rstm lifter::arm64_handle_STP_post(cs_arm64_op xt1, cs_arm64_op xt2,
@@ -1230,11 +1243,24 @@ ir::tree::rstm lifter::arm64_handle_MRS(const disas_insn &insn)
 	fmt::print("{:#x}\n", reg);
 
 	if (reg == ARM64_SYSREG_DCZID_EL0)
-		return MOVE(GPR8(rt), CNST(0));
+		return MOVE(GPR8(rt), CNST(0x7)); // Same value as QEMU
 	else if (reg == 0xde82) // tpidr_el0 missing from capstone
 		return MOVE(GPR8(rt), get_state_field("tpidr_el0"));
 	else
 		UNREACHABLE("unimplemented\n");
+}
+
+ir::tree::rstm lifter::arm64_handle_MSR(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rt = mach_det->operands[1].reg;
+	uint64_t reg = mach_det->operands[0].reg;
+
+	if (reg == 0xde82)
+		return set_state_field("tpidr_el0", GPR(rt));
+	else
+		UNREACHABLE("Unimplemented MSR");
 }
 
 ir::tree::rstm lifter::arm64_handle_TST(const disas_insn &insn)
@@ -1343,6 +1369,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(CCMP);
 		HANDLER(CMP);
 		HANDLER(B);
+		HANDLER(BR);
 		HANDLER(STP);
 		HANDLER(LDP);
 		HANDLER(ADRP);
@@ -1364,10 +1391,12 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(TBZ);
 		HANDLER(TBNZ);
 		HANDLER(MRS);
+		HANDLER(MSR);
 		HANDLER(ORR);
 		HANDLER(UDIV);
 		HANDLER(MUL);
 		HANDLER(MADD);
+		NOPHANDLER(PRFM);
 	default:
 		fmt::print("Unimplemented instruction {} ({})\n", insn.as_str(),
 			   insn.insn_name());

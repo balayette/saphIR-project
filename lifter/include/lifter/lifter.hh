@@ -142,6 +142,7 @@ class lifter
 					     arm64_cc cond);
 
 	ir::tree::rstm arm64_handle_B(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_BR(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_STP(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STP_post(cs_arm64_op xt1, cs_arm64_op xt2,
@@ -200,8 +201,11 @@ class lifter
 	ir::tree::rstm arm64_handle_TBNZ(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_MRS(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_MSR(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_ORR(const disas_insn &insn);
+
+	ir::tree::rstm arm64_handle_PRFM(const disas_insn &insn);
 
 	arm64_cc invert_cc(arm64_cc);
 
