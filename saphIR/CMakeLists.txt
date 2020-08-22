@@ -19,6 +19,7 @@ add_library(IR STATIC
         src/ir/canon/linearize.cc
         src/ir/canon/bb.cc
         src/ir/canon/trace.cc
+        src/ir/canon/simplify.cc
         src/ir/visitors/default-ir-visitor.cc
         src/ir/visitors/ir-pretty-printer.cc
         src/ir/visitors/ir-cloner-visitor.cc

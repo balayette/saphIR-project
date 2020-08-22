@@ -52,6 +52,7 @@ struct ir_node {
 	virtual tree_kind kind() = 0;
 
 	virtual void accept(ir_visitor &visitor) = 0;
+	mach::target &target() const { return target_; }
 
 	mach::target &target_;
 	std::vector<utils::ref<ir_node>> children_;
@@ -151,6 +152,7 @@ struct binop : public exp {
 
 	rexp lhs() { return children_[0].as<exp>(); }
 	rexp rhs() { return children_[1].as<exp>(); }
+	ops::binop op() const { return op_; }
 
 	ops::binop op_;
 };
@@ -363,6 +365,10 @@ class meta_cx : public meta_exp
 	rexp un_ex() override;
 	rstm un_nx() override;
 	rstm un_cx(const utils::label &t, const utils::label &f) override;
+
+	rexp lhs() const { return l_; }
+	rexp rhs() const { return r_; }
+	ops::cmpop op() const { return op_; }
 
       private:
 	ops::cmpop op_;

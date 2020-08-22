@@ -47,8 +47,9 @@ void ir_cloner_visitor::visit_temp(tree::temp &n)
 
 void ir_cloner_visitor::visit_binop(tree::binop &n)
 {
+	auto nt = n.ty_->clone();
 	ret_ = target_.make_binop(n.op_, recurse<tree::exp>(n.lhs()),
-				  recurse<tree::exp>(n.rhs()), n.ty_->clone());
+				  recurse<tree::exp>(n.rhs()), nt);
 }
 
 void ir_cloner_visitor::visit_unaryop(tree::unaryop &n)
@@ -59,8 +60,9 @@ void ir_cloner_visitor::visit_unaryop(tree::unaryop &n)
 
 void ir_cloner_visitor::visit_mem(tree::mem &n)
 {
+	auto nt = n.e()->ty_->clone();
 	auto e = recurse<tree::exp>(n.e());
-	e->ty_ = e->ty_->clone();
+	e->ty_ = nt;
 
 	ret_ = target_.make_mem(e);
 }
