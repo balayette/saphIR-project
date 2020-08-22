@@ -10,6 +10,8 @@
 #include <asm/unistd.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/random.h>
+#include <sys/utsname.h>
 #include <chrono>
 
 namespace dyn
@@ -77,12 +79,16 @@ void emu::run()
 	 */
 
 	const auto &filename = file_.filename();
+	char random_data[16];
+	getrandom(random_data, sizeof(random_data), 0);
+	Elf64_auxv_t at_random = {AT_RANDOM, {(uint64_t)random_data}};
 
-	push(0);
-	push(0);
-	push(0);
-	push(filename.c_str(), filename.size() + 1);
-	push(1);
+	push(0);			     // auxp end
+	push(&at_random, sizeof(at_random)); // random data for libc
+	push(0);			     // envp end
+	push(0);			     // argv end
+	push((uint64_t)filename.c_str());    // program name
+	push(1);			     // argc
 
 	size_t executed = 0;
 
