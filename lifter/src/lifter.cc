@@ -743,7 +743,7 @@ ir::tree::rstm lifter::arm64_handle_ADRP(const disas_insn &insn)
 
 ir::tree::rstm lifter::arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst)
 {
-	return MOVE(GPR(xt.reg), MEM(translate_mem_op(dst.mem)));
+	return MOVE(MEM(translate_mem_op(dst.mem)), GPR(xt.reg));
 }
 
 
