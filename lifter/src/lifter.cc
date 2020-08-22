@@ -1105,8 +1105,8 @@ ir::tree::rstm lifter::arm64_handle_CSEL(const disas_insn &insn)
 	auto *mach_det = insn.mach_detail();
 
 	auto rd = mach_det->operands[0].reg;
-	auto rn = mach_det->operands[0].reg;
-	auto rm = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto rm = mach_det->operands[2].reg;
 	auto cc = mach_det->cc;
 
 	/*
