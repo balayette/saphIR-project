@@ -162,6 +162,12 @@ void emu::flag_update()
 			state_.nzcv |= lifter::N;
 		if (res == 0)
 			state_.nzcv |= lifter::Z;
+	} else if (state_.flag_op == lifter::ANDS64) {
+		uint64_t res = state_.flag_a & state_.flag_b;
+		if (res & (1ull << 63))
+			state_.nzcv |= lifter::N;
+		if (res == 0)
+			state_.nzcv |= lifter::Z;
 	} else
 		UNREACHABLE("Unimplemented flag update");
 }
