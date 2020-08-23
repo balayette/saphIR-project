@@ -34,7 +34,8 @@ class emu
 	chunk assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 		       utils::label body_lbl);
 
-	void add_with_carry(size_t N, uint64_t x, uint64_t y, int carry);
+	void add_with_carry32(uint32_t x, uint32_t y, int carry);
+	void add_with_carry64(uint64_t x, uint64_t y, int carry);
 
 	void flag_update();
 	int syscall();

@@ -148,13 +148,13 @@ void emu::flag_update()
 	state_.nzcv = 0;
 
 	if (state_.flag_op == lifter::CMP32)
-		add_with_carry(32, state_.flag_a, ~(uint64_t)state_.flag_b, 1);
+		add_with_carry32(state_.flag_a, ~(uint64_t)state_.flag_b, 1);
 	else if (state_.flag_op == lifter::CMP64)
-		add_with_carry(64, state_.flag_a, ~(uint64_t)state_.flag_b, 1);
+		add_with_carry64(state_.flag_a, ~(uint64_t)state_.flag_b, 1);
 	else if (state_.flag_op == lifter::ADDS32)
-		add_with_carry(32, state_.flag_a, state_.flag_b, 0);
+		add_with_carry32(state_.flag_a, state_.flag_b, 0);
 	else if (state_.flag_op == lifter::ADDS64)
-		add_with_carry(64, state_.flag_a, state_.flag_b, 0);
+		add_with_carry64(state_.flag_a, state_.flag_b, 0);
 	else if (state_.flag_op == lifter::ANDS32) {
 		uint32_t res = state_.flag_a & state_.flag_b;
 		if (res & (1 << 31))
@@ -318,10 +318,30 @@ static inline uint64_t Bit64(const uint64_t bits, const uint32_t bit)
 {
 	return (bits >> bit) & 1ull;
 }
-
-void emu::add_with_carry(size_t N, uint64_t x, uint64_t y, int carry)
+void emu::add_with_carry32(uint32_t x, uint32_t y, int carry)
 {
-	fmt::print("add_with_carry({}, {:#x}, {:#x}, {})\n", N, x, y, carry);
+	fmt::print("add_with_carry32({:#x}, {:#x}, {})\n", x, y, carry);
+	uint64_t usum = UInt(x) + UInt(y) + UInt(carry);
+	int32_t ssum;
+	bool overflow = __builtin_sadd_overflow(SInt(x), SInt(y), &ssum);
+	if (!overflow)
+		overflow = __builtin_sadd_overflow(ssum, SInt(carry), &ssum);
+
+	uint32_t result = usum;
+
+	if (Bit64(result, 31))
+		state_.nzcv |= lifter::N;
+	if (result == 0)
+		state_.nzcv |= lifter::Z;
+	if (UInt(result) != usum)
+		state_.nzcv |= lifter::C;
+	if (overflow)
+		state_.nzcv |= lifter::V;
+}
+
+void emu::add_with_carry64(uint64_t x, uint64_t y, int carry)
+{
+	fmt::print("add_with_carry64({:#x}, {:#x}, {})\n", x, y, carry);
 	__uint128_t usum = UInt(x) + UInt(y) + UInt(carry);
 	int64_t ssum;
 	bool overflow = __builtin_saddl_overflow(SInt(x), SInt(y), &ssum);
@@ -329,10 +349,8 @@ void emu::add_with_carry(size_t N, uint64_t x, uint64_t y, int carry)
 		overflow = __builtin_saddl_overflow(ssum, SInt(carry), &ssum);
 
 	uint64_t result = usum;
-	if (N < 64)
-		result = Bits64(result, N - 1, 0);
 
-	if (Bit64(result, N - 1))
+	if (Bit64(result, 63))
 		state_.nzcv |= lifter::N;
 	if (result == 0)
 		state_.nzcv |= lifter::Z;
