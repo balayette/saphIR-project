@@ -187,11 +187,26 @@ int emu::syscall()
 		state_.regs[mach::aarch64::regs::R0] = syscall1(
 			__NR_brk, state_.regs[mach::aarch64::regs::R0]);
 		break;
+	case 0xa0:
+		emu_uname();
+		break;
 	default:
 		UNREACHABLE("Unimplemented syscall wrapper");
 	}
 
 	return -1;
+}
+
+void emu::emu_uname()
+{
+	struct utsname *buf =
+		(struct utsname *)state_.regs[mach::aarch64::regs::R0];
+	int ret = uname(buf);
+	fmt::print("{}|{}|{}|{}|{}\n", buf->sysname, buf->nodename,
+		   buf->release, buf->version, buf->machine);
+	strcpy(buf->machine, "aarch64");
+
+	state_.regs[mach::aarch64::regs::R0] = ret;
 }
 
 std::string emu::state_dump() const
