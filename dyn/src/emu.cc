@@ -35,9 +35,9 @@ emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 	ks_option(ks_, KS_OPT_SYNTAX, KS_OPT_SYNTAX_ATT);
 	std::memset(state_.regs, 0, sizeof(state_.regs));
 
-	stack_ = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
+	stack_ = mmap(NULL, 4096 * 100, PROT_READ | PROT_WRITE,
 		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + 4096;
+	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + 4096 * 100;
 	state_.nzcv = lifter::Z;
 	state_.tpidr_el0 = 0;
 
@@ -51,7 +51,7 @@ emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 emu::~emu()
 {
 	ks_close(ks_);
-	munmap(stack_, 4096);
+	munmap(stack_, 4096 * 100);
 
 	for (const auto &[_, v] : bb_cache_)
 		munmap(v.map, v.size);
