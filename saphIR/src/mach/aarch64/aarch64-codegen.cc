@@ -348,6 +348,10 @@ void generator::visit_unaryop(tree::unaryop &b)
 		assem::temp dst(b.ty_->size(), val.is_signed_);
 		EMIT(oper("mvn `d0, `s0", {dst}, {val}, {}));
 		ret_ = dst;
+	} else if (b.op_ == ops::unaryop::REV) {
+		assem::temp dst(val.size_, val.is_signed_);
+		EMIT(oper("rev `d0, `s0", {dst}, {val}, {}));
+		ret_ = dst;
 	} else
 		UNREACHABLE("Unimplemented binary op\n");
 }
