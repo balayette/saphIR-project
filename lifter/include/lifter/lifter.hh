@@ -57,7 +57,7 @@ class lifter
 	ir::tree::rstm lifter_move(ir::tree::rexp d, ir::tree::rexp s);
 	ir::tree::rexp translate_gpr(arm64_reg r, bool force_size,
 				     size_t forced);
-	ir::tree::rexp translate_mem_op(arm64_op_mem r);
+	ir::tree::rexp translate_mem_op(arm64_op_mem r, size_t sz);
 	ir::tree::rstm set_state_field(const std::string &name,
 				       ir::tree::rexp val);
 	ir::tree::rexp get_state_field(const std::string &name);

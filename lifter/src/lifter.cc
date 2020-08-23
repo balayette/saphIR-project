@@ -145,22 +145,20 @@ ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
 			       types::signedness::UNSIGNED, *arm_target_))));
 }
 
-ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m)
+ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m, size_t sz)
 {
 	fmt::print("{} {} {}\n", m.base, m.index, m.disp);
 
-	if (m.base != ARM64_REG_INVALID && m.index != ARM64_REG_INVALID) {
-		auto base = GPR(m.base);
-		auto index = GPR(m.index);
+	auto base = GPR(m.base);
+	base->ty_ = new types::pointer_ty(
+		arm_target_->integer_type(types::signedness::UNSIGNED, sz));
 
-		return ADD(base, index, new types::pointer_ty(base->ty_));
+	if (m.base != ARM64_REG_INVALID && m.index != ARM64_REG_INVALID) {
+		auto index = GPR(m.index);
+		return ADD(base, index, base->ty_->clone());
 	} else if (m.base != ARM64_REG_INVALID && m.disp != 0) {
-		auto base = GPR(m.base);
-		return ADD(base, CNST(m.disp),
-			   new types::pointer_ty(base->ty_));
+		return ADD(base, CNST(m.disp), base->ty_->clone());
 	} else if (m.base != ARM64_REG_INVALID && m.disp == 0) {
-		auto base = GPR(m.base);
-		base->ty_ = new types::pointer_ty(base->ty_);
 		return base;
 	}
 
@@ -372,12 +370,9 @@ ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm,
 ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
 					    size_t sz)
 {
-	auto m = MEM(translate_mem_op(src.mem));
-	m->ty_ = new types::pointer_ty(new types::builtin_ty(
-		types::type::INT, sz, types::signedness::UNSIGNED,
-		*amd_target_));
+	auto m = MEM(translate_mem_op(src.mem, sz));
 
-	return MOVE(GPR(xt.reg), m);
+	return MOVE(GPR8(xt.reg), m);
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
@@ -394,7 +389,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
 {
 	auto t = GPR(xt.reg);
 
-	auto addr = translate_mem_op(src.mem);
+	auto addr = translate_mem_op(src.mem, sz);
 	addr->ty_ = new types::pointer_ty(new types::builtin_ty(
 		types::type::INT, sz, types::signedness::UNSIGNED,
 		*amd_target_));
@@ -761,7 +756,7 @@ ir::tree::rstm lifter::arm64_handle_ADRP(const disas_insn &insn)
 
 ir::tree::rstm lifter::arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst)
 {
-	return MOVE(MEM(translate_mem_op(dst.mem)), GPR(xt.reg));
+	return MOVE(MEM(translate_mem_op(dst.mem, 8)), GPR(xt.reg));
 }
 
 
@@ -779,7 +774,7 @@ ir::tree::rstm lifter::arm64_handle_STR_base_offset(cs_arm64_op xt,
 	auto t = GPR(xt.reg);
 	utils::ref<types::ty> ptr_ty = new types::pointer_ty(t->ty_);
 
-	auto addr = translate_mem_op(dst.mem);
+	auto addr = translate_mem_op(dst.mem, 8);
 	addr->ty_ = ptr_ty;
 
 	return MOVE(MEM(addr), t);
@@ -804,7 +799,7 @@ ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
 	auto xt = mach_det->operands[0];
 	auto dst = mach_det->operands[1];
 
-	auto addr = translate_mem_op(dst.mem);
+	auto addr = translate_mem_op(dst.mem, 8);
 
 	if (mach_det->op_count == 2) {
 		/*
