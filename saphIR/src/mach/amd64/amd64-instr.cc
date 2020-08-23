@@ -169,7 +169,7 @@ load::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 			repr += "z";
 		repr += size_str(ssize) + size_str(dsize);
 	} else
-		UNREACHABLE("Impossible memory load");
+		repr += size_str(dsize);
 
 	repr += " ";
 	if (disp_ != 0)
