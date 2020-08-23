@@ -1301,7 +1301,12 @@ ir::tree::rstm lifter::arm64_handle_ORR(const disas_insn &insn)
 		return MOVE(GPR8(rd), BINOP(BITOR, GPR(rn), CNST(third.imm),
 					    arm_target_->gpr_type()));
 	else
-		UNREACHABLE("Unimplemented ORR reg");
+		return MOVE(
+			GPR8(rd),
+			BINOP(BITOR, GPR(rn),
+			      shift_or_extend(GPR(third.reg), third.shift.type,
+					      third.shift.value, third.ext),
+			      arm_target_->gpr_type()));
 }
 
 ir::tree::rstm lifter::arm64_handle_UDIV(const disas_insn &insn)
