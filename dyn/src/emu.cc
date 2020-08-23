@@ -8,6 +8,7 @@
 #include "mach/aarch64/aarch64-common.hh"
 
 #include <asm/unistd.h>
+#include <filesystem>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/random.h>
@@ -190,11 +191,33 @@ int emu::syscall()
 	case 0xa0:
 		emu_uname();
 		break;
+	case 0x4e:
+		emu_readlinkat();
+		break;
 	default:
 		UNREACHABLE("Unimplemented syscall wrapper");
 	}
 
 	return -1;
+}
+
+void emu::emu_readlinkat()
+{
+	int dirfd = state_.regs[mach::aarch64::regs::R0];
+	const char *pathname = (const char *)state_.regs[mach::aarch64::regs::R1];
+	char *buf = (char *)state_.regs[mach::aarch64::regs::R2];
+	size_t bufsiz = state_.regs[mach::aarch64::regs::R3];
+
+	if (!strcmp(pathname, "/proc/self/exe")) {
+		auto path =
+			std::filesystem::canonical(file_.filename()).string();
+		strncpy(buf, path.c_str(), bufsiz);
+		state_.regs[mach::aarch64::regs::R0] =
+			path.size() <= bufsiz ? path.size() : bufsiz;
+
+	} else
+		state_.regs[mach::aarch64::regs::R0] =
+			readlinkat(dirfd, pathname, buf, bufsiz);
 }
 
 void emu::emu_uname()

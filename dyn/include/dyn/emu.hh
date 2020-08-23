@@ -40,6 +40,7 @@ class emu
 	void flag_update();
 	int syscall();
 	void emu_uname();
+	void emu_readlinkat();
 
 	utils::mapped_file &file_;
 	elf::elf bin_;
