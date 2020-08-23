@@ -20,10 +20,13 @@
 #define CNST(C) amd_target_->make_cnst(C)
 #define TTEMP(R, T) amd_target_->make_temp(R, T)
 #define RTEMP(R) amd_target_->make_temp(R, amd_target_->gpr_type())
-#define GPR(R) translate_gpr(R, false, 0)
-#define GPR8(R) translate_gpr(R, true, 8)
+#define GPR(R) translate_gpr(R, false, 0, types::signedness::UNSIGNED)
+#define GPR8(R) translate_gpr(R, true, 8, types::signedness::UNSIGNED)
+#define SGPR(R) translate_gpr(R, false, 0, types::signedness::SIGNED)
+#define SGPR8(R) translate_gpr(R, true, 8, types::signedness::SIGNED)
 #define ADD(L, R, T) amd_target_->make_binop(ops::binop::PLUS, L, R, T)
 #define BINOP(Op, L, R, T) amd_target_->make_binop(ops::binop::Op, L, R, T)
+#define UNARYOP(Op, E, T) amd_target_->make_unaryop(ops::unaryop::Op, E, T)
 #define SEQ(...) amd_target_->make_seq({__VA_ARGS__})
 #define CJUMP(Op, L, R, T, F) amd_target_->make_cjump(Op, L, R, T, F)
 #define JUMP(L, A) amd_target_->make_jump(L, A)
@@ -128,7 +131,7 @@ ir::tree::rexp lifter::get_state_field(const std::string &name)
 }
 
 ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
-				     size_t forced)
+				     size_t forced, types::signedness sign)
 {
 	if (r == ARM64_REG_XZR || r == ARM64_REG_WZR)
 		return CNST(0);
@@ -141,8 +144,7 @@ ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
 
 	return MEM(ADD(bank_->exp(), CNST(8 * reg),
 		       new types::pointer_ty(new types::builtin_ty(
-			       types::type::INT, sz,
-			       types::signedness::UNSIGNED, *arm_target_))));
+			       types::type::INT, sz, sign, *arm_target_))));
 }
 
 ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m, size_t sz)
@@ -378,7 +380,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
 ir::tree::rstm lifter::arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
 					    size_t sz)
 {
-	auto base = GPR(src.mem.base);
+	auto base = translate_mem_op(src.mem, sz);
 
 	return SEQ(arm64_handle_LDR_base_offset(xt, src, sz),
 		   MOVE(base, ADD(base, CNST(src.mem.disp), base->ty_)));
@@ -388,11 +390,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
 						    cs_arm64_op src, size_t sz)
 {
 	auto t = GPR(xt.reg);
-
 	auto addr = translate_mem_op(src.mem, sz);
-	addr->ty_ = new types::pointer_ty(new types::builtin_ty(
-		types::type::INT, sz, types::signedness::UNSIGNED,
-		*amd_target_));
 
 	return MOVE(t, MEM(addr));
 }
@@ -401,10 +399,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
 					     cs_arm64_op imm, size_t sz)
 {
 	auto t = GPR(xt.reg);
-	auto base = GPR(src.mem.base);
-	base->ty_ = new types::pointer_ty(new types::builtin_ty(
-		types::type::INT, sz, types::signedness::UNSIGNED,
-		*amd_target_));
+	auto base = translate_mem_op(src.mem, sz);
 
 	return SEQ(MOVE(t, MEM(base)),
 		   MOVE(base, ADD(base, CNST(imm.imm), base->ty_)));
@@ -551,13 +546,13 @@ ir::tree::rstm lifter::arm64_handle_CMP(const disas_insn &insn)
 	UNREACHABLE("Unimplemented cmp form");
 }
 
-ir::tree::rstm lifter::arm64_handle_CCMP_imm(uint64_t address, cs_arm64_op xn,
-					     cs_arm64_op imm, cs_arm64_op nzcv,
-					     arm64_cc cond)
+ir::tree::rstm lifter::translate_CCMP(uint64_t address, arm64_reg rn,
+				      ir::tree::rexp rhs, int64_t nzcv,
+				      arm64_cc cond)
 {
 	/*
 	 * if cond then
-	 *      cmp xn, imm
+	 *      cmp xn, rhs
 	 * else
 	 *      flag_update(nzcv)
 	 *
@@ -576,14 +571,23 @@ ir::tree::rstm lifter::arm64_handle_CCMP_imm(uint64_t address, cs_arm64_op xn,
 	utils::label end;
 
 	auto cj = cc_jump(cond, tcond, fcond);
-	auto set = set_cmp_values(
-		address, GPR(xn.reg),
-		shift(CNST(imm.imm), imm.shift.type, imm.shift.value),
-		register_size(xn.reg) == 32 ? flag_op::CMP32 : flag_op::CMP64);
-	auto update = set_state_field("nzcv", CNST(nzcv.imm));
+	auto set = set_cmp_values(address, GPR(rn), rhs,
+				  register_size(rn) == 32 ? flag_op::CMP32
+							  : flag_op::CMP64);
+	auto update = set_state_field("nzcv", CNST(nzcv));
 
 	return SEQ(cj, LABEL(tcond), set, JUMP(NAME(end), {end}), LABEL(fcond),
 		   update, next_address(CNST(address + 4)), LABEL(end));
+}
+
+ir::tree::rstm lifter::arm64_handle_CCMP_imm(uint64_t address, arm64_reg xn,
+					     cs_arm64_op imm, int64_t nzcv,
+					     arm64_cc cond)
+{
+	return translate_CCMP(
+		address, xn,
+		shift(CNST(imm.imm), imm.shift.type, imm.shift.value), nzcv,
+		cond);
 }
 
 ir::tree::rstm lifter::arm64_handle_CCMP(const disas_insn &insn)
@@ -592,12 +596,15 @@ ir::tree::rstm lifter::arm64_handle_CCMP(const disas_insn &insn)
 
 	auto xn = mach_det->operands[0];
 	auto other = mach_det->operands[1];
-	auto nzcv = mach_det->operands[2];
+	auto nzcv = mach_det->operands[2].imm;
 	auto cond = mach_det->cc;
 
 	if (other.type == ARM64_OP_IMM)
-		return arm64_handle_CCMP_imm(insn.address(), xn, other, nzcv,
-					     cond);
+		return arm64_handle_CCMP_imm(insn.address(), xn.reg, other,
+					     nzcv, cond);
+	else
+		return translate_CCMP(insn.address(), xn.reg, GPR(other.reg),
+				      nzcv, cond);
 
 	UNREACHABLE("Unimplemented CCMP");
 }
@@ -754,52 +761,65 @@ ir::tree::rstm lifter::arm64_handle_ADRP(const disas_insn &insn)
 	return MOVE(GPR(xd.reg), CNST(imm.imm));
 }
 
-ir::tree::rstm lifter::arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst)
+ir::tree::rstm lifter::arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst,
+					    size_t sz)
 {
-	return MOVE(MEM(translate_mem_op(dst.mem, 8)), GPR(xt.reg));
+	return MOVE(MEM(translate_mem_op(dst.mem, sz)), GPR(xt.reg));
 }
 
 
-ir::tree::rstm lifter::arm64_handle_STR_pre(cs_arm64_op xt, cs_arm64_op dst)
+ir::tree::rstm lifter::arm64_handle_STR_pre(cs_arm64_op xt, cs_arm64_op dst,
+					    size_t sz)
 {
-	auto base = GPR(dst.mem.base);
+	auto base = translate_mem_op(dst.mem, sz);
 
-	return SEQ(arm64_handle_STR_base_offset(xt, dst),
+	return SEQ(arm64_handle_STR_base_offset(xt, dst, sz),
 		   MOVE(base, ADD(base, CNST(dst.mem.disp), base->ty_)));
 }
 
 ir::tree::rstm lifter::arm64_handle_STR_base_offset(cs_arm64_op xt,
-						    cs_arm64_op dst)
+						    cs_arm64_op dst, size_t sz)
 {
 	auto t = GPR(xt.reg);
-	utils::ref<types::ty> ptr_ty = new types::pointer_ty(t->ty_);
 
-	auto addr = translate_mem_op(dst.mem, 8);
-	addr->ty_ = ptr_ty;
+	auto addr = translate_mem_op(dst.mem, sz);
 
 	return MOVE(MEM(addr), t);
 }
 
 ir::tree::rstm lifter::arm64_handle_STR_post(cs_arm64_op xt, cs_arm64_op dst,
-					     cs_arm64_op imm)
+					     cs_arm64_op imm, size_t sz)
 {
 	auto t = GPR(xt.reg);
-	auto base = GPR(dst.mem.base);
-	utils::ref<types::ty> ptr_ty = new types::pointer_ty(t->ty_);
-	base->ty_ = ptr_ty;
+	auto base = translate_mem_op(dst.mem, sz);
 
 	return SEQ(MOVE(MEM(base), t),
 		   MOVE(base, ADD(base, CNST(imm.imm), base->ty_)));
 }
 
+ir::tree::rstm lifter::arm64_handle_STRB(const disas_insn &insn)
+{
+	return arm64_handle_STR_size(insn, 1);
+}
+
+ir::tree::rstm lifter::arm64_handle_STRH(const disas_insn &insn)
+{
+	return arm64_handle_STR_size(insn, 2);
+}
+
 ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
+{
+	/* wd or xd */
+	size_t sz = register_size(insn.mach_detail()->operands[0].reg) / 8;
+	return arm64_handle_STR_size(insn, sz);
+}
+
+ir::tree::rstm lifter::arm64_handle_STR_size(const disas_insn &insn, size_t sz)
 {
 	auto *mach_det = insn.mach_detail();
 
 	auto xt = mach_det->operands[0];
 	auto dst = mach_det->operands[1];
-
-	auto addr = translate_mem_op(dst.mem, 8);
 
 	if (mach_det->op_count == 2) {
 		/*
@@ -808,21 +828,22 @@ ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
 		 */
 		if (is_offset_addressing(dst.mem)
 		    || is_base_reg_addressing(dst.mem))
-			return arm64_handle_STR_reg(xt, dst);
+			return arm64_handle_STR_reg(xt, dst, sz);
 		/*
 		 * str x0, [x1, #imm]!
 		 * str x0, [x1, #imm]
 		 */
 		if (mach_det->writeback)
-			return arm64_handle_STR_pre(xt, dst);
+			return arm64_handle_STR_pre(xt, dst, sz);
 		else
-			return arm64_handle_STR_base_offset(xt, dst);
+			return arm64_handle_STR_base_offset(xt, dst, sz);
 	}
 	if (mach_det->op_count == 3) {
 		/*
 		 * str x0, [x1], #imm
 		 */
-		return arm64_handle_STR_post(xt, dst, mach_det->operands[2]);
+		return arm64_handle_STR_post(xt, dst, mach_det->operands[2],
+					     sz);
 	}
 
 	UNREACHABLE("Unimplemted");
@@ -1356,10 +1377,59 @@ ir::tree::rstm lifter::arm64_handle_MADD(const disas_insn &insn)
 	return translate_MADD(rd, rn, rm, ra);
 }
 
+ir::tree::rstm lifter::arm64_handle_SXTW(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+
+	return MOVE(SGPR8(rd), SGPR(rn));
+}
+
+ir::tree::rstm lifter::arm64_handle_BIC(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto rm = mach_det->operands[2];
+
+	utils::temp val, op2;
+	auto operand2 = UNARYOP(BITNOT,
+				shift_or_extend(GPR(rm.reg), rm.shift.type,
+						rm.shift.value, rm.ext),
+				arm_target_->gpr_type());
+
+	auto result =
+		BINOP(BITAND, GPR(rn), RTEMP(op2), arm_target_->gpr_type());
+
+	auto common = SEQ(MOVE(RTEMP(op2), operand2), MOVE(RTEMP(val), result),
+			  MOVE(GPR8(rd), RTEMP(val)));
+	if (!mach_det->update_flags)
+		return common;
+
+	return SEQ(common,
+		   set_cmp_values(insn.address(), RTEMP(val), RTEMP(op2),
+				  register_size(rd) == 32 ? ANDS32 : ANDS64));
+}
+
+ir::tree::rstm lifter::arm64_handle_REV(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+
+	ir::tree::rexp src = GPR(rn);
+	return MOVE(GPR8(rd), UNARYOP(REV, src, src->ty_->clone()));
+}
+
 ir::tree::rstm lifter::lift(const disas_insn &insn)
 {
 	switch (insn.id()) {
 		HANDLER(MOV);
+		HANDLER(SXTW);
 		HANDLER(MOVN);
 		HANDLER(MOVZ);
 		HANDLER(ADD);
@@ -1379,6 +1449,8 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(LDP);
 		HANDLER(ADRP);
 		HANDLER(STR);
+		HANDLER(STRH);
+		HANDLER(STRB);
 		HANDLER(CBZ);
 		HANDLER(CBNZ);
 		HANDLER(NOP);
@@ -1392,6 +1464,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(SUB);
 		HANDLER(NEG);
 		HANDLER(AND);
+		HANDLER(BIC);
 		HANDLER(TST);
 		HANDLER(TBZ);
 		HANDLER(TBNZ);
@@ -1401,6 +1474,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(UDIV);
 		HANDLER(MUL);
 		HANDLER(MADD);
+		HANDLER(REV);
 		NOPHANDLER(PRFM);
 	default:
 		fmt::print("Unimplemented instruction {} ({})\n", insn.as_str(),

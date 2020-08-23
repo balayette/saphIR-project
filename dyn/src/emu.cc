@@ -210,7 +210,8 @@ int emu::syscall()
 void emu::emu_readlinkat()
 {
 	int dirfd = state_.regs[mach::aarch64::regs::R0];
-	const char *pathname = (const char *)state_.regs[mach::aarch64::regs::R1];
+	const char *pathname =
+		(const char *)state_.regs[mach::aarch64::regs::R1];
 	char *buf = (char *)state_.regs[mach::aarch64::regs::R2];
 	size_t bufsiz = state_.regs[mach::aarch64::regs::R3];
 
