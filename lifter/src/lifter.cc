@@ -176,6 +176,9 @@ ir::tree::rexp lifter::shift(ir::tree::rexp exp, arm64_shifter shifter,
 	case ARM64_SFT_LSL:
 		return BINOP(BITLSHIFT, exp, CNST(value),
 			     arm_target_->integer_type());
+	case ARM64_SFT_LSR:
+		return BINOP(BITRSHIFT, exp, CNST(value),
+			     arm_target_->integer_type());
 	default:
 		UNREACHABLE("Unhandled shift");
 	}
@@ -457,6 +460,11 @@ ir::tree::rstm lifter::arm64_handle_LDRH(const disas_insn &insn)
 ir::tree::rstm lifter::arm64_handle_LDRB(const disas_insn &insn)
 {
 	return arm64_handle_LDR_size(insn, 1);
+}
+
+ir::tree::rstm lifter::arm64_handle_LDAXR(const disas_insn &insn)
+{
+	return arm64_handle_LDR(insn);
 }
 
 ir::tree::rstm lifter::arm64_handle_MOVK(const disas_insn &insn)
@@ -759,6 +767,18 @@ ir::tree::rstm lifter::arm64_handle_ADRP(const disas_insn &insn)
 	auto imm = mach_det->operands[1];
 
 	return MOVE(GPR(xd.reg), CNST(imm.imm));
+}
+
+ir::tree::rstm lifter::arm64_handle_STXR(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto xs = mach_det->operands[0].reg;
+	auto xt = mach_det->operands[1].reg;
+	auto xn = mach_det->operands[2];
+
+	return SEQ(MOVE(MEM(translate_mem_op(xn.mem, 4)), GPR(xt)),
+		   MOVE(GPR8(xs), CNST(0)));
 }
 
 ir::tree::rstm lifter::arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst,
@@ -1229,7 +1249,7 @@ ir::tree::rstm lifter::arm64_handle_TBZ(const disas_insn &insn)
 	auto fail_addr = insn.address() + 4;
 
 	return conditional_jump(CX(ops::cmpop::EQ,
-				   BINOP(BITAND, GPR(rt), CNST(1 << bit),
+				   BINOP(BITAND, GPR(rt), CNST(1ull << bit),
 					 arm_target_->gpr_type()),
 				   CNST(0)),
 				CNST(dest), CNST(fail_addr));
@@ -1246,7 +1266,7 @@ ir::tree::rstm lifter::arm64_handle_TBNZ(const disas_insn &insn)
 	auto fail_addr = insn.address() + 4;
 
 	return conditional_jump(CX(ops::cmpop::NEQ,
-				   BINOP(BITAND, GPR(rt), CNST(1 << bit),
+				   BINOP(BITAND, GPR(rt), CNST(1ull << bit),
 					 arm_target_->gpr_type()),
 				   CNST(0)),
 				CNST(dest), CNST(fail_addr));
@@ -1425,56 +1445,70 @@ ir::tree::rstm lifter::arm64_handle_REV(const disas_insn &insn)
 	return MOVE(GPR8(rd), UNARYOP(REV, src, src->ty_->clone()));
 }
 
+ir::tree::rstm lifter::arm64_handle_CLZ(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+
+	ir::tree::rexp src = GPR(rn);
+	return MOVE(GPR8(rd), UNARYOP(CLZ, src, src->ty_->clone()));
+}
+
 ir::tree::rstm lifter::lift(const disas_insn &insn)
 {
 	switch (insn.id()) {
-		HANDLER(MOV);
-		HANDLER(SXTW);
-		HANDLER(MOVN);
-		HANDLER(MOVZ);
 		HANDLER(ADD);
-		HANDLER(CMN);
-		HANDLER(LDR);
-		HANDLER(LDRH);
-		HANDLER(LDRB);
-		HANDLER(MOVK);
-		HANDLER(RET);
+		HANDLER(ADRP);
+		HANDLER(AND);
+		HANDLER(B);
+		HANDLER(BIC);
 		HANDLER(BL);
 		HANDLER(BLR);
-		HANDLER(CCMP);
-		HANDLER(CMP);
-		HANDLER(B);
 		HANDLER(BR);
-		HANDLER(STP);
-		HANDLER(LDP);
-		HANDLER(ADRP);
-		HANDLER(STR);
-		HANDLER(STRH);
-		HANDLER(STRB);
-		HANDLER(CBZ);
 		HANDLER(CBNZ);
-		HANDLER(NOP);
-		HANDLER(SVC);
-		HANDLER(CSET);
+		HANDLER(CBZ);
+		HANDLER(CCMP);
+		HANDLER(CMN);
+		HANDLER(CMP);
 		HANDLER(CSEL);
-		HANDLER(UBFIZ);
-		HANDLER(UBFX);
-		HANDLER(LSR);
+		HANDLER(CSET);
+		HANDLER(CLZ);
+		HANDLER(LDAXR);
+		HANDLER(LDP);
+		HANDLER(LDR);
+		HANDLER(LDRB);
+		HANDLER(LDRH);
 		HANDLER(LSL);
-		HANDLER(SUB);
-		HANDLER(NEG);
-		HANDLER(AND);
-		HANDLER(BIC);
-		HANDLER(TST);
-		HANDLER(TBZ);
-		HANDLER(TBNZ);
+		HANDLER(LSR);
+		HANDLER(MADD);
+		HANDLER(MOV);
+		HANDLER(MOVK);
+		HANDLER(MOVN);
+		HANDLER(MOVZ);
 		HANDLER(MRS);
 		HANDLER(MSR);
-		HANDLER(ORR);
-		HANDLER(UDIV);
 		HANDLER(MUL);
-		HANDLER(MADD);
+		HANDLER(NEG);
+		HANDLER(NOP);
+		HANDLER(ORR);
+		HANDLER(RET);
 		HANDLER(REV);
+		HANDLER(STP);
+		HANDLER(STR);
+		HANDLER(STRB);
+		HANDLER(STRH);
+		HANDLER(STXR);
+		HANDLER(SUB);
+		HANDLER(SVC);
+		HANDLER(SXTW);
+		HANDLER(TBNZ);
+		HANDLER(TBZ);
+		HANDLER(TST);
+		HANDLER(UBFIZ);
+		HANDLER(UBFX);
+		HANDLER(UDIV);
 		NOPHANDLER(PRFM);
 	default:
 		fmt::print("Unimplemented instruction {} ({})\n", insn.as_str(),

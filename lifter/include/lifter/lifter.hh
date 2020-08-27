@@ -108,6 +108,7 @@ class lifter
 	ir::tree::rstm arm64_handle_ADDS(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_CMN(const disas_insn &insn);
 
+	ir::tree::rstm arm64_handle_LDAXR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_LDR_size(const disas_insn &insn, size_t sz);
 	ir::tree::rstm arm64_handle_LDR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op label,
@@ -168,6 +169,7 @@ class lifter
 
 	ir::tree::rstm arm64_handle_ADRP(const disas_insn &insn);
 
+	ir::tree::rstm arm64_handle_STXR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STRB(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STRH(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STR(const disas_insn &insn);
@@ -216,6 +218,7 @@ class lifter
 	ir::tree::rstm arm64_handle_ORR(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_REV(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_CLZ(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_PRFM(const disas_insn &insn);
 
