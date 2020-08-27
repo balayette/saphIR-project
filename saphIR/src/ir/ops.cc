@@ -10,7 +10,7 @@ const std::string cmpop_str[] = {
 	"==", "<", ">", "<=", ">=", "!=",
 };
 
-const std::string unaryop_str[] = {"!", "-", "~", "rev"};
+const std::string unaryop_str[] = {"!", "-", "~", "rev", "clz"};
 
 cmpop invert_cmpop(cmpop op)
 {

@@ -25,6 +25,7 @@ enum class unaryop {
 	NEG,
 	BITNOT,
 	REV,
+	CLZ,
 };
 
 // The order of the cmpops matters, they must be ordered "symmetrically".

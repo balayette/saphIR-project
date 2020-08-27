@@ -352,6 +352,10 @@ void generator::visit_unaryop(tree::unaryop &b)
 		assem::temp dst(val.size_, val.is_signed_);
 		EMIT(oper("rev `d0, `s0", {dst}, {val}, {}));
 		ret_ = dst;
+	} else if (b.op_ == ops::unaryop::CLZ) {
+		assem::temp dst(val.size_, types::signedness::UNSIGNED);
+		EMIT(oper("clz `d0, `s0", {dst}, {val}, {}));
+		ret_ = dst;
 	} else
 		UNREACHABLE("Unimplemented binary op\n");
 }
