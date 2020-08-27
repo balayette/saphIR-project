@@ -90,6 +90,18 @@ std::string program_header::dump() const
 	return repr;
 }
 
+std::string symbol::dump() const
+{
+	return fmt::format(
+		"Symbol [{}] [Addr {:#x}] [Size {}] [Ndx {}] [Name {}]\n", num_,
+		value_, size_, shndx_, name_);
+}
+
+utils::bufview<uint8_t> symbol::contents(const utils::mapped_file &file) const
+{
+	return utils::bufview(file.ptr<uint8_t>(value_), size_);
+}
+
 elf::elf(utils::mapped_file &file)
 {
 	Elf64_Ehdr *ehdr = file.ptr<Elf64_Ehdr>(0);
@@ -97,6 +109,21 @@ elf::elf(utils::mapped_file &file)
 
 	build_sections(file, ehdr);
 	build_program_headers(file, ehdr);
+	build_symbols(file);
+}
+
+void elf::build_symbols(utils::mapped_file &file)
+{
+	auto *symtab = section_by_name(".symtab");
+	if (!symtab)
+		return;
+
+	Elf64_Sym *symbols = file.ptr<Elf64_Sym>(symtab->offset());
+	size_t nbr = symtab->size() / symtab->entsize();
+
+	for (size_t i = 0; i < nbr; i++)
+		symbols_.emplace_back(i, strtab(symbols[i].st_name),
+				      symbols[i]);
 }
 
 std::string elf::dump() const
@@ -106,6 +133,8 @@ std::string elf::dump() const
 		repr += s.dump();
 	for (const auto &p : phdrs_)
 		repr += p.dump();
+	for (const auto &s : symbols_)
+		repr += s.dump();
 	return repr;
 }
 
@@ -127,6 +156,76 @@ const program_header *elf::segment_for_address(size_t addr)
 	return nullptr;
 }
 
+const symbol *elf::symbol_by_name(const std::string &name) const
+{
+	for (const auto &s : symbols_) {
+		if (s.name() == name)
+			return &s;
+	}
+	return nullptr;
+}
+
+const symbol *elf::symbol_by_address(size_t addr) const
+{
+	for (const auto &s : symbols_) {
+		if (s.address() <= addr && s.address() + s.size() >= addr)
+			return &s;
+	}
+
+	return nullptr;
+}
+
+std::string elf::symbolize(size_t addr) const
+{
+	auto *s = symbol_by_address(addr);
+	if (!s)
+		return "UNKWNON";
+	return s->name();
+}
+
+std::string elf::symbolize_func(size_t addr) const
+{
+	std::vector<const symbol *> sorted;
+
+	for (const auto &s : symbols_) {
+		if (s.type() != STT_FUNC)
+			continue;
+		sorted.push_back(&s);
+	}
+
+	if (sorted.size() == 0)
+		return "UNKNOWN";
+
+	std::sort(sorted.begin(), sorted.end(),
+		  [](const auto *a, const auto *b) {
+			  return a->address() < b->address();
+		  });
+
+	for (size_t i = 0; i < sorted.size() - 1; i++) {
+		if (sorted[i + 1]->address() > addr)
+			return fmt::format("{}+{:#x}", sorted[i]->name(),
+					   addr - sorted[i]->address());
+	}
+
+	return "UNKNOWN";
+}
+
+std::string elf::strtab(size_t idx) const
+{
+	if (!strtab_)
+		return "";
+
+	return std::string(strtab_ + idx);
+}
+
+std::string elf::shstrtab(size_t idx) const
+{
+	if (!shstrtab_)
+		return "";
+
+	return std::string(shstrtab_ + idx);
+}
+
 void elf::build_sections(utils::mapped_file &file, const Elf64_Ehdr *ehdr)
 {
 	Elf64_Shdr *shdrs = file.ptr<Elf64_Shdr>(ehdr->e_shoff);
@@ -136,6 +235,14 @@ void elf::build_sections(utils::mapped_file &file, const Elf64_Ehdr *ehdr)
 		std::string name(shstrtab + shdrs[i].sh_name);
 		shdrs_.emplace_back(section_header(std::move(name), shdrs[i]));
 	}
+
+	shstrtab_ = shstrtab;
+
+	auto *strtabhdr = section_by_name(".strtab");
+	if (strtabhdr)
+		strtab_ = file.ptr<char>(strtabhdr->offset());
+	else
+		strtab_ = nullptr;
 }
 
 void elf::build_program_headers(utils::mapped_file &file,

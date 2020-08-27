@@ -105,6 +105,38 @@ class program_header
 	Elf64_Xword align_;
 };
 
+class symbol
+{
+      public:
+	symbol(size_t num, const std::string &name, const Elf64_Sym &sym)
+	    : num_(num), name_(name), info_(sym.st_info), other_(sym.st_other),
+	      shndx_(sym.st_shndx), value_(sym.st_value), size_(sym.st_size)
+	{
+	}
+
+	size_t num() const { return num_; }
+	const std::string &name() const { return name_; }
+	unsigned char info() const { return info_; }
+	uint8_t type() const { return ELF64_ST_TYPE(info_); }
+	unsigned char other() const { return other_; }
+	Elf64_Section shndx() const { return shndx_; }
+	Elf64_Addr value() const { return value_; }
+	Elf64_Addr address() const { return value(); }
+	Elf64_Xword size() const { return size_; }
+
+	std::string dump() const;
+	utils::bufview<uint8_t> contents(const utils::mapped_file &file) const;
+
+      private:
+	size_t num_;
+	std::string name_;
+	unsigned char info_;
+	unsigned char other_;
+	Elf64_Section shndx_;
+	Elf64_Addr value_;
+	Elf64_Xword size_;
+};
+
 class elf
 {
       public:
@@ -112,9 +144,20 @@ class elf
 	const elf_header &ehdr() { return ehdr_; }
 	const std::vector<section_header> &shdrs() const { return shdrs_; }
 	const std::vector<program_header> &phdrs() const { return phdrs_; }
+	const std::vector<symbol> &symbols() const { return symbols_; }
 
 	const section_header *section_by_name(const std::string &name);
 	const program_header *segment_for_address(size_t addr);
+
+	/* There can be multiple symbols with the same name or address */
+	const symbol *symbol_by_name(const std::string &name) const;
+	const symbol *symbol_by_address(size_t address) const;
+	std::string symbolize(size_t address) const;
+
+	std::string symbolize_func(size_t address) const;
+
+	std::string strtab(size_t idx) const;
+	std::string shstrtab(size_t idx) const;
 
 	std::string dump() const;
 
@@ -122,10 +165,16 @@ class elf
 	void build_sections(utils::mapped_file &file, const Elf64_Ehdr *ehdr);
 	void build_program_headers(utils::mapped_file &file,
 				   const Elf64_Ehdr *ehdr);
+	void build_symbols(utils::mapped_file &file);
 
 	elf_header ehdr_;
 	std::vector<section_header> shdrs_;
 	std::vector<program_header> phdrs_;
+
+	std::vector<symbol> symbols_;
+
+	const char *shstrtab_;
+	const char *strtab_;
 };
 
 /*
