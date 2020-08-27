@@ -105,7 +105,8 @@ void emu::run()
 		 * make debugging easier
 		 */
 		if (state_.exit_reason != lifter::SET_FLAGS)
-			fmt::print("Chunk for {:#x} @ {}\n", pc_, chunk.map);
+			fmt::print("Chunk for {:#x} @ {} ({})\n", pc_,
+				   chunk.map, bin_.symbolize_func(pc_));
 		bb_fn fn = (bb_fn)(chunk.map);
 		fmt::print(state_dump());
 		executed += chunk.insn_count;
@@ -145,7 +146,6 @@ void emu::run()
 
 void emu::flag_update()
 {
-	fmt::print("CMP {:#x} {:#x}\n", state_.flag_a, state_.flag_b);
 	state_.nzcv = 0;
 
 	if (state_.flag_op == lifter::CMP32)
@@ -365,7 +365,6 @@ static inline uint64_t Bit64(const uint64_t bits, const uint32_t bit)
 }
 void emu::add_with_carry32(uint32_t x, uint32_t y, int carry)
 {
-	fmt::print("add_with_carry32({:#x}, {:#x}, {})\n", x, y, carry);
 	uint64_t usum = UInt(x) + UInt(y) + UInt(carry);
 	int32_t ssum;
 	bool overflow = __builtin_sadd_overflow(SInt(x), SInt(y), &ssum);
@@ -386,7 +385,6 @@ void emu::add_with_carry32(uint32_t x, uint32_t y, int carry)
 
 void emu::add_with_carry64(uint64_t x, uint64_t y, int carry)
 {
-	fmt::print("add_with_carry64({:#x}, {:#x}, {})\n", x, y, carry);
 	__uint128_t usum = UInt(x) + UInt(y) + UInt(carry);
 	int64_t ssum;
 	bool overflow = __builtin_saddl_overflow(SInt(x), SInt(y), &ssum);
