@@ -1,6 +1,7 @@
 #pragma once
 
 #include "capstone/capstone.h"
+#include "utils/uset.hh"
 #include <string>
 #include <memory>
 #include <vector>
@@ -31,9 +32,13 @@ class disas_insn
 
 	std::string group_name(unsigned int group) const;
 
+	const utils::uset<uint16_t> regs() const { return regs_; }
+
       private:
 	std::shared_ptr<cs_insn> insn_;
 	csh handle_;
+
+	utils::uset<uint16_t> regs_;
 };
 
 class disas_bb
@@ -48,10 +53,14 @@ class disas_bb
 	std::string dump() const;
 	size_t size() const { return insns_.size(); }
 
+	const utils::uset<uint16_t> regs() const { return regs_; }
+
       private:
 	size_t addr_;
 	std::vector<disas_insn> insns_;
 	bool complete_;
+
+	utils::uset<uint16_t> regs_;
 };
 
 class disas

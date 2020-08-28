@@ -8,6 +8,28 @@ namespace lifter
 disas_insn::disas_insn(std::shared_ptr<cs_insn> insn, csh handle)
     : insn_(insn), handle_(handle)
 {
+	cs_regs regs_read, regs_write;
+	uint8_t read_count, write_count;
+
+	if (cs_regs_access(handle, insn.get(), regs_read, &read_count,
+			   regs_write, &write_count)
+	    == CS_ERR_OK) {
+		for (size_t i = 0; i < read_count; i++)
+			regs_ += regs_read[i];
+		for (size_t i = 0; i < write_count; i++)
+			regs_ += regs_write[i];
+	}
+
+	regs_ -= ARM64_REG_NZCV;
+	regs_ -= ARM64_REG_XZR;
+	regs_ -= ARM64_REG_WZR;
+
+        /*
+         * 'ret' really is 'ret x30', but capstone does not list x30 in the
+         * accessed registers.
+         */
+	if (is_ret() && mach_detail()->op_count == 0)
+		regs_ += ARM64_REG_X30;
 }
 
 size_t disas_insn::address() const { return insn_->address; }
@@ -49,6 +71,8 @@ void disas_bb::append(const disas_insn &insn)
 	ASSERT(!complete_, "Basic block already completed");
 	complete_ = insn.ends_bb();
 	insns_.push_back(insn);
+
+	regs_ += insn.regs();
 }
 
 std::string disas_bb::dump() const
