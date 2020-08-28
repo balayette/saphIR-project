@@ -5,6 +5,8 @@
 #include "utils/assert.hh"
 #include "fmt/format.h"
 
+#define LIFTER_INSTRUCTION_LOG 1
+
 #define HANDLER(Kind)                                                          \
 	case ARM64_INS_##Kind:                                                 \
 		return arm64_handle_##Kind(insn)
@@ -19,7 +21,7 @@
 #define NAME(N) amd_target_->make_name(N)
 #define CNST(C) amd_target_->make_cnst(C)
 #define TTEMP(R, T) amd_target_->make_temp(R, T)
-#define RTEMP(R) amd_target_->make_temp(R, amd_target_->gpr_type())
+#define RTEMP(R) amd_target_->make_temp(R, arm_target_->gpr_type())
 #define GPR(R) translate_gpr(R, false, 0, types::signedness::UNSIGNED)
 #define GPR8(R) translate_gpr(R, true, 8, types::signedness::UNSIGNED)
 #define SGPR(R) translate_gpr(R, false, 0, types::signedness::SIGNED)
@@ -113,6 +115,7 @@ mach::aarch64::regs creg_to_reg(arm64_reg r)
 	if (r == ARM64_REG_SP)
 		return mach::aarch64::regs::SP;
 
+	fmt::print("Register {}\n", r);
 	UNREACHABLE("Register not supported");
 }
 
@@ -142,15 +145,11 @@ ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
 	if (!force_size)
 		sz = register_size(r) / 8;
 
-	return MEM(ADD(bank_->exp(), CNST(8 * reg),
-		       new types::pointer_ty(new types::builtin_ty(
-			       types::type::INT, sz, sign, *arm_target_))));
+	return TTEMP(regs_[reg], arm_target_->integer_type(sign, sz));
 }
 
 ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m, size_t sz)
 {
-	fmt::print("{} {} {}\n", m.base, m.index, m.disp);
-
 	auto base = GPR(m.base);
 	base->ty_ = new types::pointer_ty(
 		arm_target_->integer_type(types::signedness::UNSIGNED, sz));
@@ -254,7 +253,7 @@ ir::tree::rstm lifter::arm64_handle_ADD(const disas_insn &insn)
 	auto op = m.type == ARM64_OP_IMM ? arm64_handle_ADD_imm(rn, m)
 					 : arm64_handle_ADD_reg(rn, m);
 
-	return MOVE(GPR(rd.reg), op);
+	return MOVE(GPR8(rd.reg), op);
 }
 
 ir::tree::rstm lifter::translate_ADDS(size_t addr, arm64_reg rd, arm64_reg rn,
@@ -369,7 +368,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm,
 	cnst->ty_ = new types::pointer_ty(
 		arm_target_->integer_type(types::signedness::UNSIGNED, sz));
 
-	return MOVE(GPR(xt.reg), MEM(cnst));
+	return MOVE(GPR8(xt.reg), MEM(cnst));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
@@ -501,7 +500,7 @@ ir::tree::rstm lifter::arm64_handle_BL(const disas_insn &insn)
 	const cs_arm64 *mach_det = insn.mach_detail();
 	auto imm = mach_det->operands[0];
 
-	return SEQ(MOVE(GPR(ARM64_REG_X30), CNST(insn.address() + 4)),
+	return SEQ(MOVE(GPR8(ARM64_REG_X30), CNST(insn.address() + 4)),
 		   next_address(CNST(imm.imm)));
 }
 
@@ -510,7 +509,7 @@ ir::tree::rstm lifter::arm64_handle_BLR(const disas_insn &insn)
 	const cs_arm64 *mach_det = insn.mach_detail();
 	auto rn = mach_det->operands[0].reg;
 
-	return SEQ(MOVE(GPR(ARM64_REG_X30), CNST(insn.address() + 4)),
+	return SEQ(MOVE(GPR8(ARM64_REG_X30), CNST(insn.address() + 4)),
 		   next_address(GPR(rn)));
 }
 
@@ -766,7 +765,7 @@ ir::tree::rstm lifter::arm64_handle_ADRP(const disas_insn &insn)
 	auto xd = mach_det->operands[0];
 	auto imm = mach_det->operands[1];
 
-	return MOVE(GPR(xd.reg), CNST(imm.imm));
+	return MOVE(GPR8(xd.reg), CNST(imm.imm));
 }
 
 ir::tree::rstm lifter::arm64_handle_STXR(const disas_insn &insn)
@@ -1046,7 +1045,6 @@ ir::tree::rstm lifter::translate_CSINC(arm64_reg xd, arm64_reg xn, arm64_reg xm,
 ir::tree::rstm lifter::translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
 				      int imms)
 {
-	fmt::print("UBFM {} {} {} {}\n", rd, rn, immr, imms);
 	/*
 	 * If <imms> is greater than or equal to <immr> , this copies a
 	 * bitfield of ( <imms> - <immr> +1) bits starting from bit position
@@ -1055,7 +1053,6 @@ ir::tree::rstm lifter::translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
 	 */
 	if (imms >= immr) {
 		uint64_t mask = mask_one_range(immr, imms);
-		fmt::print("Mask: {:#x}\n", mask);
 
 		auto bits = BINOP(BITAND, GPR(rn), CNST(mask),
 				  arm_target_->gpr_type());
@@ -1075,7 +1072,6 @@ ir::tree::rstm lifter::translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
 	auto regsize = register_size(rd);
 
 	uint64_t mask = mask_one_range(0, imms);
-	fmt::print("Mask: {:#x}\n", mask);
 	auto bits = BINOP(BITAND, GPR(rn), CNST(mask), arm_target_->gpr_type());
 	auto shifted = BINOP(BITLSHIFT, bits, CNST(regsize - immr),
 			     arm_target_->gpr_type());
@@ -1280,8 +1276,6 @@ ir::tree::rstm lifter::arm64_handle_MRS(const disas_insn &insn)
 	ir::tree::rexp lhs;
 
 	uint64_t reg = mach_det->operands[1].reg;
-
-	fmt::print("{:#x}\n", reg);
 
 	if (reg == ARM64_SYSREG_DCZID_EL0)
 		return MOVE(GPR8(rt), CNST(0x7)); // Same value as QEMU
@@ -1527,20 +1521,51 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 		{new types::pointer_ty(bank_type_)}, true);
 	bank_ = frame->formals()[0];
 
+	utils::uset<mach::aarch64::regs> used_regs;
+	for (uint16_t creg : bb.regs())
+		used_regs += creg_to_reg((arm64_reg)creg);
+
+	for (auto reg : used_regs) {
+		ret.push_back(MOVE(
+			RTEMP(regs_[reg]),
+			MEM(ADD(bank_->exp(), CNST(8 * reg),
+				new types::pointer_ty(arm_target_->integer_type(
+					types::signedness::UNSIGNED, 8))))));
+	}
+
 	const auto &insns = bb.insns();
 	for (size_t i = 0; i < insns.size(); i++) {
 		disas_insn ins = insns[i];
+
+#if LIFTER_INSTRUCTION_LOG
 		fmt::print("Lifting instruction {} ({}/{})\n", ins.as_str(),
 			   i + 1, insns.size());
+#endif
+
 		auto r = lift(ins);
+
+#if LIFTER_INSTRUCTION_LOG
 		r->accept(pir);
+#endif
+
 		ret.push_back(amd_target_->make_asm_block({"nop"}, {}, {}, {}));
 		ret.push_back(amd_target_->make_asm_block(
 			{fmt::format("# {}", ins.as_str())}, {}, {}, {}));
 		ret.push_back(r);
 	}
 
+	for (auto reg : used_regs)
+		ret.push_back(MOVE(
+			MEM(ADD(bank_->exp(), CNST(8 * reg),
+				new types::pointer_ty(arm_target_->integer_type(
+					types::signedness::UNSIGNED, 8)))),
+			RTEMP(regs_[reg])));
+
 	auto body = amd_target_->make_seq(ret);
+#if LIFTER_INSTRUCTION_LOG
+	body->accept(pir);
+#endif
+
 	auto ret_lbl = make_unique("ret");
 	return mach::fun_fragment(frame->proc_entry_exit_1(body, ret_lbl),
 				  frame, ret_lbl, make_unique("epi"));

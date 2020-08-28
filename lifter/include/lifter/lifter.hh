@@ -233,5 +233,7 @@ class lifter
 	utils::ref<types::struct_ty> bank_type_;
 	utils::ref<types::ty> bb_type_;
 	utils::ref<types::ty> update_flags_ty_;
+
+	std::array<utils::temp, 32> regs_;
 };
 } // namespace lifter
