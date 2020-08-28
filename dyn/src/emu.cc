@@ -15,6 +15,11 @@
 #include <sys/utsname.h>
 #include <chrono>
 
+#define EMU_STATE_LOG 1
+#define EMU_SYSCALL_LOG 0
+#define EMU_ASSEMBLE_LOG 1
+#define EMU_COMPILE_LOG 1
+
 namespace dyn
 {
 static inline int64_t syscall1(uint64_t syscall_nr, uint64_t arg1)
@@ -104,11 +109,13 @@ void emu::run()
 		 * comparison to print one message per QEMU chunk and
 		 * make debugging easier
 		 */
+#if EMU_STATE_LOG
 		if (state_.exit_reason != lifter::SET_FLAGS)
 			fmt::print("Chunk for {:#x} @ {} ({})\n", pc_,
 				   chunk.map, bin_.symbolize_func(pc_));
-		bb_fn fn = (bb_fn)(chunk.map);
 		fmt::print(state_dump());
+#endif
+		bb_fn fn = (bb_fn)(chunk.map);
 		executed += chunk.insn_count;
 		auto next = fn(&state_);
 		switch (state_.exit_reason) {
@@ -124,14 +131,19 @@ void emu::run()
 			UNREACHABLE("Unimplemented exit reason");
 		}
 		pc_ = next;
+#if EMU_STATE_LOG
 		fmt::print("Exited basic block.\n");
 		fmt::print(state_dump());
+#endif
 	}
 
 	auto end = clock.now();
 
+#if EMU_STATE_LOG
 	fmt::print("FINAL STATE\n");
 	fmt::print(state_dump());
+#endif
+
 	double secs = std::chrono::duration_cast<std::chrono::microseconds>(
 			      end - start)
 			      .count()
@@ -174,7 +186,9 @@ void emu::flag_update()
 
 int emu::syscall()
 {
+#if EMU_SYSCALL_LOG
 	fmt::print("Syscall {:#x}\n", state_.regs[mach::aarch64::regs::R8]);
+#endif
 	switch (state_.regs[mach::aarch64::regs::R8]) {
 	case 0x5d:
 		return state_.regs[mach::aarch64::regs::R0];
@@ -232,8 +246,6 @@ void emu::emu_uname()
 	struct utsname *buf =
 		(struct utsname *)state_.regs[mach::aarch64::regs::R0];
 	int ret = uname(buf);
-	fmt::print("{}|{}|{}|{}|{}\n", buf->sysname, buf->nodename,
-		   buf->release, buf->version, buf->machine);
 	strcpy(buf->machine, "aarch64");
 
 	state_.regs[mach::aarch64::regs::R0] = ret;
@@ -268,7 +280,10 @@ const chunk &emu::find_or_compile(size_t pc)
 	if (it != bb_cache_.end())
 		return it->second;
 
+#if EMU_COMPILE_LOG
 	fmt::print("Compiling for {:#x}\n", pc);
+#endif
+
 	bb_cache_[pc] = compile(pc);
 	return bb_cache_[pc];
 }
@@ -329,8 +344,6 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 		"\tleave\n"
 		"\tret\n");
 
-	fmt::print(text);
-
 	uint8_t *out;
 	size_t size, count;
 	if (ks_asm(ks_, text.c_str(), 0, &out, &size, &count) != KS_ERR_OK) {
@@ -338,7 +351,10 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 		UNREACHABLE("Couldn't assemble");
 	}
 
+#if EMU_ASSEMBLE_LOG
+	fmt::print(text);
 	fmt::print("Assembled to {} instruction ({} bytes)\n", count, size);
+#endif
 
 	void *map = mmap(NULL, size, PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS,
 			 -1, 0);
