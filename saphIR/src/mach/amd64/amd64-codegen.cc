@@ -230,6 +230,9 @@ void generator::visit_jump(tree::jump &j)
 // matches (temp t)
 bool is_reg(tree::rexp e) { return e.as<tree::temp>() != nullptr; }
 
+// matches (cnst x)
+bool is_cnst(tree::rexp e) { return e.as<tree::cnst>() != nullptr; }
+
 // matches (temp t) and (cnst x)
 bool is_simple_source(tree::rexp e)
 {
@@ -380,6 +383,18 @@ void generator::visit_move(tree::move &mv)
 		auto [base, offset] = offset_addressing(mem->e());
 
 		EMIT(store(base, offset, t2, t2.size_));
+		return;
+	}
+	if (is_mem_reg(mv.lhs()) && is_cnst(mv.rhs())) {
+		// mov $0xbeef, 3(%t1)
+
+		auto mem = mv.lhs().as<tree::mem>();
+		auto [base, offset] = offset_addressing(mem->e());
+
+		auto c = num_to_string(mv.rhs().as<tree::cnst>()->value_);
+
+		EMIT(store_constant(base, offset, c,
+				    mv.lhs()->ty_->assem_size()));
 		return;
 	}
 	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {

@@ -91,6 +91,22 @@ struct store : public move {
 		const override;
 
 	int64_t disp_;
-        size_t sz_;
+	size_t sz_;
+};
+
+/*
+ * A store_constant is a imm2mem such as movq $0, 0x10(%rax)
+ */
+struct store_constant : public move {
+	store_constant(assem::temp dst, int64_t disp, const std::string &constant,
+	      size_t sz);
+
+	virtual std::string
+	to_string(std::function<std::string(utils::temp, unsigned)> f)
+		const override;
+
+	int64_t disp_;
+	std::string constant_;
+	size_t sz_;
 };
 } // namespace assem::amd64

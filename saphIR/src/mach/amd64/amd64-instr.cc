@@ -200,7 +200,29 @@ store::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 	repr += "(`s1)";
 
 	return assem::format_repr(
-		repr,
-		{f(src_[0].temp_, ssize), f(src_[1].temp_, src_[1].size_)}, {});
+		repr, {f(src_[0].temp_, ssize), f(src_[1].temp_, 8)}, {});
+}
+
+store_constant::store_constant(assem::temp dst, int64_t disp,
+			       const std::string &constant, size_t sz)
+    : move(fmt::format("{:#x}({})", disp, std::string(dst)), constant, {},
+	   {dst}),
+      disp_(disp), constant_(constant), sz_(sz)
+{
+}
+
+std::string store_constant::to_string(
+	std::function<std::string(utils::temp, unsigned)> f) const
+{
+	auto ssize = sz_;
+
+	std::string repr =
+		fmt::format("mov{} {}, ", size_str(ssize), constant_);
+
+	if (disp_ != 0)
+		repr += fmt::format("{:#x}", disp_);
+	repr += "(`s0)";
+
+	return assem::format_repr(repr, {f(src_[0].temp_, 8)}, {});
 }
 } // namespace assem::amd64
