@@ -114,9 +114,9 @@
 %type <utils::ref<ifstmt>> ifstmt
 %type <utils::ref<forstmt>> forstmt
 
-%type <utils::ref<exp>> exp
-%type <std::vector<utils::ref<exp>>> exps_comma
-%type <std::vector<utils::ref<exp>>> exps_commap
+%type <utils::ref<frontend::exp>> exp
+%type <std::vector<utils::ref<frontend::exp>>> exps_comma
+%type <std::vector<utils::ref<frontend::exp>>> exps_commap
 
 %type <std::vector<utils::ref<types::ty>>> types_comma
 %type <std::vector<utils::ref<types::ty>>> types_commap
@@ -125,7 +125,7 @@
 %type <utils::ref<num>> num
 %type <utils::ref<ref>> ref
 %type <utils::ref<call>> call
-%type <utils::ref<exp>> memberaccess
+%type <utils::ref<frontend::exp>> memberaccess
 %type <utils::ref<subscript>> subscript
 
 %type <utils::ref<types::ty>> type
@@ -326,12 +326,12 @@ exp:
 subscript: exp "[" exp "]" { $$ = new subscript($1, $3); }
 
 exps_comma:
-	%empty 			{ $$ = std::vector<utils::ref<exp>>(); }
+	%empty 			{ $$ = std::vector<utils::ref<frontend::exp>>(); }
 | 	exps_commap		{ $$ = $1; }
 ;
 
 exps_commap:
-	exp 			{ $$ = std::vector<utils::ref<exp>>(); $$.push_back($1); }
+	exp 			{ $$ = std::vector<utils::ref<frontend::exp>>(); $$.push_back($1); }
 | 	exps_commap "," exp 	{ $1.push_back($3); $$ = $1; }
 ;
 
