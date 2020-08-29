@@ -1,4 +1,5 @@
 #include "dyn/emu.hh"
+#include "arm_syscall_list.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/linearize.hh"
 #include "ir/canon/simplify.hh"
@@ -17,37 +18,28 @@
 #include <sys/utsname.h>
 #include <chrono>
 
-#define EMU_STATE_LOG 1
+#define EMU_STATE_LOG 0
 #define EMU_SYSCALL_LOG 0
-#define EMU_ASSEMBLE_LOG 1
-#define EMU_COMPILE_LOG 1
+#define EMU_ASSEMBLE_LOG 0
+#define EMU_COMPILE_LOG 0
+
+#define STACK_SIZE (4096 * 100)
 
 namespace dyn
 {
-static inline int64_t syscall1(uint64_t syscall_nr, uint64_t arg1)
-{
-	int64_t ret;
-
-	asm volatile("syscall\n"
-		     : "=a"(ret)
-		     : "a"(syscall_nr), "D"(arg1)
-		     : "memory", "rcx", "r11");
-
-	return ret;
-}
-
-emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
+emu::emu(utils::mapped_file &file) : file_(file), bin_(file), exited_(false)
 {
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
 	       "Couldn't init keystone");
 	ks_option(ks_, KS_OPT_SYNTAX, KS_OPT_SYNTAX_ATT);
-	std::memset(state_.regs, 0, sizeof(state_.regs));
 
-	stack_ = mmap(NULL, 4096 * 100, PROT_READ | PROT_WRITE,
-		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + 4096 * 100;
+	std::memset(state_.regs, 0, sizeof(state_.regs));
 	state_.nzcv = lifter::Z;
 	state_.tpidr_el0 = 0;
+
+	stack_ = mmap(NULL, STACK_SIZE, PROT_READ | PROT_WRITE,
+		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + STACK_SIZE;
 
 	auto [elf_map, size] = elf::map_elf(bin_, file_);
 	elf_map_ = elf_map;
@@ -59,7 +51,7 @@ emu::emu(utils::mapped_file &file) : file_(file), bin_(file)
 emu::~emu()
 {
 	ks_close(ks_);
-	munmap(stack_, 4096 * 100);
+	munmap(stack_, STACK_SIZE);
 
 	for (const auto &[_, v] : bb_cache_)
 		munmap(v.map, v.size);
@@ -103,9 +95,8 @@ void emu::run()
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
 
-	int done = -1;
 	size_t bb_count = 0;
-	while (done < 0 && bb_count < 1000000) {
+	while (!exited_ && bb_count < 1000000) {
 		const auto &chunk = find_or_compile(pc_);
 		/* Not printing the message if we exited because of a
 		 * comparison to print one message per QEMU chunk and
@@ -114,7 +105,7 @@ void emu::run()
 #if EMU_STATE_LOG
 		if (state_.exit_reason != lifter::SET_FLAGS)
 			fmt::print("Chunk for {:#x} @ {} ({})\n", pc_,
-				   chunk.map, bin_.symbolize_func(pc_));
+				   chunk.map, chunk.symbol);
 		fmt::print(state_dump());
 #endif
 		bb_fn fn = (bb_fn)(chunk.map);
@@ -127,10 +118,11 @@ void emu::run()
 			flag_update();
 			break;
 		case lifter::SYSCALL:
-			done = syscall();
+			syscall();
 			break;
 		default:
-			UNREACHABLE("Unimplemented exit reason");
+			UNREACHABLE("Unimplemented exit reason {}\n",
+				    state_.exit_reason);
 		}
 		pc_ = next;
 #if EMU_STATE_LOG
@@ -152,8 +144,8 @@ void emu::run()
 		      / 1000000.0;
 	fmt::print("Executed {} instructions in {} secs\n", executed, secs);
 	fmt::print("{} instructions / sec\n", (size_t)(executed / secs));
-	if (done >= 0)
-		fmt::print("Program exited with status code {}\n", done);
+	if (exited_)
+		fmt::print("Program exited with status code {}\n", exit_code_);
 	else
 		fmt::print("Program exited after reaching exec limit\n");
 }
@@ -186,44 +178,21 @@ void emu::flag_update()
 		UNREACHABLE("Unimplemented flag update");
 }
 
-int emu::syscall()
+void emu::sys_exit()
 {
-#if EMU_SYSCALL_LOG
-	fmt::print("Syscall {:#x}\n", state_.regs[mach::aarch64::regs::R8]);
-#endif
-	switch (state_.regs[mach::aarch64::regs::R8]) {
-	case 0x5d:
-		return state_.regs[mach::aarch64::regs::R0];
-	case 0xae:
-		state_.regs[mach::aarch64::regs::R0] = getuid();
-		break;
-	case 0xaf:
-		state_.regs[mach::aarch64::regs::R0] = geteuid();
-		break;
-	case 0xb0:
-		state_.regs[mach::aarch64::regs::R0] = getgid();
-		break;
-	case 0xb1:
-		state_.regs[mach::aarch64::regs::R0] = getegid();
-		break;
-	case 0xd6:
-		state_.regs[mach::aarch64::regs::R0] = syscall1(
-			__NR_brk, state_.regs[mach::aarch64::regs::R0]);
-		break;
-	case 0xa0:
-		emu_uname();
-		break;
-	case 0x4e:
-		emu_readlinkat();
-		break;
-	default:
-		UNREACHABLE("Unimplemented syscall wrapper");
-	}
-
-	return -1;
+	exited_ = true;
+	exit_code_ = state_.regs[mach::aarch64::regs::R0];
 }
 
-void emu::emu_readlinkat()
+void emu::sys_getuid() { state_.regs[mach::aarch64::regs::R0] = getuid(); }
+
+void emu::sys_geteuid() { state_.regs[mach::aarch64::regs::R0] = geteuid(); }
+
+void emu::sys_getgid() { state_.regs[mach::aarch64::regs::R0] = getgid(); }
+
+void emu::sys_getegid() { state_.regs[mach::aarch64::regs::R0] = getegid(); }
+
+void emu::sys_readlinkat()
 {
 	int dirfd = state_.regs[mach::aarch64::regs::R0];
 	const char *pathname =
@@ -243,7 +212,7 @@ void emu::emu_readlinkat()
 			readlinkat(dirfd, pathname, buf, bufsiz);
 }
 
-void emu::emu_uname()
+void emu::sys_uname()
 {
 	struct utsname *buf =
 		(struct utsname *)state_.regs[mach::aarch64::regs::R0];
@@ -251,6 +220,37 @@ void emu::emu_uname()
 	strcpy(buf->machine, "aarch64");
 
 	state_.regs[mach::aarch64::regs::R0] = ret;
+}
+
+void emu::sys_brk()
+{
+	/* Bypass libc */
+	state_.regs[mach::aarch64::regs::R0] =
+		utils::syscall(__NR_brk, state_.regs[mach::aarch64::regs::R0]);
+}
+
+void emu::syscall()
+{
+	auto nr = state_.regs[mach::aarch64::regs::R8];
+#if EMU_SYSCALL_LOG
+	fmt::print("Syscall {:#x}\n", nr);
+#endif
+
+	static std::unordered_map<uint64_t, syscall_handler> syscall_handlers{
+		{ARM64_NR_exit, &emu::sys_exit},
+		{ARM64_NR_getuid, &emu::sys_getuid},
+		{ARM64_NR_geteuid, &emu::sys_geteuid},
+		{ARM64_NR_getgid, &emu::sys_getgid},
+		{ARM64_NR_getegid, &emu::sys_getegid},
+		{ARM64_NR_brk, &emu::sys_brk},
+		{ARM64_NR_uname, &emu::sys_uname},
+		{ARM64_NR_readlinkat, &emu::sys_readlinkat},
+	};
+
+	auto it = syscall_handlers.find(nr);
+	ASSERT(it != syscall_handlers.end(), "Unimplemented syscall {}", nr);
+
+	return std::invoke(it->second, this);
 }
 
 std::string emu::state_dump() const
@@ -317,6 +317,7 @@ chunk emu::compile(size_t pc)
 
 	auto ret = assemble(lifter_.amd64_target(), instrs, ff.body_lbl_);
 	ret.insn_count = bb.size();
+	ret.symbol = bin_.symbolize_func(pc);
 
 	return ret;
 }

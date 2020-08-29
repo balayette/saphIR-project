@@ -12,6 +12,8 @@ struct chunk {
 	void *map;
 	size_t size;
 	size_t insn_count;
+
+	std::string symbol;
 };
 
 class emu
@@ -25,6 +27,7 @@ class emu
 
       private:
 	using bb_fn = size_t (*)(lifter::state *);
+	using syscall_handler = void (emu::*)(void);
 
 	void push(size_t val);
 	void push(const void *data, size_t sz);
@@ -38,9 +41,17 @@ class emu
 	void add_with_carry64(uint64_t x, uint64_t y, int carry);
 
 	void flag_update();
-	int syscall();
-	void emu_uname();
-	void emu_readlinkat();
+
+	/* Syscalls */
+	void syscall();
+	void sys_exit();
+	void sys_getuid();
+	void sys_geteuid();
+	void sys_getgid();
+	void sys_getegid();
+	void sys_brk();
+	void sys_uname();
+	void sys_readlinkat();
 
 	utils::mapped_file &file_;
 	elf::elf bin_;
@@ -54,6 +65,9 @@ class emu
 	size_t pc_;
 	void *elf_map_;
 	size_t elf_map_sz_;
+
+	bool exited_;
+	int exit_code_;
 
 	std::unordered_map<size_t, chunk> bb_cache_;
 };
