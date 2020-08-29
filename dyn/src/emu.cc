@@ -5,7 +5,9 @@
 #include "ir/canon/trace.hh"
 #include "utils/misc.hh"
 #include "backend/regalloc.hh"
+#include "utils/bits.hh"
 #include "mach/aarch64/aarch64-common.hh"
+#include "utils/syscall.hh"
 
 #include <asm/unistd.h>
 #include <filesystem>
@@ -347,8 +349,8 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 	uint8_t *out;
 	size_t size, count;
 	if (ks_asm(ks_, text.c_str(), 0, &out, &size, &count) != KS_ERR_OK) {
-		fmt::print("{}\n", ks_strerror(ks_errno(ks_)));
-		UNREACHABLE("Couldn't assemble");
+		UNREACHABLE("Couldn't assemble: {}",
+			    ks_strerror(ks_errno(ks_)));
 	}
 
 #if EMU_ASSEMBLE_LOG
@@ -363,22 +365,12 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 	mprotect(map, size, PROT_READ | PROT_EXEC);
 
 	ks_free(out);
-	return {map, size, 0};
+	return {map, size, 0, ""};
 }
 
 #define UInt(x) ((__uint128_t)x)
 #define SInt(x) ((__int128_t)x)
 
-static inline uint64_t Bits64(const uint64_t bits, const uint32_t msbit,
-			      const uint32_t lsbit)
-{
-	return (bits >> lsbit) & ((1ull << (msbit - lsbit + 1)) - 1);
-}
-
-static inline uint64_t Bit64(const uint64_t bits, const uint32_t bit)
-{
-	return (bits >> bit) & 1ull;
-}
 void emu::add_with_carry32(uint32_t x, uint32_t y, int carry)
 {
 	uint64_t usum = UInt(x) + UInt(y) + UInt(carry);
@@ -389,7 +381,7 @@ void emu::add_with_carry32(uint32_t x, uint32_t y, int carry)
 
 	uint32_t result = usum;
 
-	if (Bit64(result, 31))
+	if (utils::extract_bit(result, 31))
 		state_.nzcv |= lifter::N;
 	if (result == 0)
 		state_.nzcv |= lifter::Z;
@@ -409,7 +401,7 @@ void emu::add_with_carry64(uint64_t x, uint64_t y, int carry)
 
 	uint64_t result = usum;
 
-	if (Bit64(result, 63))
+	if (utils::extract_bit(result, 63))
 		state_.nzcv |= lifter::N;
 	if (result == 0)
 		state_.nzcv |= lifter::Z;

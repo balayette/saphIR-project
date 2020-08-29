@@ -4,8 +4,10 @@
 #include "mach/aarch64/aarch64-common.hh"
 #include "utils/assert.hh"
 #include "fmt/format.h"
+#include "utils/math.hh"
+#include "utils/bits.hh"
 
-#define LIFTER_INSTRUCTION_LOG 1
+#define LIFTER_INSTRUCTION_LOG 0
 
 #define HANDLER(Kind)                                                          \
 	case ARM64_INS_##Kind:                                                 \
@@ -38,27 +40,6 @@
 
 namespace lifter
 {
-/*
- * % is the remainder and not the modulo
- */
-static int64_t mod(int64_t a, int64_t b)
-{
-	int r = a % b;
-	return r < 0 ? r + b : r;
-}
-
-static uint64_t mask_one_range(uint64_t lo, uint64_t hi)
-{
-	uint64_t count = hi - lo + 1;
-	uint64_t mask;
-	if (count == 64)
-		mask = ~0;
-	else
-		mask = (1ull << count) - 1;
-
-	return mask << lo;
-}
-
 bool is_gpr(arm64_reg r)
 {
 	if (r >= ARM64_REG_W0 && r <= ARM64_REG_W30)
@@ -115,8 +96,7 @@ mach::aarch64::regs creg_to_reg(arm64_reg r)
 	if (r == ARM64_REG_SP)
 		return mach::aarch64::regs::SP;
 
-	fmt::print("Register {}\n", r);
-	UNREACHABLE("Register not supported");
+	UNREACHABLE("Register {} not supported", r);
 }
 
 ir::tree::rstm lifter::set_state_field(const std::string &name,
@@ -1052,7 +1032,7 @@ ir::tree::rstm lifter::translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
 	 * destination register.
 	 */
 	if (imms >= immr) {
-		uint64_t mask = mask_one_range(immr, imms);
+		uint64_t mask = utils::mask_range(immr, imms);
 
 		auto bits = BINOP(BITAND, GPR(rn), CNST(mask),
 				  arm_target_->gpr_type());
@@ -1071,7 +1051,7 @@ ir::tree::rstm lifter::translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
 
 	auto regsize = register_size(rd);
 
-	uint64_t mask = mask_one_range(0, imms);
+	uint64_t mask = utils::mask_range(0, imms);
 	auto bits = BINOP(BITAND, GPR(rn), CNST(mask), arm_target_->gpr_type());
 	auto shifted = BINOP(BITLSHIFT, bits, CNST(regsize - immr),
 			     arm_target_->gpr_type());
@@ -1083,11 +1063,11 @@ ir::tree::rstm lifter::arm64_handle_UBFIZ(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
 
-	return translate_UBFM(mach_det->operands[0].reg,
-			      mach_det->operands[1].reg,
-			      mod(-mach_det->operands[2].imm,
-				  register_size(mach_det->operands[0].reg)),
-			      mach_det->operands[3].imm - 1);
+	return translate_UBFM(
+		mach_det->operands[0].reg, mach_det->operands[1].reg,
+		utils::math::mod(-mach_det->operands[2].imm,
+				 register_size(mach_det->operands[0].reg)),
+		mach_det->operands[3].imm - 1);
 }
 
 ir::tree::rstm lifter::arm64_handle_UBFX(const disas_insn &insn)
@@ -1125,7 +1105,8 @@ ir::tree::rstm lifter::arm64_handle_LSL(const disas_insn &insn)
 	auto regsize = register_size(rd);
 
 	if (third.type == ARM64_OP_IMM)
-		return translate_UBFM(rd, rn, mod(-third.imm, regsize),
+		return translate_UBFM(rd, rn,
+				      utils::math::mod(-third.imm, regsize),
 				      regsize - 1 - third.imm);
 	else
 		return MOVE(GPR8(rd), BINOP(BITLSHIFT, GPR(rn), GPR(third.reg),
@@ -1505,9 +1486,8 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(UDIV);
 		NOPHANDLER(PRFM);
 	default:
-		fmt::print("Unimplemented instruction {} ({})\n", insn.as_str(),
-			   insn.insn_name());
-		UNREACHABLE("Unimplemented instruction");
+		UNREACHABLE("Unimplemented instruction {} ({})", insn.as_str(),
+			    insn.insn_name());
 	}
 }
 
