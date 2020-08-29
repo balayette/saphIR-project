@@ -201,8 +201,8 @@ std::string elf::symbolize_func(size_t addr) const
 			  return a->address() < b->address();
 		  });
 
-	for (size_t i = 0; i < sorted.size() - 1; i++) {
-		if (sorted[i + 1]->address() > addr)
+	for (size_t i = 0; i < sorted.size(); i++) {
+		if (i == sorted.size() - 1 || sorted[i + 1]->address() > addr)
 			return fmt::format("{}+{:#x}", sorted[i]->name(),
 					   addr - sorted[i]->address());
 	}
