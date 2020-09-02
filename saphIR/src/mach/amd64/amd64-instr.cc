@@ -3,6 +3,79 @@
 
 namespace assem::amd64
 {
+
+addressing::addressing(assem::temp base)
+    : base_(base), disp_(0), index_(std::nullopt), scale_(0)
+{
+}
+
+addressing::addressing(assem::temp base, int64_t disp)
+    : base_(base), disp_(disp), index_(std::nullopt), scale_(0)
+{
+}
+
+addressing::addressing(std::optional<assem::temp> base, assem::temp index,
+		       int64_t scale, int64_t disp)
+    : base_(base), disp_(disp), index_(index), scale_(scale)
+{
+}
+
+std::string addressing::to_string(size_t &temp_index) const
+{
+	std::string repr;
+
+	if (disp_)
+		repr += fmt::format("{:#x}", disp_);
+	repr += "(";
+
+	if (base_) {
+		repr += fmt::format("`s{}", temp_index++);
+		if (!index_)
+			return repr + ")";
+	}
+	repr += ",";
+
+	if (index_)
+		repr += fmt::format("`s{}", temp_index++);
+	repr += ",";
+
+	if (scale_)
+		repr += fmt::format("{:#x}", scale_);
+	repr += ")";
+
+	return repr;
+}
+
+std::string addressing::to_string() const
+{
+	size_t x = 0;
+	return to_string(x);
+}
+
+std::vector<assem::temp> addressing::regs() const
+{
+	std::vector<assem::temp> ret;
+
+	if (base_)
+		ret.push_back(*base_);
+	if (index_)
+		ret.push_back(*index_);
+
+	return ret;
+}
+
+size_t addressing::reg_count() const
+{
+	size_t ret = 0;
+
+	if (base_)
+		ret++;
+	if (index_)
+		ret++;
+
+	return ret;
+}
+
 std::string size_str(unsigned sz)
 {
 	if (sz == 1)
@@ -138,11 +211,12 @@ std::string complex_move::to_string(
 }
 
 
-load::load(assem::temp dst, assem::temp base, int64_t disp, size_t sz)
-    : move(std::string(dst), fmt::format("{:#x}({})", disp, std::string(base)),
-	   {dst}, {base}),
-      dest_(dst), base_(base), disp_(disp), sz_(sz)
+load::load(assem::temp dst, addressing addressing, size_t sz)
+    : move(std::string(dst), addressing.to_string(), {dst}, {}), dest_(dst),
+      addressing_(addressing), sz_(sz)
 {
+	for (const auto &r : addressing_.regs())
+		src_.push_back(r);
 }
 
 std::string
@@ -172,20 +246,24 @@ load::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 		repr += size_str(dsize);
 
 	repr += " ";
-	if (disp_ != 0)
-		repr += fmt::format("{:#x}", disp_);
 
-	repr += "(`s0), `d0";
+	repr += addressing_.to_string();
+	repr += ", `d0";
 
-	return assem::format_repr(repr, {f(src_[0].temp_, src_[0].size_)},
-				  {f(dst_[0].temp_, dsize)});
+	std::vector<std::string> v;
+	std::transform(
+		src_.begin(), src_.end(), std::back_inserter(v),
+		[&](const auto &temp) { return f(temp.temp_, temp.size_); });
+
+	return assem::format_repr(repr, v, {f(dst_[0].temp_, dsize)});
 }
 
-store::store(assem::temp dst, int64_t disp, assem::temp src, size_t sz)
-    : move(fmt::format("{:#x}({})", disp, std::string(dst)), std::string(src),
-	   {}, {src, dst}),
-      disp_(disp), sz_(sz)
+store::store(addressing addressing, assem::temp src, size_t sz)
+    : move(addressing.to_string(), std::string(src), {}, {src}),
+      addressing_(addressing), sz_(sz)
 {
+	for (const auto &r : addressing_.regs())
+		src_.push_back(r);
 }
 
 std::string
@@ -195,19 +273,23 @@ store::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 
 	std::string repr = fmt::format("mov{} `s0, ", size_str(ssize));
 
-	if (disp_ != 0)
-		repr += fmt::format("{:#x}", disp_);
-	repr += "(`s1)";
+	size_t temp_idx = 1;
+	repr += addressing_.to_string(temp_idx);
 
-	return assem::format_repr(
-		repr, {f(src_[0].temp_, ssize), f(src_[1].temp_, 8)}, {});
+	std::vector<std::string> v;
+	v.push_back(f(src_[0].temp_, ssize));
+
+	std::transform(
+		src_.begin() + 1, src_.end(), std::back_inserter(v),
+		[&](const auto &temp) { return f(temp.temp_, temp.size_); });
+
+	return assem::format_repr(repr, v, {});
 }
 
-store_constant::store_constant(assem::temp dst, int64_t disp,
+store_constant::store_constant(addressing addressing,
 			       const std::string &constant, size_t sz)
-    : move(fmt::format("{:#x}({})", disp, std::string(dst)), constant, {},
-	   {dst}),
-      disp_(disp), constant_(constant), sz_(sz)
+    : move(addressing.to_string(), constant, {}, addressing.regs()),
+      addressing_(addressing), constant_(constant), sz_(sz)
 {
 }
 
@@ -219,10 +301,13 @@ std::string store_constant::to_string(
 	std::string repr =
 		fmt::format("mov{} {}, ", size_str(ssize), constant_);
 
-	if (disp_ != 0)
-		repr += fmt::format("{:#x}", disp_);
-	repr += "(`s0)";
+	repr += addressing_.to_string();
 
-	return assem::format_repr(repr, {f(src_[0].temp_, 8)}, {});
+	std::vector<std::string> v;
+	std::transform(
+		src_.begin(), src_.end(), std::back_inserter(v),
+		[&](const auto &temp) { return f(temp.temp_, temp.size_); });
+
+	return assem::format_repr(repr, v, {});
 }
 } // namespace assem::amd64

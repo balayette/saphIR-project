@@ -2,6 +2,40 @@
 
 namespace assem::amd64
 {
+class addressing
+{
+      public:
+	addressing(assem::temp base);
+	addressing(assem::temp base, int64_t disp);
+	addressing(std::optional<assem::temp> base, assem::temp index,
+		   int64_t scale = 1, int64_t disp = 0);
+
+	const std::optional<assem::temp> &base() const { return base_; }
+	const std::optional<assem::temp> &index() const { return index_; }
+	std::optional<assem::temp> &base() { return base_; }
+	std::optional<assem::temp> &index() { return index_; }
+
+	int64_t disp() const { return disp_; }
+	int64_t scale() const { return scale_; }
+
+	/*
+	 * Returns the addressing as a assembly string, with register
+	 * placeholder indices starting from temp_index.
+	 * Updates temp_index to the next available placeholder index
+	 */
+	std::string to_string(size_t &temp_index) const;
+	std::string to_string() const;
+
+	std::vector<assem::temp> regs() const;
+	size_t reg_count() const;
+
+      private:
+	std::optional<assem::temp> base_;
+	int64_t disp_;
+	std::optional<assem::temp> index_;
+	int64_t scale_;
+};
+
 struct sized_oper : public oper {
 	sized_oper(const std::string &oper_str, const std::string &op,
 		   std::vector<assem::temp> dst, std::vector<assem::temp> src,
@@ -68,15 +102,14 @@ struct complex_move : public move {
  * A load is a mem2reg move such as mov 0x10(%rax), %rbx
  */
 struct load : public move {
-	load(assem::temp dst, assem::temp base, int64_t disp, size_t sz);
+	load(assem::temp dst, addressing addressing, size_t sz);
 
 	virtual std::string
 	to_string(std::function<std::string(utils::temp, unsigned)> f)
 		const override;
 
 	assem::temp dest_;
-	assem::temp base_;
-	int64_t disp_;
+	addressing addressing_;
 	size_t sz_;
 };
 
@@ -84,13 +117,13 @@ struct load : public move {
  * A store is a reg2mem such as mov %rbx, 0x10(%rax)
  */
 struct store : public move {
-	store(assem::temp dst, int64_t disp, assem::temp src, size_t sz);
+	store(addressing addressing, assem::temp src, size_t sz);
 
 	virtual std::string
 	to_string(std::function<std::string(utils::temp, unsigned)> f)
 		const override;
 
-	int64_t disp_;
+	addressing addressing_;
 	size_t sz_;
 };
 
@@ -98,14 +131,14 @@ struct store : public move {
  * A store_constant is a imm2mem such as movq $0, 0x10(%rax)
  */
 struct store_constant : public move {
-	store_constant(assem::temp dst, int64_t disp, const std::string &constant,
-	      size_t sz);
+	store_constant(addressing addressing, const std::string &constant,
+		       size_t sz);
 
 	virtual std::string
 	to_string(std::function<std::string(utils::temp, unsigned)> f)
 		const override;
 
-	int64_t disp_;
+	addressing addressing_;
 	std::string constant_;
 	size_t sz_;
 };

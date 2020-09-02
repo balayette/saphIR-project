@@ -1,3 +1,4 @@
+Normalize the IR (for example temps always on the lhs of binops) (IMPORTANT)
 Command line options and better output (boring)
 Better codegen of common patterns (fun)
 Peephole optimizations (fun)

@@ -341,14 +341,16 @@ void translate_visitor::visit_bin(bin &e)
 				auto sz = right->ty_.as<types::pointer_ty>()
 						  ->pointed_size();
 				left = target_.make_binop(
-					ops::binop::MULT, target_.make_cnst(sz),
-					left, target_.integer_type());
+					ops::binop::MULT, left,
+					target_.make_cnst(sz),
+					target_.integer_type());
 			} else {
 				auto sz = left->ty_.as<types::pointer_ty>()
 						  ->pointed_size();
 				right = target_.make_binop(
-					ops::binop::MULT, target_.make_cnst(sz),
-					right, target_.integer_type());
+					ops::binop::MULT, right,
+					target_.make_cnst(sz),
+					target_.integer_type());
 			}
 		}
 	}

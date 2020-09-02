@@ -64,6 +64,37 @@ static std::string num_to_string(int64_t num)
 	return fmt::format("${:#x}", num);
 }
 
+/*
+ * Emit necessary instructions to extend the size of the addressing operands to
+ * 8 bytes.
+ */
+std::vector<assem::rinstr>
+extend_addressing_operands(std::optional<addressing> &addr)
+{
+	if (!addr)
+		return {};
+
+	std::optional<assem::temp> &base = addr->base();
+	std::optional<assem::temp> &index = addr->index();
+
+	std::vector<assem::rinstr> ret;
+
+	if (base) {
+		auto nbase = assem::temp(base->temp_, 8,
+					 types::signedness::UNSIGNED);
+		ret.push_back(new simple_move(nbase, *base));
+		*base = nbase;
+	}
+	if (index) {
+		auto nindex = assem::temp(index->temp_, 8,
+					  types::signedness::UNSIGNED);
+		ret.push_back(new simple_move(nindex, *index));
+		*index = nindex;
+	}
+
+	return ret;
+}
+
 void generator::visit_name(tree::name &n)
 {
 	assem::temp ret;
@@ -320,6 +351,51 @@ bool is_mem_reg(tree::rexp e)
 }
 
 /*
+ * Try to apply an optimal addressing mode to the expression
+ */
+std::optional<addressing> make_addressing_mode(tree::rexp e)
+{
+	// reg => (%reg)
+	if (auto reg = e.as<tree::temp>())
+		return addressing(assem::temp(reg->temp_,
+					      reg->ty_->assem_size(),
+					      types::signedness::UNSIGNED));
+
+	auto binop = e.as<tree::binop>();
+	if (!binop || binop->op() != ops::binop::PLUS)
+		return std::nullopt;
+
+	auto lhs = binop->lhs();
+	auto reg = lhs.as<tree::temp>();
+	if (!reg)
+		return std::nullopt;
+
+	auto rhs = binop->rhs();
+	// (+ reg cnst) => cnst(%reg)
+	if (auto cnst = rhs.as<tree::cnst>())
+		return addressing(assem::temp(reg->temp_,
+					      reg->ty_->assem_size(),
+					      types::signedness::UNSIGNED),
+				  cnst->value());
+
+	auto binop2 = rhs.as<tree::binop>();
+	if (!binop2 || binop2->op() != ops::binop::MULT)
+		return std::nullopt;
+
+	auto index = binop2->lhs().as<tree::temp>();
+	auto scale = binop2->rhs().as<tree::cnst>();
+	if (!index || !scale)
+		return std::nullopt;
+
+	// (+ reg (* reg2 cnst)) => (%reg, %reg2, cnst)
+	return addressing(assem::temp(reg->temp_, reg->ty_->assem_size(),
+				      types::signedness::UNSIGNED),
+			  assem::temp(index->temp_, index->ty_->assem_size(),
+				      types::signedness::UNSIGNED),
+			  scale->value());
+}
+
+/*
  * Move codegen cases and expected output
  * All (binop + (temp t) (cnst x)) can also be a simple (temp t) node except
  * in the lea case
@@ -351,6 +427,25 @@ void generator::visit_move(tree::move &mv)
 {
 	auto signedness = mv.lhs()->ty_->get_signedness();
 
+	std::optional<addressing> lhs_addr = std::nullopt;
+	std::optional<addressing> rhs_addr = std::nullopt;
+
+	if (auto mem = mv.lhs().as<tree::mem>())
+		lhs_addr = make_addressing_mode(mem->e());
+	if (auto mem = mv.rhs().as<tree::mem>())
+		rhs_addr = make_addressing_mode(mem->e());
+
+	/*
+	 * Base and index registers might be smaller than 8 bytes, but the
+	 * only legal encoding is with 8 bytes registers. Make sure to extend
+	 * them to 8 bytes
+	 */
+	for (auto i : extend_addressing_operands(lhs_addr))
+		emit(i);
+	for (auto i : extend_addressing_operands(rhs_addr))
+		emit(i);
+
+
 	if (is_reg(mv.lhs()) && is_reg_disp(mv.rhs(), true)) {
 		// lea 3(%t2), %t1
 		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
@@ -361,58 +456,39 @@ void generator::visit_move(tree::move &mv)
 		EMIT(lea(t1, {s, t2}));
 		return;
 	}
-	if (is_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
+	if (is_reg(mv.lhs()) && rhs_addr) {
 		// mov 3(%t2), %t1
 		auto t1 = assem::temp(mv.lhs().as<tree::temp>()->temp_,
 				      mv.lhs()->ty_->assem_size(),
 				      mv.lhs()->ty_->get_signedness());
 
-		auto mem = mv.rhs().as<tree::mem>();
-		auto [base, offset] = offset_addressing(mem->e());
-
-		EMIT(load(t1, base, offset, mem->ty_->assem_size()));
+		EMIT(load(t1, *rhs_addr, mv.rhs()->ty_->assem_size()));
 		return;
 	}
-	if (is_mem_reg(mv.lhs()) && is_reg(mv.rhs())) {
+	if (lhs_addr && is_reg(mv.rhs())) {
 		// mov %t2, 3(%t1)
 		auto t2 = assem::temp(mv.rhs().as<tree::temp>()->temp_,
 				      mv.lhs()->ty_->assem_size(),
 				      mv.rhs()->ty_->get_signedness());
 
-		auto mem = mv.lhs().as<tree::mem>();
-		auto [base, offset] = offset_addressing(mem->e());
-
-		EMIT(store(base, offset, t2, t2.size_));
+		EMIT(store(*lhs_addr, t2, t2.size_));
 		return;
 	}
-	if (is_mem_reg(mv.lhs()) && is_cnst(mv.rhs())) {
+	if (lhs_addr && is_cnst(mv.rhs())) {
 		// mov $0xbeef, 3(%t1)
-
-		auto mem = mv.lhs().as<tree::mem>();
-		auto [base, offset] = offset_addressing(mem->e());
-
 		auto c = num_to_string(mv.rhs().as<tree::cnst>()->value_);
 
-		EMIT(store_constant(base, offset, c,
-				    mv.lhs()->ty_->assem_size()));
+		EMIT(store_constant(*lhs_addr, c, mv.lhs()->ty_->assem_size()));
 		return;
 	}
-	if (is_mem_reg(mv.lhs()) && is_mem_reg(mv.rhs())) {
+	if (lhs_addr && rhs_addr) {
 		// mov 4(%t2), %t3
 		// mov %t3, 3(%t1)
 
 		// t3 is the same size as the destination
 		assem::temp t3(mv.lhs()->ty_->assem_size());
-
-		auto mem1 = mv.rhs().as<tree::mem>();
-		auto [base, offset] = offset_addressing(mem1->e());
-
-		EMIT(load(t3, base, offset, mem1->ty_->assem_size()));
-
-		auto mem2 = mv.lhs().as<tree::mem>();
-		auto [sbase, soffset] = offset_addressing(mem2->e());
-
-		EMIT(store(sbase, soffset, t3, t3.size_));
+		EMIT(load(t3, *rhs_addr, mv.lhs()->ty_->assem_size()));
+		EMIT(store(*lhs_addr, t3, t3.size_));
 		return;
 	}
 
@@ -424,7 +500,8 @@ void generator::visit_move(tree::move &mv)
 		mv.rhs()->accept(*this);
 		auto rhs = ret_;
 
-		EMIT(store(lhs, 0, rhs, mv.lhs()->ty_->assem_size()));
+		auto addr = addressing(lhs);
+		EMIT(store(addr, rhs, mv.lhs()->ty_->assem_size()));
 		return;
 	}
 
@@ -442,7 +519,9 @@ void generator::visit_mem(tree::mem &mm)
 
 	mm.e()->accept(*this);
 
-	EMIT(load(dst, ret_, 0, mm.ty_->assem_size()));
+	addressing addr(ret_);
+
+	EMIT(load(dst, addr, mm.ty_->assem_size()));
 	ret_ = dst;
 }
 

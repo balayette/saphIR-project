@@ -89,6 +89,8 @@ struct cnst : public exp {
 	cnst(mach::target &target, uint64_t value, types::signedness signedness,
 	     size_t size);
 
+	uint64_t value() const { return value_; }
+
 	TREE_KIND(cnst)
 
 	uint64_t value_;

@@ -114,16 +114,22 @@ tree::rnode canon_default(tree::rnode &tree)
 		auto mv = tree.as<tree::move>();
 		if (mv && ichild == children.begin()) {
 			if (auto mem = ichild->as<tree::mem>()) {
+				/*
+				 * Instead of doing like Appel and storing
+				 * the address in a temporary, store the value
+				 * in a temp. This makes codegen optimization
+				 * of addressing modes easier.
+				 */
 				utils::temp tmp;
 				bigseq = make_stm(
 					bigseq,
 					target.make_move(
-						target.make_temp(tmp,
-								 mem->e()->ty_),
-						mem->e()));
+						target.make_temp(
+							tmp, mv->rhs()->ty_),
+						mv->rhs()));
 
-				mv->children_[0] = target.make_mem(
-					target.make_temp(tmp, mem->e()->ty_));
+				mv->children_[1] =
+					target.make_temp(tmp, mv->rhs()->ty_);
 			}
 		}
 	}
