@@ -51,9 +51,16 @@ void optimize_trace(tree::rnodevec &instrs)
 		auto instr = instrs[i];
 		auto &target = instr->target_;
 		if (auto cj = instr.as<tree::cjump>()) {
-			if (i + 1 == instrs.size()) {
-				// The final instruction is a cjump, we expand
-				// it.
+			auto lbl = i + 1 == instrs.size()
+					   ? nullptr
+					   : instrs[i + 1].as<tree::label>();
+			auto correct_label = lbl
+					     && (lbl->name_ == cj->lfalse_
+						 || lbl->name_ == cj->ltrue_);
+			if (i + 1 == instrs.size() || !correct_label) {
+				// The final instruction is a cjump, or the
+				// cjump is not followed by one of its labels,
+				// we expand it.
 				utils::label lab;
 				auto ncj = target.make_cjump(cj->op_, cj->lhs(),
 							     cj->rhs(),
@@ -76,15 +83,16 @@ void optimize_trace(tree::rnodevec &instrs)
 			} else {
 				// The next element has to be a label, we check
 				// if it is the false label.
-				auto lbl = instrs[i + 1].as<tree::label>();
-				ASSERT(lbl->name_ == cj->lfalse_
-					       || lbl->name_ == cj->ltrue_,
-				       "cjump followed by wrong label");
+				ASSERT("cjump {} {} followed by wrong label {}",
+				       std::string(cj->ltrue_),
+				       std::string(cj->lfalse_),
+				       std::string(lbl->name_));
 				if (lbl->name_ == cj->lfalse_)
 					continue;
 
-				// The cjump is followed by its true label,
-				// we swap the labels and the condition.
+				// The cjump is followed by its true
+				// label, we swap the labels and the
+				// condition.
 				std::swap(cj->ltrue_, cj->lfalse_);
 				cj->op_ = ops::invert_cmpop(cj->op_);
 			}

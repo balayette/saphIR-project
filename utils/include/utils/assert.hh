@@ -5,10 +5,11 @@
 
 #define ASSERT(cond, ...)                                                      \
 	do {                                                                   \
-		if (!(cond))                                                   \
+		if (!(cond)) {                                                 \
 			utils::assertion_failed(__FILE__, __LINE__, __func__,  \
 						#cond,                         \
 						fmt::format(__VA_ARGS__));     \
+		}                                                              \
 	} while (0)
 
 #define UNREACHABLE(...)                                                       \
