@@ -99,39 +99,36 @@ void replace_allocation(std::vector<assem::rinstr> &instrs,
 	instrs = filterd;
 }
 
-void allocate(std::vector<assem::rinstr> &instrs, assem::temp_set initial,
-	      mach::fun_fragment &f)
-{
-	backend::cfg cfg(instrs, f.body_lbl_);
-	backend::ifence_graph ifence(cfg.cfg_);
-
-	coloring_out co = color(f.frame_->target_, ifence, initial);
-	if (co.spills.size() == 0)
-		replace_allocation(instrs, co.allocation);
-	else {
-		rewrite(instrs, co.spills, *f.frame_);
-		alloc(instrs, f);
-	}
-}
-
 void alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
 {
 	auto precolored = f.frame_->target_.temp_map();
-	assem::temp_set initial;
 
-	for (auto &inst : instrs) {
-		if (inst.as<assem::label>())
-			continue;
-		for (auto &dest : inst->dst_) {
-			if (!precolored.count(dest))
-				initial += dest;
+	for (size_t loop_count = 0;; loop_count++) {
+		assem::temp_set initial;
+		for (auto &inst : instrs) {
+			for (auto &dest : inst->dst_) {
+				if (!precolored.count(dest))
+					initial += dest;
+			}
+			for (auto &src : inst->src_) {
+				if (!precolored.count(src))
+					initial += src;
+			}
 		}
-		for (auto &src : inst->src_) {
-			if (!precolored.count(src))
-				initial += src;
+
+		backend::cfg cfg(instrs, f.body_lbl_);
+		backend::ifence_graph ifence(cfg.cfg_);
+
+		coloring_out co = color(f.frame_->target_, ifence, initial);
+		if (co.spills.size() == 0) {
+			replace_allocation(instrs, co.allocation);
+			break;
+		} else {
+			fmt::print("{} spills, rewriting\n", co.spills.size());
+			for (auto &s : co.spills)
+				fmt::print("  {}\n", std::string(s));
+			rewrite(instrs, co.spills, *f.frame_);
 		}
 	}
-
-	allocate(instrs, initial, f);
 }
 } // namespace backend::regalloc
