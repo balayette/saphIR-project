@@ -179,17 +179,6 @@ int main(int argc, char *argv[])
 		frag.frame_->proc_entry_exit_3(instrs, frag.body_lbl_,
 					       frag.ret_lbl_);
 
-		backend::cfg cfg(instrs, frag.body_lbl_);
-		std::ofstream cfg_out(std::string("cfg") + frag.frame_->s_.get()
-				      + std::string(".dot"));
-		cfg.cfg_.dump_dot(cfg_out);
-
-		backend::ifence_graph ifence(cfg.cfg_);
-		std::ofstream ifence_out(std::string("ifence")
-					 + frag.frame_->s_.get()
-					 + std::string(".dot"));
-		ifence.graph_.dump_dot(ifence_out, false);
-
 		std::cout << "######################\n";
 
 		backend::regalloc::alloc(instrs, frag);
@@ -233,6 +222,8 @@ int main(int argc, char *argv[])
 		fout << f.epilogue_;
 		fout << '\n';
 	}
+
+	fmt::print("Compilation successful\n");
 
 	return 0;
 }
