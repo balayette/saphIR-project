@@ -15,6 +15,7 @@ struct base_temp {
 
       public:
 	base_temp() = delete;
+	const symbol &sym() const { return sym_; }
 	const std::string &get() const { return sym_.get(); }
 	operator const std::string &() const { return sym_.get(); }
 
@@ -54,13 +55,13 @@ namespace std
 template <> struct hash<utils::label> {
 	std::size_t operator()(const utils::label &s) const
 	{
-		return std::hash<std::string>{}(s.get());
+		return std::hash<symbol>{}(s.sym());
 	}
 };
 template <> struct hash<utils::temp> {
 	std::size_t operator()(const utils::temp &t) const
 	{
-		return std::hash<std::string>{}(t.get());
+		return std::hash<symbol>{}(t.sym());
 	}
 };
 template <> struct hash<utils::temp_pair> {

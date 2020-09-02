@@ -113,7 +113,7 @@ namespace std
 template <> struct hash<assem::temp> {
 	std::size_t operator()(const assem::temp &t) const
 	{
-		return std::hash<std::string>{}(t.temp_.get());
+		return std::hash<utils::temp>{}(t.temp_);
 	}
 };
 

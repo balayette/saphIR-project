@@ -23,6 +23,8 @@ class symbol
 	const std::string &get() const;
 	operator const std::string &() const { return this->get(); }
 
+	const std::string *instance() const { return instance_; }
+
       private:
 	std::set<std::string> &get_set();
 	const std::string *instance_;
@@ -39,7 +41,7 @@ namespace std
 template <> struct hash<symbol> {
 	std::size_t operator()(const symbol &s) const
 	{
-		return std::hash<std::string>{}(s.get());
+		return (size_t)s.instance();
 	}
 };
 } // namespace std
