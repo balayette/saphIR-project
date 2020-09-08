@@ -1,5 +1,6 @@
 #pragma once
 #include "utils/uset.hh"
+#include "utils/assert.hh"
 #include <algorithm>
 
 namespace utils
@@ -98,5 +99,13 @@ uset<T> &uset<T>::operator+=(std::pair<It, It> it)
 {
 	this->insert(it.first, it.second);
 	return *this;
+}
+
+template <typename T> T uset<T>::pop()
+{
+	ASSERT(this->size() != 0, "Pop from empty set");
+	auto ret = *(this->begin());
+	*this -= ret;
+	return ret;
 }
 } // namespace utils

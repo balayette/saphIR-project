@@ -28,6 +28,8 @@ template <typename T> class uset : public std::unordered_set<T>
 	uset<T> intersect(const uset<T> &rhs) const;
 
 	std::vector<T> collect() const;
+
+	T pop();
 };
 } // namespace utils
 
