@@ -23,18 +23,18 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 	auto cgen = target.make_asm_generator();
 
 	for (auto &inst : instrs) {
-		bool emitted = false;
+		std::vector<ir::tree::rstm> moves;
+
 		for (auto &src : inst->src_) {
 			if (std::find(spills.begin(), spills.end(), src)
 			    == spills.end())
 				continue;
 
-			auto rhs = cgen->codegen(temp_to_acc[src]->exp());
+			auto nsrc = cgen->codegen(temp_to_acc[src]->exp());
+			nsrc.size_ = src.size_;
+			nsrc.is_signed_ = src.is_signed_;
 
-			src = rhs;
-			cgen->emit(inst);
-
-			emitted = true;
+			src = nsrc;
 		}
 
 		for (auto &dst : inst->dst_) {
@@ -42,20 +42,18 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 			    == spills.end())
 				continue;
 
-			auto vi = assem::temp(unique_temp());
-			ir::tree::rstm mv = target.make_move(
+			assem::temp vi(unique_temp());
+			moves.push_back(target.make_move(
 				temp_to_acc[dst]->exp(),
-				target.make_temp(vi,
-						 temp_to_acc[dst]->exp()->ty_));
+				target.make_temp(vi, temp_to_acc[dst]->ty_)));
 
 			dst = vi;
-			cgen->emit(inst);
-			cgen->codegen(mv);
-			emitted = true;
 		}
 
-		if (!emitted) // labels, or instrs with no spills
-			cgen->emit(inst);
+		cgen->emit(inst);
+
+		for (const auto &mv : moves)
+			cgen->codegen(mv);
 	}
 
 	instrs = cgen->output();
@@ -124,9 +122,6 @@ void alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
 			replace_allocation(instrs, co.allocation);
 			break;
 		} else {
-			fmt::print("{} spills, rewriting\n", co.spills.size());
-			for (auto &s : co.spills)
-				fmt::print("  {}\n", std::string(s));
 			rewrite(instrs, co.spills, *f.frame_);
 		}
 	}
