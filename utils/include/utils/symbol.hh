@@ -41,7 +41,7 @@ namespace std
 template <> struct hash<symbol> {
 	std::size_t operator()(const symbol &s) const
 	{
-		return (size_t)s.instance();
+		return reinterpret_cast<size_t>(s.instance());
 	}
 };
 } // namespace std
