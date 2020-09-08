@@ -29,6 +29,7 @@ add_library(IR STATIC
         src/ass/instr.cc
         src/backend/cfg.cc
         src/backend/liveness.cc
+        src/backend/dataflow.cc
         src/backend/regalloc.cc
         src/backend/color.cc
 )

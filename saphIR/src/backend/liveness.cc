@@ -1,5 +1,6 @@
 #include "backend/liveness.hh"
 #include "utils/uset.hh"
+#include "backend/dataflow.hh"
 #include "utils/assert.hh"
 #include <algorithm>
 
@@ -19,27 +20,7 @@ std::ostream &operator<<(std::ostream &os, const ifence_node &n)
 
 ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
 {
-	std::vector<assem::temp_set> in(cfg.size());
-	std::vector<assem::temp_set> out(cfg.size());
-
-	std::vector<assem::temp_set> new_in(cfg.size());
-	std::vector<assem::temp_set> new_out(cfg.size());
-
-	do {
-		/* Etienne <3 */
-		for (utils::node_id n = cfg.size(); n-- >= 1;) {
-			new_in[n] = in[n];
-			new_out[n] = out[n];
-
-			auto *node = cfg.get(n);
-			in[n] = node->use + (out[n] - node->def);
-
-			assem::temp_set children_in;
-			for (auto s : cfg.nodes_[n].succ_)
-				children_in = children_in + in[s];
-			out[n] = children_in;
-		}
-	} while (new_in != in || new_out != out);
+        auto [in, out] = dataflow_analysis(cfg);
 
 	for (utils::node_id n = 0; n < cfg.size(); n++) {
 		auto *node = cfg.get(n);
