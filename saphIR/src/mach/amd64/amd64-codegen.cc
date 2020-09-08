@@ -517,11 +517,12 @@ void generator::visit_mem(tree::mem &mm)
 {
 	assem::temp dst(mm.ty_->assem_size());
 
-	mm.e()->accept(*this);
-
-	addressing addr(ret_);
-
-	EMIT(load(dst, addr, mm.ty_->assem_size()));
+	auto addr = make_addressing_mode(mm.e());
+	if (!addr) {
+		mm.e()->accept(*this);
+		addr = addressing(ret_);
+	}
+	EMIT(load(dst, *addr, mm.ty_->assem_size()));
 	ret_ = dst;
 }
 
