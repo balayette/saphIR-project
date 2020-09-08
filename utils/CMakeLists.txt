@@ -2,6 +2,7 @@ add_library(utils STATIC
         src/assert.cc
         src/symbol.cc
         src/fs.cc
+        src/timer.cc
 )
 
 target_include_directories(utils
