@@ -5,7 +5,8 @@
 #include "ir/canon/simplify.hh"
 #include "ir/canon/trace.hh"
 #include "utils/misc.hh"
-#include "backend/regalloc.hh"
+#include "backend/graph-regalloc.hh"
+#include "backend/linear-regalloc.hh"
 #include "utils/bits.hh"
 #include "mach/aarch64/aarch64-common.hh"
 #include "utils/syscall.hh"
@@ -20,7 +21,7 @@
 
 #define EMU_STATE_LOG 0
 #define EMU_SYSCALL_LOG 0
-#define EMU_ASSEMBLE_LOG 0
+#define EMU_ASSEMBLE_LOG 1
 #define EMU_COMPILE_LOG 0
 
 #define STACK_SIZE (4096 * 100)
@@ -313,7 +314,7 @@ chunk emu::compile(size_t pc)
 	auto instrs = generator->output();
 	ff.frame_->proc_entry_exit_2(instrs);
 
-	backend::regalloc::alloc(instrs, ff);
+	backend::regalloc::linear_alloc(instrs, ff);
 
 	auto ret = assemble(lifter_.amd64_target(), instrs, ff.body_lbl_);
 	ret.insn_count = bb.size();

@@ -7,10 +7,7 @@
 #include "utils/graph.hh"
 #include "mach/target.hh"
 
-namespace backend
+namespace backend::regalloc
 {
-std::pair<std::vector<assem::temp_set>, std::vector<assem::temp_set>>
-dataflow(utils::graph<cfgnode> &cfg);
-
 void linear_alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f);
 } // namespace backend

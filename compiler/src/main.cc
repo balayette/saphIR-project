@@ -18,12 +18,14 @@
 #include "ir/canon/simplify.hh"
 #include "backend/cfg.hh"
 #include "backend/liveness.hh"
-#include "backend/regalloc.hh"
+#include "backend/graph-regalloc.hh"
+#include "backend/linear-regalloc.hh"
 #include "backend/opt/peephole.hh"
 #include "mach/target.hh"
 #include "mach/amd64/amd64-target.hh"
 #include "mach/aarch64/aarch64-target.hh"
 #include "utils/assert.hh"
+#include "utils/timer.hh"
 
 int usage(char *pname)
 {
@@ -176,13 +178,13 @@ int main(int argc, char *argv[])
 		auto instrs = generator->output();
 
 		frag.frame_->proc_entry_exit_2(instrs);
-		frag.frame_->proc_entry_exit_3(instrs, frag.body_lbl_,
-					       frag.ret_lbl_);
 
 		std::cout << "######################\n";
 
-		backend::regalloc::alloc(instrs, frag);
-		// backend::opt::peephole(instrs);
+		if (optimize)
+			backend::regalloc::graph_alloc(instrs, frag);
+		else
+			backend::regalloc::linear_alloc(instrs, frag);
 		auto f = frag.frame_->proc_entry_exit_3(instrs, frag.body_lbl_,
 							frag.epi_lbl_);
 

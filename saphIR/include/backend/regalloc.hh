@@ -1,18 +1,13 @@
 #pragma once
 
-#include <vector>
-#include "mach/target.hh"
 #include "ass/instr.hh"
-#include "backend/liveness.hh"
-#include "backend/cfg.hh"
+#include "mach/target.hh"
 
-namespace backend
+namespace backend::regalloc
 {
-namespace regalloc
-{
-void alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f);
-
 void rewrite(std::vector<assem::rinstr> &instrs,
 	     std::vector<assem::temp> spills, mach::frame &f);
-} // namespace regalloc
-} // namespace backend
+
+void replace_allocations(std::vector<assem::rinstr> &instrs,
+			const assem::temp_endomap &allocation);
+} // namespace backend::regalloc

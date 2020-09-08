@@ -7,7 +7,8 @@
 #include "ir/canon/linearize.hh"
 #include "ir/canon/bb.hh"
 #include "ir/canon/trace.hh"
-#include "backend/regalloc.hh"
+#include "backend/graph-regalloc.hh"
+#include "backend/linear-regalloc.hh"
 
 std::pair<void *, size_t> assemble(mach::target &target,
 				   std::vector<assem::rinstr> &instrs,
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
 	auto instrs = generator->output();
 	ff.frame_->proc_entry_exit_2(instrs);
 
-	backend::regalloc::alloc(instrs, ff);
+	backend::regalloc::linear_alloc(instrs, ff);
 
 	auto [map, size] = assemble(lifter.amd64_target(), instrs, ff.body_lbl_,
 				    ff.epi_lbl_);

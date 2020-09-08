@@ -1,4 +1,5 @@
 #include "backend/linear-regalloc.hh"
+#include "backend/regalloc.hh"
 #include "utils/random.hh"
 #include "utils/timer.hh"
 #include "backend/dataflow.hh"
@@ -13,7 +14,7 @@
 #define LINEAR_LOG(...)
 #endif
 
-namespace backend
+namespace backend::regalloc
 {
 struct interval {
 	interval() : allocation(std::nullopt) {}
@@ -64,7 +65,7 @@ struct linear_allocator {
 	{
 	}
 
-	std::vector<utils::temp> alloc(backend::cfg cfg)
+	std::vector<assem::temp> alloc(backend::cfg cfg)
 	{
 		free_registers.clear();
 		intervals.clear();
@@ -143,7 +144,7 @@ struct linear_allocator {
 		dump_intervals(intervals);
 #endif
 
-		std::vector<utils::temp> spills;
+		std::vector<assem::temp> spills;
 
 		for (auto &itv : intervals) {
 			expire(itv);
@@ -320,103 +321,6 @@ struct linear_allocator {
 	utils::temp_set registers;
 };
 
-void replace_allocations(std::vector<assem::rinstr> &instrs,
-			 const assem::temp_endomap &allocations)
-{
-	for (auto &inst : instrs) {
-		if (inst.as<assem::label>())
-			continue;
-
-		for (auto &dst : inst->dst_) {
-			auto it = allocations.find(dst);
-			if (it == allocations.end()) {
-				*inst = assem::oper("nop", {}, {}, {});
-				continue;
-			}
-
-			ASSERT(it != allocations.end(), "No allocation for {}",
-			       std::string(dst));
-
-			// don't overwrite the size
-			dst.temp_ = it->second;
-		}
-
-		for (auto &src : inst->src_) {
-			auto it = allocations.find(src);
-			if (it == allocations.end()) {
-				*inst = assem::oper("nop", {}, {}, {});
-				continue;
-			}
-			ASSERT(it != allocations.end(), "No allocation");
-
-			src.temp_ = it->second;
-		}
-	}
-
-	std::vector<assem::rinstr> filterd;
-	for (auto &inst : instrs) {
-		// Remove redundant moves
-		auto move = inst.as<assem::move>();
-		if (move && move->removable())
-			continue;
-
-		filterd.push_back(inst);
-	}
-
-	instrs = filterd;
-}
-
-void rewrite(std::vector<assem::rinstr> &instrs,
-	     std::vector<utils::temp> spills, mach::frame &f)
-{
-	std::unordered_map<assem::temp, utils::ref<mach::access>> temp_to_acc;
-
-	for (auto &spill : spills) {
-		auto acc = f.alloc_local(true);
-		temp_to_acc.insert({spill, f.alloc_local(true)});
-	}
-
-	auto &target = f.target_;
-	auto cgen = target.make_asm_generator();
-
-	for (auto &inst : instrs) {
-		std::vector<ir::tree::rstm> moves;
-
-		for (auto &src : inst->src_) {
-			if (std::find(spills.begin(), spills.end(), src)
-			    == spills.end())
-				continue;
-
-			auto nsrc = cgen->codegen(temp_to_acc[src]->exp());
-			nsrc.size_ = src.size_;
-			nsrc.is_signed_ = src.is_signed_;
-
-			src = nsrc;
-		}
-
-		for (auto &dst : inst->dst_) {
-			if (std::find(spills.begin(), spills.end(), dst)
-			    == spills.end())
-				continue;
-
-			assem::temp vi(unique_temp(), dst.size_,
-				       dst.is_signed_);
-			moves.push_back(target.make_move(
-				temp_to_acc[dst]->exp(),
-				target.make_temp(vi, temp_to_acc[dst]->ty_)));
-
-			dst = vi;
-		}
-
-		cgen->emit(inst);
-
-		for (const auto &mv : moves)
-			cgen->codegen(mv);
-	}
-
-	instrs = cgen->output();
-}
-
 void linear_alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
 {
 	linear_allocator allocator(f.frame_->target_);
@@ -436,4 +340,4 @@ void linear_alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
 		}
 	}
 }
-} // namespace backend
+} // namespace backend::regalloc

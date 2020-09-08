@@ -8,10 +8,6 @@
 #include "utils/ref.hh"
 #include "utils/assert.hh"
 
-/*
- * IR representation: basically Appel's IR, but typed.
- */
-
 #define TREE_KIND(X)                                                           \
 	virtual tree_kind kind() override { return tree_kind::X; }             \
 	virtual void accept(ir_visitor &visitor) override                      \

@@ -1,18 +1,11 @@
 #include "backend/regalloc.hh"
-#include "utils/uset.hh"
-#include "utils/assert.hh"
-#include "mach/codegen.hh"
-#include "ir/ir.hh"
-#include <iostream>
-#include "backend/color.hh"
 
 namespace backend::regalloc
 {
-// Replace all uses of spilling temps by memory loads and stores
 void rewrite(std::vector<assem::rinstr> &instrs,
 	     std::vector<assem::temp> spills, mach::frame &f)
 {
-	std::unordered_map<assem::temp, utils::ref<mach::access>> temp_to_acc;
+	std::unordered_map<utils::temp, utils::ref<mach::access>> temp_to_acc;
 
 	for (auto &spill : spills) {
 		auto acc = f.alloc_local(true);
@@ -42,7 +35,8 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 			    == spills.end())
 				continue;
 
-			assem::temp vi(unique_temp());
+			assem::temp vi(unique_temp(), dst.size_,
+				       dst.is_signed_);
 			moves.push_back(target.make_move(
 				temp_to_acc[dst]->exp(),
 				target.make_temp(vi, temp_to_acc[dst]->ty_)));
@@ -61,8 +55,8 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 
 // At this point, all temps are mapped to registers, so we just replace
 // them in src_ and dst_
-void replace_allocation(std::vector<assem::rinstr> &instrs,
-			assem::temp_endomap &allocation)
+void replace_allocations(std::vector<assem::rinstr> &instrs,
+			 const assem::temp_endomap &allocation)
 {
 	for (auto &inst : instrs) {
 		if (inst.as<assem::label>())
@@ -97,33 +91,4 @@ void replace_allocation(std::vector<assem::rinstr> &instrs,
 	instrs = filterd;
 }
 
-void alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
-{
-	auto precolored = f.frame_->target_.temp_map();
-
-	for (size_t loop_count = 0;; loop_count++) {
-		assem::temp_set initial;
-		for (auto &inst : instrs) {
-			for (auto &dest : inst->dst_) {
-				if (!precolored.count(dest))
-					initial += dest;
-			}
-			for (auto &src : inst->src_) {
-				if (!precolored.count(src))
-					initial += src;
-			}
-		}
-
-		backend::cfg cfg(instrs, f.body_lbl_);
-		backend::ifence_graph ifence(cfg.cfg_);
-
-		coloring_out co = color(f.frame_->target_, ifence, initial);
-		if (co.spills.size() == 0) {
-			replace_allocation(instrs, co.allocation);
-			break;
-		} else {
-			rewrite(instrs, co.spills, *f.frame_);
-		}
-	}
-}
 } // namespace backend::regalloc
