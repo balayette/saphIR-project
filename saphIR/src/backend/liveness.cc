@@ -18,7 +18,7 @@ std::ostream &operator<<(std::ostream &os, const ifence_node &n)
 	return os << "[label=\"" << n.value_ << "\"]";
 }
 
-ifence_graph::ifence_graph(utils::graph<cfgnode> &cfg)
+ifence_graph::ifence_graph(const utils::graph<cfgnode> &cfg)
 {
         auto [in, out] = dataflow_analysis(cfg);
 

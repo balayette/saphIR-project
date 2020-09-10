@@ -25,12 +25,14 @@ class cfg
 {
       public:
 	cfg(std::vector<assem::rinstr> instrs, utils::label prologue);
-	utils::graph<cfgnode> cfg_;
+	const utils::graph<cfgnode> &graph() { return cfg_; }
 
       private:
 	void build(unsigned idx, std::optional<utils::node_id> pred);
 	std::vector<assem::rinstr> instrs_;
 	std::unordered_map<utils::label, unsigned> label_to_node_;
 	std::unordered_map<unsigned, utils::node_id> visited_;
+
+	utils::graph<cfgnode> cfg_;
 };
 } // namespace backend

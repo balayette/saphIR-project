@@ -2,7 +2,7 @@
 
 namespace backend
 {
-dataflow_result dataflow_analysis(utils::graph<cfgnode> &cfg)
+dataflow_result dataflow_analysis(const utils::graph<cfgnode> &cfg)
 {
 	std::vector<assem::temp_set> in(cfg.size());
 	std::vector<assem::temp_set> out(cfg.size());
@@ -18,7 +18,7 @@ dataflow_result dataflow_analysis(utils::graph<cfgnode> &cfg)
 		auto n = worklist.pop();
 
 		assem::temp_set children_in;
-		auto succs = cfg.nodes_[n].succ_;
+		const auto &succs = cfg.node(n).succs();
 		for (auto s : succs)
 			children_in += in[s];
 
@@ -29,7 +29,7 @@ dataflow_result dataflow_analysis(utils::graph<cfgnode> &cfg)
 		in[n] = node->use + (out[n] - node->def);
 
 		if (in[n] != old_in) {
-			auto preds = cfg.nodes_[n].pred_;
+			const auto &preds = cfg.node(n).preds();
 			worklist += std::make_pair(preds.begin(), preds.end());
 		}
 	}

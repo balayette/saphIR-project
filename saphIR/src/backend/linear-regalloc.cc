@@ -74,7 +74,7 @@ struct linear_allocator {
 		for (auto &r : registers)
 			free_registers += r;
 
-		auto [in, out] = dataflow_analysis(cfg.cfg_);
+		auto [in, out] = dataflow_analysis(cfg.graph());
 
 		std::unordered_map<utils::temp, interval> range_map;
 
@@ -100,7 +100,7 @@ struct linear_allocator {
 		}
 #endif
 
-		for (utils::node_id n = 0; n < cfg.cfg_.size(); n++) {
+		for (utils::node_id n = 0; n < cfg.graph().size(); n++) {
 			assem::temp_set ins = in[n] + out[n];
 			for (auto &t : ins) {
 				if (range_map.find(t) == range_map.end()) {
@@ -115,8 +115,8 @@ struct linear_allocator {
 			}
 		}
 
-		for (utils::node_id n = 0; n < cfg.cfg_.size(); n++) {
-			auto &node = cfg.cfg_.nodes_[n];
+		for (utils::node_id n = 0; n < cfg.graph().size(); n++) {
+			const auto *node = cfg.graph().get(n);
 			for (const auto &u : node->use)
 				ASSERT(range_map.count(u),
 				       "{} (used) is not in the range map",

@@ -66,9 +66,9 @@ struct allocator {
 		for (auto &node : nodes) {
 			auto temp = node->value_;
 
-			for (auto pred : node.pred_)
+			for (auto pred : node.preds())
 				add_edge(temp, nodes[pred]->value_);
-			for (auto succ : node.succ_)
+			for (auto succ : node.succs())
 				add_edge(temp, nodes[succ]->value_);
 		}
 
@@ -350,7 +350,7 @@ struct allocator {
 coloring_out color(mach::target &target, backend::ifence_graph &ifence,
 		   assem::temp_set initial)
 {
-	auto nodes = ifence.graph_.nodes_;
+	auto nodes = ifence.graph_.nodes();
 	allocator allo(target, ifence.move_list_, ifence.worklist_moves_);
 
 	auto allocation = allo.allocate(initial, nodes);

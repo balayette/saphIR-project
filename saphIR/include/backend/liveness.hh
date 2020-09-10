@@ -22,7 +22,7 @@ class ifence_graph
       public:
 	using node_type = utils::gnode<ifence_node>;
 
-	ifence_graph(utils::graph<cfgnode> &cfg);
+	ifence_graph(const utils::graph<cfgnode> &cfg);
 	utils::graph<ifence_node> graph_;
 
 	std::unordered_map<assem::temp, utils::node_id> tnodes_;

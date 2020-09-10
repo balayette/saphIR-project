@@ -30,8 +30,8 @@ template <typename T> void graph<T>::add_edge(node_id n1, node_id n2)
 	if (n1 == n2)
 		return;
 
-	auto &succs = nodes_[n1].succ_;
-	auto &preds = nodes_[n2].pred_;
+	auto &succs = nodes_[n1].succs();
+	auto &preds = nodes_[n2].preds();
 
 	if (std::find(succs.begin(), succs.end(), n2) != succs.end())
 		return;
@@ -47,7 +47,15 @@ template <typename T> T *graph<T>::get(node_id idx)
 	return &(nodes_[idx].elm_);
 }
 
-template <typename T> void graph<T>::dump_dot(std::ostream &os, bool directed)
+template <typename T> const T *graph<T>::get(node_id idx) const
+{
+	if (nodes_.size() <= idx)
+		return nullptr;
+	return &(nodes_[idx].elm_);
+}
+
+template <typename T>
+void graph<T>::dump_dot(std::ostream &os, bool directed) const
 {
 	if (directed)
 		os << "digraph {\n";
@@ -57,7 +65,7 @@ template <typename T> void graph<T>::dump_dot(std::ostream &os, bool directed)
 		os << '"' << i << "\" ";
 		// XXX: Add dot dumpers to classes.
 		os << *nodes_[i] << ";\n";
-		for (auto s : nodes_[i].succ_) {
+		for (auto s : nodes_[i].succs()) {
 			os << '"' << i << "\"";
 			if (directed)
 				os << " -> ";
@@ -71,7 +79,7 @@ template <typename T> void graph<T>::dump_dot(std::ostream &os, bool directed)
 
 template <typename T> size_t graph<T>::size() const { return nodes_.size(); }
 
-template <typename T> std::vector<T> graph<T>::values()
+template <typename T> std::vector<T> graph<T>::values() const
 {
 	std::vector<T> ret;
 	for (auto &n : nodes_)

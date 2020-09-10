@@ -26,7 +26,7 @@ void graph_alloc(std::vector<assem::rinstr> &instrs, mach::fun_fragment &f)
 		}
 
 		backend::cfg cfg(instrs, f.body_lbl_);
-		backend::ifence_graph ifence(cfg.cfg_);
+		backend::ifence_graph ifence(cfg.graph());
 
 		coloring_out co = color(f.frame_->target_, ifence, initial);
 		if (co.spills.size() == 0) {
