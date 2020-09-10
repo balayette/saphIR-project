@@ -24,6 +24,7 @@ template <typename T> class ref : public std::shared_ptr<T>
 	T *operator&() const;
 
 	template <typename U> ref<U> as();
+	template <typename U> ref<U> as() const;
 };
 
 template <typename T>

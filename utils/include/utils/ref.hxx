@@ -39,6 +39,11 @@ template <typename T> template <typename Dest> ref<Dest> ref<T>::as()
 	return std::dynamic_pointer_cast<Dest>(*this);
 }
 
+template <typename T> template <typename Dest> ref<Dest> ref<T>::as() const
+{
+	return std::dynamic_pointer_cast<Dest>(*this);
+}
+
 template <typename T>
 template <typename Dest>
 ref<T>::ref(const ref<Dest> &rhs) : std::shared_ptr<T>(rhs)
