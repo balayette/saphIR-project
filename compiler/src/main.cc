@@ -26,6 +26,7 @@
 #include "mach/aarch64/aarch64-target.hh"
 #include "utils/assert.hh"
 #include "utils/timer.hh"
+#include "asm-writer/elf/elf-asm-writer.hh"
 
 int usage(char *pname)
 {
@@ -191,39 +192,18 @@ int main(int argc, char *argv[])
 		funs.push_back(f);
 	}
 
-	fout << ".section .rodata\n";
-	for (auto [lab, s] : trans.str_lits_)
-		fout << target.asm_string(lab, s.str_);
-	fout << '\n';
-
-	for (auto &glob : drv.prog_->decs_) {
+	asm_writer::elf_asm_writer writer(target);
+	for (const auto &[n, s] : trans.str_lits_)
+		writer.add_string(n, s.str_);
+	for (const auto &glob : drv.prog_->decs_) {
 		if (glob.as<globaldec>())
-			fout << "\t.lcomm " << glob->name_ << ", "
-			     << glob->type_->size() << "\n";
+			writer.add_global(glob->name_, glob->type_->size());
 	}
-	fout << "\n";
+	if (trans.init_fun_)
+		writer.add_init(trans.init_fun_->frame_->s_);
+	writer.add_functions(funs);
 
-	if (trans.init_fun_) {
-		fout << ".section .init_array\n";
-		fout << "\t.quad " << trans.init_fun_->frame_->s_ << "\n";
-		fout << "\n";
-	}
-
-	fout << "\t.text\n";
-	for (auto &f : funs) {
-		fout << f.prologue_;
-		for (auto &i : f.instrs_) {
-			if (i->repr().size() == 0)
-				continue;
-			if (!i.as<assem::label>())
-				fout << '\t';
-			fout << i->to_string([&](utils::temp t, unsigned sz) {
-				return target.register_repr(t, sz);
-			}) << '\n';
-		}
-		fout << f.epilogue_;
-		fout << '\n';
-	}
+	writer.to_stream(fout);
 
 	return 0;
 }

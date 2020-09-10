@@ -34,6 +34,8 @@ add_library(IR STATIC
         src/backend/graph-regalloc.cc
         src/backend/linear-regalloc.cc
         src/backend/color.cc
+        src/asm-writer/asm-writer.cc
+        src/asm-writer/elf/elf-asm-writer.cc
 )
 
 target_include_directories(IR
