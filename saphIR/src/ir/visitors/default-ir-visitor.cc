@@ -5,7 +5,7 @@ void default_ir_visitor::visit_cnst(tree::cnst &) {}
 
 void default_ir_visitor::visit_braceinit(tree::braceinit &bi)
 {
-	for (auto &c : bi.children_)
+	for (auto &c : bi.children())
 		c->accept(*this);
 }
 

@@ -29,7 +29,7 @@ void ir_arith_optimizer::visit_binop(tree::binop &n)
 	if (lhs && !rhs)
 		return;
 
-	std::swap(bin->children_[0], bin->children_[1]);
+	std::swap(bin->children()[0], bin->children()[1]);
 	OPTIMIZED(&n, bin);
 
 	// We now have cascading binops with constants on the left
@@ -44,7 +44,7 @@ void ir_arith_optimizer::visit_binop(tree::binop &n)
 	auto mycnst = bin->lhs().as<tree::cnst>();
 	mycnst->value_ += lhscnst->value_;
 
-	bin->children_[1] = binr->rhs();
+	bin->children()[1] = binr->rhs();
 	OPTIMIZED(&n, bin);
 
 	return;

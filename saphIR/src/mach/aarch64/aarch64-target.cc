@@ -135,26 +135,26 @@ ir::tree::rstm aarch64_frame::proc_entry_exit_1(ir::tree::rstm s,
 	auto callee_saved = callee_saved_regs();
 	std::vector<utils::temp> callee_saved_temps(callee_saved.size());
 	for (size_t i = 0; i < callee_saved.size(); i++)
-		seq->children_.push_back(target_.make_move(
+		seq->append(target_.make_move(
 			target_.make_temp(callee_saved_temps[i],
 					  target_.gpr_type()),
 			target_.make_temp(callee_saved[i],
 					  target_.gpr_type())));
 
 	for (size_t i = 0; i < formals_.size() && i < in_regs.size(); i++) {
-		seq->children_.push_back(target_.make_move(
+		seq->append(target_.make_move(
 			formals_[i]->exp(),
 			target_.make_temp(in_regs[i],
 					  formals_[i]->exp()->ty_)));
 	}
 
-	seq->children_.push_back(s);
+	seq->append(s);
 
 	auto *ret = target_.make_label(ret_lbl);
-	seq->children_.push_back(ret);
+	seq->append(ret);
 
 	for (size_t i = 0; i < callee_saved.size(); i++) {
-		seq->children_.push_back(target_.make_move(
+		seq->append(target_.make_move(
 			target_.make_temp(callee_saved[i], target_.gpr_type()),
 			target_.make_temp(callee_saved_temps[i],
 					  target_.gpr_type())));

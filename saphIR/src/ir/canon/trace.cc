@@ -49,7 +49,7 @@ void optimize_trace(tree::rnodevec &instrs)
 {
 	for (unsigned i = 0; i < instrs.size(); i++) {
 		auto instr = instrs[i];
-		auto &target = instr->target_;
+		auto &target = instr->target();
 		if (auto cj = instr.as<tree::cjump>()) {
 			auto lbl = i + 1 == instrs.size()
 					   ? nullptr

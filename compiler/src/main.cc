@@ -225,7 +225,5 @@ int main(int argc, char *argv[])
 		fout << '\n';
 	}
 
-	fmt::print("Compilation successful\n");
-
 	return 0;
 }

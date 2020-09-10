@@ -19,22 +19,22 @@ tree::rstm make_stm(tree::rstm stm1, tree::rstm stm2)
 	if (!stm2 || is_nop(stm2))
 		return stm1;
 
-	auto &target = stm1->target_;
+	auto &target = stm1->target();
 	utils::ref<tree::seq> ret = target.make_seq({});
 
 	if (stm1.as<tree::seq>())
-		ret->children_.insert(ret->children_.end(),
-				      stm1->children_.begin(),
-				      stm1->children_.end());
+		ret->children().insert(ret->children().end(),
+				       stm1->children().begin(),
+				       stm1->children().end());
 	else
-		ret->children_.emplace_back(stm1);
+		ret->append(stm1);
 
 	if (stm2.as<tree::seq>())
-		ret->children_.insert(ret->children_.end(),
-				      stm2->children_.begin(),
-				      stm2->children_.end());
+		ret->children().insert(ret->children().end(),
+				       stm2->children().begin(),
+				       stm2->children().end());
 	else
-		ret->children_.emplace_back(stm2);
+		ret->append(stm2);
 
 	return ret;
 }
@@ -50,7 +50,7 @@ tree::rexp make_eseq(tree::rstm stm, tree::rexp exp)
 	}
 
 
-	auto &target = stm->target_;
+	auto &target = stm->target();
 	return target.make_eseq(stm, exp);
 }
 
@@ -75,9 +75,9 @@ bool valid_call(tree::rnode tree, utils::ref<tree::call> call)
 tree::rnode canon_default(tree::rnode &tree)
 {
 	tree::rstm bigseq;
-	auto &target = tree->target_;
+	auto &target = tree->target();
 
-	std::vector<tree::rnode> &children = tree->children_;
+	std::vector<tree::rnode> &children = tree->children();
 	for (auto ichild = children.begin(); ichild != children.end();
 	     ichild++) {
 		if (auto eseq = ichild->as<tree::eseq>()) {
@@ -128,7 +128,7 @@ tree::rnode canon_default(tree::rnode &tree)
 							tmp, mv->rhs()->ty_),
 						mv->rhs()));
 
-				mv->children_[1] =
+				mv->children()[1] =
 					target.make_temp(tmp, mv->rhs()->ty_);
 			}
 		}
@@ -149,12 +149,12 @@ tree::rnode canon_eseq(utils::ref<tree::eseq> tree)
 tree::rnode canon_seq(utils::ref<tree::seq> tree)
 {
 	std::vector<tree::rnode> res;
-	std::vector<tree::rnode> &children = tree->children_;
+	std::vector<tree::rnode> &children = tree->children();
 
 	for (tree::rnode &t : children) {
 		if (auto seq = t.as<tree::seq>())
-			res.insert(res.end(), seq->children_.begin(),
-				   seq->children_.end());
+			res.insert(res.end(), seq->children().begin(),
+				   seq->children().end());
 		else if (!is_nop(t))
 			res.emplace_back(t);
 	}
@@ -166,7 +166,7 @@ tree::rnode canon_seq(utils::ref<tree::seq> tree)
 
 tree::rnode canon(tree::rnode tree)
 {
-	for (auto &c : tree->children_)
+	for (auto &c : tree->children())
 		c = canon(c);
 
 	if (auto t = tree.as<tree::eseq>())

@@ -38,15 +38,15 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 {
 	// stm is a seq, and is the only seq/eseq in the program.
 	auto seq = stm.as<tree::seq>();
-	auto &target = stm->target_;
+	auto &target = stm->target();
 
-	tree::rnodevec::iterator bb_begin = seq->children_.begin();
+	tree::rnodevec::iterator bb_begin = seq->children().begin();
 	std::vector<bb> basic_blocks;
 
 	tree::rnodevec stmts;
 
-	for (auto ichild = seq->children_.begin();
-	     ichild < seq->children_.end(); ichild++) {
+	for (auto ichild = seq->children().begin();
+	     ichild < seq->children().end(); ichild++) {
 		if (!is_jump((*ichild)->kind())
 		    && (*ichild)->kind() != tree::tree_kind::label) {
 			stmts.emplace_back(*ichild);
@@ -54,7 +54,7 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 		}
 
 		// End the block and start a new one.
-		if (bb_begin == seq->children_.begin()) {
+		if (bb_begin == seq->children().begin()) {
 			// First block, we need to add a label if it doesn't
 			// have one, and tell the prologue to jump to it.
 			// If the block already has a label, we use it.
@@ -94,13 +94,13 @@ create_bbs(tree::rnode stm, utils::label &body, utils::label epilogue)
 		stmts.clear();
 
 		// If we ended on a label, include it in the next block.
-		if (ichild != seq->children_.end()
+		if (ichild != seq->children().end()
 		    && (*ichild)->kind() == tree::tree_kind::label)
 			stmts.push_back(*ichild);
 	}
 
-	if (bb_begin != seq->children_.end()) {
-		bb block(bb_begin, seq->children_.end());
+	if (bb_begin != seq->children().end()) {
+		bb block(bb_begin, seq->children().end());
 		block.instrs_.push_back(target.make_jump(
 			target.make_name(epilogue), {epilogue}));
 

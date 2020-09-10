@@ -13,7 +13,7 @@ void ir_pretty_printer::visit_braceinit(tree::braceinit &n)
 {
 	indent() << "(braceinit\n";
 	lvl_++;
-	for (auto &c : n.children_)
+	for (auto &c : n.children())
 		c->accept(*this);
 	lvl_--;
 	indent() << ")\n";

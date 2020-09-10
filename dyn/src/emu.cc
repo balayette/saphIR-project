@@ -19,7 +19,7 @@
 #include <sys/utsname.h>
 #include <chrono>
 
-#define EMU_STATE_LOG 0
+#define EMU_STATE_LOG 1
 #define EMU_SYSCALL_LOG 0
 #define EMU_ASSEMBLE_LOG 1
 #define EMU_COMPILE_LOG 0

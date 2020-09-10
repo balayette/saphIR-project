@@ -53,9 +53,9 @@ utils::ref<meta_exp> translate_visitor::array_copy(ir::tree::rexp lhs,
 	utils::temp dst_temp;
 	utils::temp src_temp;
 
-	s->children_.push_back(target_.move_ext(
+	s->append(target_.move_ext(
 		target_.make_temp(dst_temp, target_.integer_type()), dst_base));
-	s->children_.push_back(target_.move_ext(
+	s->append(target_.move_ext(
 		target_.make_temp(src_temp, target_.integer_type()), src_base));
 
 	size_t offt = 0;
@@ -81,7 +81,7 @@ utils::ref<meta_exp> translate_visitor::array_copy(ir::tree::rexp lhs,
 			src_exp = target_.make_mem(src_exp);
 		}
 
-		s->children_.push_back(copy(dst_exp, src_exp)->un_nx());
+		s->append(copy(dst_exp, src_exp)->un_nx());
 		offt += at->ty_->size();
 	}
 
@@ -108,9 +108,9 @@ utils::ref<meta_exp> translate_visitor::struct_copy(ir::tree::rexp lhs,
 	utils::temp dst_temp;
 	utils::temp src_temp;
 
-	s->children_.push_back(target_.move_ext(
+	s->append(target_.move_ext(
 		target_.make_temp(dst_temp, target_.integer_type()), dst_base));
-	s->children_.push_back(target_.move_ext(
+	s->append(target_.move_ext(
 		target_.make_temp(src_temp, target_.integer_type()), src_base));
 
 	size_t offt = 0;
@@ -136,7 +136,7 @@ utils::ref<meta_exp> translate_visitor::struct_copy(ir::tree::rexp lhs,
 			src_exp = target_.make_mem(src_exp);
 		}
 
-		s->children_.push_back(copy(dst_exp, src_exp)->un_nx());
+		s->append(copy(dst_exp, src_exp)->un_nx());
 		offt += st->types_[i]->size();
 	}
 
@@ -177,7 +177,7 @@ translate_visitor::braceinit_copy_to_array(ir::tree::rexp lhs,
 	auto exps = rhs->exps();
 
 	utils::temp base_temp;
-	s->children_.push_back(target_.move_ext(
+	s->append(target_.move_ext(
 		target_.make_temp(base_temp, target_.integer_type()), base));
 
 	size_t offt = 0;
@@ -196,7 +196,7 @@ translate_visitor::braceinit_copy_to_array(ir::tree::rexp lhs,
 			dst_exp = target_.make_mem(dst_exp);
 		}
 
-		s->children_.push_back(copy(dst_exp, exps[i])->un_nx());
+		s->append(copy(dst_exp, exps[i])->un_nx());
 		offt += at->ty_->size();
 	}
 
@@ -221,7 +221,7 @@ translate_visitor::braceinit_copy_to_struct(ir::tree::rexp lhs,
 	auto exps = rhs->exps();
 
 	utils::temp base_temp;
-	s->children_.push_back(target_.move_ext(
+	s->append(target_.move_ext(
 		target_.make_temp(base_temp, target_.integer_type()), base));
 
 	size_t offt = 0;
@@ -240,7 +240,7 @@ translate_visitor::braceinit_copy_to_struct(ir::tree::rexp lhs,
 			dst_exp = target_.make_mem(dst_exp);
 		}
 
-		s->children_.push_back(copy(dst_exp, exps[i])->un_nx());
+		s->append(copy(dst_exp, exps[i])->un_nx());
 		offt += st->types_[i]->size();
 	}
 
@@ -503,7 +503,7 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 		reg_in.push_back(reg);
 
 		rm.e_->accept(*this);
-		pre->children_.push_back(target_.move_ext(
+		pre->append(target_.move_ext(
 			target_.make_temp(reg, target_.integer_type()),
 			ret_->un_ex()));
 	}
@@ -514,7 +514,7 @@ void translate_visitor::visit_inline_asm(inline_asm &s)
 		reg_out.push_back(reg);
 
 		rm.e_->accept(*this);
-		post->children_.push_back(target_.move_ext(
+		post->append(target_.move_ext(
 			ret_->un_ex(),
 			target_.make_temp(reg, target_.integer_type())));
 	}
@@ -690,7 +690,7 @@ void translate_visitor::visit_braceinit(braceinit &e)
 
 	for (auto &c : e.exps_) {
 		c->accept(*this);
-		bi->children_.push_back(ret_->un_ex());
+		bi->children().push_back(ret_->un_ex());
 	}
 
 	ret_ = new EX(bi);

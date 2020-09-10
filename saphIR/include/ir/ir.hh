@@ -42,6 +42,8 @@ struct ir_node {
       protected:
 	ir_node(mach::target &target) : target_(target) {}
 	ir_node(const ir_node &ir_node) = default;
+	std::vector<utils::ref<ir_node>> children_;
+	mach::target &target_;
 
       public:
 	virtual ~ir_node() = default;
@@ -50,8 +52,12 @@ struct ir_node {
 	virtual void accept(ir_visitor &visitor) = 0;
 	mach::target &target() const { return target_; }
 
-	mach::target &target_;
-	std::vector<utils::ref<ir_node>> children_;
+	const std::vector<utils::ref<ir_node>> &children() const
+	{
+		return children_;
+	}
+
+	std::vector<utils::ref<ir_node>> &children() { return children_; }
 };
 
 using rnode = utils::ref<ir_node>;
@@ -299,8 +305,7 @@ struct cjump : public stm {
 struct seq : public stm {
 	seq(mach::target &target, const std::vector<rstm> &body) : stm(target)
 	{
-		for (auto c : body)
-			children_.push_back(c);
+		append(body);
 	}
 	TREE_KIND(seq)
 
@@ -310,6 +315,14 @@ struct seq : public stm {
 		for (auto c : children_)
 			ret.emplace_back(c.as<stm>());
 		return ret;
+	}
+
+	void append(rstm s) { children_.push_back(s); }
+	void append(const std::vector<rstm> v)
+	{
+		for (const auto &s : v) {
+			append(s);
+		}
 	}
 };
 
