@@ -580,7 +580,7 @@ void translate_visitor::visit_decs(decs &s)
 	auto frame =
 		target_.make_frame(unique_label("init_vars"), {}, {}, false);
 	init_fun_ = new mach::fun_fragment(
-		frame->proc_entry_exit_1(body, ret_lbl), frame, ret_lbl,
+		frame->prepare_temps(body, ret_lbl), frame, ret_lbl,
 		unique_label("init_vars_epi"));
 }
 
@@ -607,7 +607,7 @@ void translate_visitor::visit_fundec(fundec &s)
 	}
 	auto body = target_.make_seq(stms);
 
-	funs_.emplace_back(s.frame_->proc_entry_exit_1(body, ret_lbl_),
+	funs_.emplace_back(s.frame_->prepare_temps(body, ret_lbl_),
 			   s.frame_, ret_lbl_,
 			   unique_label(s.name_.get() + "_epi"));
 

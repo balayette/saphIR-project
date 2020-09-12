@@ -28,13 +28,13 @@ struct amd64_frame : public mach::frame {
 	alloc_local(bool escapes, utils::ref<types::ty> ty) override;
 	virtual utils::ref<access> alloc_local(bool escapes) override;
 
-	virtual ir::tree::rstm proc_entry_exit_1(ir::tree::rstm s,
+	virtual ir::tree::rstm prepare_temps(ir::tree::rstm s,
 						 utils::label ret_lbl) override;
 
 	virtual void
-	proc_entry_exit_2(std::vector<assem::rinstr> &instrs) override;
+	add_live_registers(std::vector<assem::rinstr> &instrs) override;
 	virtual asm_function
-	proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
+	make_asm_function(std::vector<assem::rinstr> &instrs,
 			  utils::label pro_lbl, utils::label epi_lbl) override;
 
 	virtual std::vector<utils::ref<access>> formals() override;

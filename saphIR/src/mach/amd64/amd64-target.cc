@@ -43,8 +43,8 @@ utils::ref<access> amd64_frame::alloc_local(bool escapes)
 	return alloc_local(escapes, target_.integer_type());
 }
 
-ir::tree::rstm amd64_frame::proc_entry_exit_1(ir::tree::rstm s,
-					      utils::label ret_lbl)
+ir::tree::rstm amd64_frame::prepare_temps(ir::tree::rstm s,
+					  utils::label ret_lbl)
 {
 	auto in_regs = args_regs();
 	auto *seq = target_.make_seq({});
@@ -64,11 +64,9 @@ ir::tree::rstm amd64_frame::proc_entry_exit_1(ir::tree::rstm s,
 			target_.make_temp(in_regs[i],
 					  formals_[i]->exp()->ty_)));
 	}
-
 	seq->append(s);
 
-	auto *ret = target_.make_label(ret_lbl);
-	seq->append(ret);
+	seq->append(target_.make_label(ret_lbl));
 
 	for (size_t i = 0; i < callee_saved.size(); i++) {
 		seq->append(target_.make_move(
@@ -80,7 +78,7 @@ ir::tree::rstm amd64_frame::proc_entry_exit_1(ir::tree::rstm s,
 	return seq;
 }
 
-void amd64_frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
+void amd64_frame::add_live_registers(std::vector<assem::rinstr> &instrs)
 {
 	auto spec = special_regs();
 	std::vector<assem::temp> live;
@@ -98,7 +96,7 @@ void amd64_frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 }
 
 mach::asm_function
-amd64_frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
+amd64_frame::make_asm_function(std::vector<assem::rinstr> &instrs,
 			       utils::label body_lbl, utils::label epi_lbl)
 {
 	std::string prologue(".global ");

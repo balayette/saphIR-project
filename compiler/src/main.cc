@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 		generator->codegen(trace);
 		auto instrs = generator->output();
 
-		frag.frame_->proc_entry_exit_2(instrs);
+		frag.frame_->add_live_registers(instrs);
 
 		std::cout << "######################\n";
 
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
 			backend::regalloc::graph_alloc(instrs, frag);
 		else
 			backend::regalloc::linear_alloc(instrs, frag);
-		auto f = frag.frame_->proc_entry_exit_3(instrs, frag.body_lbl_,
+		auto f = frag.frame_->make_asm_function(instrs, frag.body_lbl_,
 							frag.epi_lbl_);
 
 		funs.push_back(f);

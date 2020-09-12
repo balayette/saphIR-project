@@ -29,13 +29,30 @@ struct frame {
 					       utils::ref<types::ty> ty) = 0;
 	virtual utils::ref<access> alloc_local(bool escapes) = 0;
 
-	virtual ir::tree::rstm proc_entry_exit_1(ir::tree::rstm s,
-						 utils::label ret_lbl) = 0;
+	/*
+	 * Add instructions that store callee saved registers in temporaries,
+	 * that move the function parameters from physical registers to temps,
+	 * and that restores the callee saved registers.
+	 */
+	virtual ir::tree::rstm prepare_temps(ir::tree::rstm s,
+					     utils::label ret_lbl) = 0;
 
-	virtual void proc_entry_exit_2(std::vector<assem::rinstr> &instrs) = 0;
+	/*
+	 * Add an empty sink instruction that lists the callee saved registers
+	 * at the end of the instructions.
+	 * This informs the register allocator that callee saved registers are
+	 * live through the entire function.
+	 */
+	virtual void add_live_registers(std::vector<assem::rinstr> &instrs) = 0;
 
+	/*
+	 * Emit target dependant textual assembly code for the prologue and
+	 * the epilogue of the function.
+	 * For example, stack pointer store and restore, stack canary check,
+	 * etc...
+	 */
 	virtual asm_function
-	proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
+	make_asm_function(std::vector<assem::rinstr> &instrs,
 			  utils::label pro_lbl, utils::label epi_lbl) = 0;
 
 	virtual std::vector<utils::ref<access>> formals() = 0;

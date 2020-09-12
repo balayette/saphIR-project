@@ -312,7 +312,7 @@ chunk emu::compile(size_t pc)
 	auto generator = lifter_.amd64_target().make_asm_generator();
 	generator->codegen(trace);
 	auto instrs = generator->output();
-	ff.frame_->proc_entry_exit_2(instrs);
+	ff.frame_->add_live_registers(instrs);
 
 	backend::regalloc::linear_alloc(instrs, ff);
 

@@ -126,7 +126,7 @@ utils::ref<access> aarch64_frame::alloc_local(bool escapes)
 	return alloc_local(escapes, target_.integer_type());
 }
 
-ir::tree::rstm aarch64_frame::proc_entry_exit_1(ir::tree::rstm s,
+ir::tree::rstm aarch64_frame::prepare_temps(ir::tree::rstm s,
 						utils::label ret_lbl)
 {
 	auto in_regs = args_regs();
@@ -163,7 +163,7 @@ ir::tree::rstm aarch64_frame::proc_entry_exit_1(ir::tree::rstm s,
 	return seq;
 }
 
-void aarch64_frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
+void aarch64_frame::add_live_registers(std::vector<assem::rinstr> &instrs)
 {
 	auto spec = special_regs();
 	std::vector<assem::temp> live;
@@ -181,7 +181,7 @@ void aarch64_frame::proc_entry_exit_2(std::vector<assem::rinstr> &instrs)
 }
 
 mach::asm_function
-aarch64_frame::proc_entry_exit_3(std::vector<assem::rinstr> &instrs,
+aarch64_frame::make_asm_function(std::vector<assem::rinstr> &instrs,
 				 utils::label body_lbl, utils::label epi_lbl)
 {
 	(void)epi_lbl;
