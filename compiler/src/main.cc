@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
+#include <cstdlib>
 #include <unistd.h>
+#include <filesystem>
 #include "driver/driver.hh"
 #include "frontend/visitors/pretty-printer.hh"
 #include "frontend/visitors/transforms.hh"
@@ -28,6 +30,21 @@
 #include "utils/timer.hh"
 #include "asm-writer/elf/elf-asm-writer.hh"
 
+struct options {
+	options()
+	    : help(false), src_path(nullptr), dst_path(nullptr),
+	      optimize(false), obfuscate(false), arch("amd64")
+	{
+	}
+
+	bool help;
+	char *src_path;
+	char *dst_path;
+	bool optimize;
+	bool obfuscate;
+	std::string arch;
+};
+
 int usage(char *pname)
 {
 	std::cerr << "usage: " << pname
@@ -38,43 +55,65 @@ int usage(char *pname)
 	return 1;
 }
 
-int main(int argc, char *argv[])
+std::string preprocess(const char *src_path)
 {
-	bool help = false;
-	char *src_path = NULL;
-	char *dst_path = NULL;
-	bool optimize = false;
-	bool obfuscate = false;
-	std::string arch("amd64");
+	/*
+	 * This is absolutely disgusting, but c++ doesn't allow us to create
+	 * an fstream from a file descriptor...
+	 */
+	char tempf[] = "/tmp/XXXXXX";
+	int fd = mkstemp(tempf);
+	ASSERT(fd != -1, "Couldn't create temporary file");
+	close(fd);
+
+	auto cmd = fmt::format("cpp -ftrack-macro-expansion=0 -P '{}' > '{}'",
+			       src_path, tempf);
+	auto e = std::system(cmd.c_str());
+
+	ASSERT(WIFEXITED(e) && WEXITSTATUS(e) == 0, "Preprocessing failed");
+
+	return tempf;
+}
+
+options parse_options(int argc, char **argv)
+{
+	options ret;
 
 	int opt = 0;
-	while ((opt = getopt(argc, argv, "OPhm:o:i:")) != -1 && !help) {
+	while ((opt = getopt(argc, argv, "OPhm:o:i:")) != -1 && !ret.help) {
 		if (opt == 'h')
-			help = true;
+			ret.help = true;
 		else if (opt == 'o')
-			dst_path = optarg;
+			ret.dst_path = optarg;
 		else if (opt == 'i')
-			src_path = optarg;
+			ret.src_path = optarg;
 		else if (opt == 'O')
-			optimize = true;
+			ret.optimize = true;
 		else if (opt == 'P')
-			obfuscate = true;
+			ret.obfuscate = true;
 		else if (opt == 'm')
-			arch = optarg;
+			ret.arch = optarg;
 		else {
 			std::cerr << "option '" << (char)opt
 				  << "' not recognized.\n";
-			help = true;
+			ret.help = true;
 		}
 	}
 
-	if (help || !src_path || !dst_path)
+	return ret;
+}
+
+int main(int argc, char *argv[])
+{
+	auto options = parse_options(argc, argv);
+
+	if (options.help || !options.src_path || !options.dst_path)
 		return usage(argv[0]);
 
 	utils::ref<mach::target> target_ptr;
-	if (arch == "amd64")
+	if (options.arch == "amd64")
 		target_ptr = new mach::amd64::amd64_target();
-	else if (arch == "aarch64")
+	else if (options.arch == "aarch64")
 		target_ptr = new mach::aarch64::aarch64_target();
 	else
 		return usage(argv[0]);
@@ -82,11 +121,16 @@ int main(int argc, char *argv[])
 	auto &target = *target_ptr;
 
 	driver drv(target);
-	if (drv.parse(src_path)) {
+
+	auto pp_src = preprocess(options.src_path);
+
+	if (drv.parse(pp_src)) {
 		COMPILATION_ERROR(utils::cfail::PARSING);
 	}
 
-	std::ofstream fout(dst_path);
+	std::filesystem::remove(pp_src);
+
+	std::ofstream fout(options.dst_path);
 
 	frontend::pretty_printer p(std::cout);
 	drv.prog_->accept(p);
@@ -121,14 +165,14 @@ int main(int argc, char *argv[])
 		frags.push_back(frag);
 	}
 
-	if (obfuscate) {
+	if (options.obfuscate) {
 		for (auto &frag : frags) {
 			ir::ir_cnst_obfuscator obf(target);
 			frag.body_ = obf.perform(frag.body_);
 		}
 	}
 
-	if (optimize) {
+	if (options.optimize) {
 		for (auto &frag : frags) {
 			ir::ir_arith_optimizer arith_opt(target);
 			frag.body_ = arith_opt.perform(frag.body_);
@@ -182,10 +226,11 @@ int main(int argc, char *argv[])
 
 		std::cout << "######################\n";
 
-		if (optimize)
+		if (options.optimize)
 			backend::regalloc::graph_alloc(instrs, frag);
 		else
 			backend::regalloc::linear_alloc(instrs, frag);
+
 		auto f = frag.frame_->make_asm_function(instrs, frag.body_lbl_,
 							frag.epi_lbl_);
 
