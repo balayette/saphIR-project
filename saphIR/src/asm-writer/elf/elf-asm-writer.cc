@@ -18,7 +18,7 @@ void elf_asm_writer::add_global(const utils::label &name, size_t size)
 	// XXX: Alignment is not taken into account anywhere
 	repr += ".align 8\n";
 	repr += fmt::format(".size {}, {}\n", name.get(), size);
-	repr += "a:\n";
+	repr += fmt::format("{}:\n", name.get());
 	repr += fmt::format(".zero {}\n", size * 4);
 
 	globals_.push_back(repr);
