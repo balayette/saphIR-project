@@ -7,7 +7,7 @@
 #include "utils/math.hh"
 #include "utils/bits.hh"
 
-#define LIFTER_INSTRUCTION_LOG 0
+#define LIFTER_INSTRUCTION_LOG 1
 
 #define HANDLER(Kind)                                                          \
 	case ARM64_INS_##Kind:                                                 \
@@ -22,6 +22,7 @@
 #define LABEL(L) amd_target_->make_label(L)
 #define NAME(N) amd_target_->make_name(N)
 #define CNST(C) amd_target_->make_cnst(C)
+#define CNST2(C) amd_target_->make_cnst(C, types::signedness::UNSIGNED, 2)
 #define TTEMP(R, T) amd_target_->make_temp(R, T)
 #define RTEMP(R) amd_target_->make_temp(R, arm_target_->gpr_type())
 #define GPR(R) translate_gpr(R, false, 0, types::signedness::UNSIGNED)
@@ -205,7 +206,7 @@ ir::tree::rstm lifter::arm64_handle_MOVZ(const disas_insn &insn)
 ir::tree::rexp lifter::arm64_handle_ADD_imm(cs_arm64_op rn, cs_arm64_op imm)
 {
 	return ADD(GPR(rn.reg),
-		   shift(CNST(imm.imm), imm.shift.type, imm.shift.value),
+		   shift(CNST2(imm.imm), imm.shift.type, imm.shift.value),
 		   amd_target_->gpr_type());
 }
 
@@ -273,7 +274,7 @@ ir::tree::rstm lifter::arm64_handle_CMN(const disas_insn &insn)
 	if (snd.type == ARM64_OP_REG)
 		return translate_ADDS(insn.address(), ARM64_REG_XZR, rn, snd);
 
-	return set_cmp_values(insn.address(), GPR(rn), CNST(snd.imm),
+	return set_cmp_values(insn.address(), GPR(rn), CNST2(snd.imm),
 			      register_size(rn) == 32 ? ADDS32 : ADDS64);
 }
 
@@ -302,17 +303,21 @@ ir::tree::rexp lifter::shift_or_extend(ir::tree::rexp e, arm64_shifter shifter,
 ir::tree::rstm lifter::arm64_handle_SUB_reg(arm64_reg rd, arm64_reg rn,
 					    cs_arm64_op rm)
 {
-	return MOVE(GPR8(rd), BINOP(MINUS, GPR(rn),
+	ir::tree::rexp reg = GPR(rn);
+
+	return MOVE(GPR8(rd), BINOP(MINUS, reg,
 				    shift_or_extend(GPR(rm.reg), rm.shift.type,
 						    rm.shift.value, rm.ext),
-				    arm_target_->integer_type()));
+				    reg->ty()->clone()));
 }
 
 ir::tree::rstm lifter::arm64_handle_SUB_imm(arm64_reg rd, arm64_reg rn,
 					    int64_t imm)
 {
+	ir::tree::rexp reg = GPR(rn);
+
 	return MOVE(GPR8(rd),
-		    BINOP(MINUS, GPR(rn), CNST(imm), arm_target_->gpr_type()));
+		    BINOP(MINUS, reg, CNST2(imm), reg->ty()->clone()));
 }
 
 ir::tree::rstm lifter::arm64_handle_SUB(const disas_insn &insn)
@@ -365,7 +370,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
 	auto base = translate_mem_op(src.mem, sz);
 
 	return SEQ(arm64_handle_LDR_base_offset(xt, src, sz),
-		   MOVE(base, ADD(base, CNST(src.mem.disp), base->ty_)));
+		   MOVE(GPR8(src.mem.base), base));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
@@ -384,7 +389,8 @@ ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
 	auto base = translate_mem_op(src.mem, sz);
 
 	return SEQ(MOVE(t, MEM(base)),
-		   MOVE(base, ADD(base, CNST(imm.imm), base->ty_)));
+		   MOVE(GPR8(src.mem.base),
+			ADD(GPR8(src.mem.base), CNST(imm.imm), base->ty_)));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_size(const disas_insn &insn, size_t sz)
@@ -773,7 +779,7 @@ ir::tree::rstm lifter::arm64_handle_STR_pre(cs_arm64_op xt, cs_arm64_op dst,
 	auto base = translate_mem_op(dst.mem, sz);
 
 	return SEQ(arm64_handle_STR_base_offset(xt, dst, sz),
-		   MOVE(base, ADD(base, CNST(dst.mem.disp), base->ty_)));
+		   MOVE(GPR8(dst.mem.base), base));
 }
 
 ir::tree::rstm lifter::arm64_handle_STR_base_offset(cs_arm64_op xt,
@@ -793,7 +799,8 @@ ir::tree::rstm lifter::arm64_handle_STR_post(cs_arm64_op xt, cs_arm64_op dst,
 	auto base = translate_mem_op(dst.mem, sz);
 
 	return SEQ(MOVE(MEM(base), t),
-		   MOVE(base, ADD(base, CNST(imm.imm), base->ty_)));
+		   MOVE(GPR8(dst.mem.base),
+			ADD(GPR8(dst.mem.base), CNST(imm.imm), base->ty_)));
 }
 
 ir::tree::rstm lifter::arm64_handle_STRB(const disas_insn &insn)
@@ -1272,6 +1279,8 @@ ir::tree::rstm lifter::arm64_handle_MRS(const disas_insn &insn)
 
 	if (reg == ARM64_SYSREG_DCZID_EL0)
 		return MOVE(GPR8(rt), CNST(0x7)); // Same value as QEMU
+	if (reg == ARM64_SYSREG_MIDR_EL1)
+		return MOVE(GPR8(rt), CNST(0xf0510)); // Same as QEMU
 	else if (reg == 0xde82) // tpidr_el0 missing from capstone
 		return MOVE(GPR8(rt), get_state_field("tpidr_el0"));
 	else
