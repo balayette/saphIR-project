@@ -14,7 +14,8 @@ class elf_header
 	elf_header() = default;
 	elf_header(const Elf64_Ehdr &hdr)
 	    : type_(hdr.e_type), machine_(hdr.e_machine),
-	      version_(hdr.e_version), entry_(hdr.e_entry), flags_(hdr.e_flags)
+	      version_(hdr.e_version), entry_(hdr.e_entry), phoff_(hdr.e_phoff),
+	      flags_(hdr.e_flags)
 	{
 		ASSERT(std::memcmp(hdr.e_ident, ELFMAG, 4) == 0,
 		       "Invalid elf header");
@@ -24,6 +25,7 @@ class elf_header
 	Elf64_Half machine() const { return machine_; }
 	Elf64_Word version() const { return version_; }
 	Elf64_Addr entry() const { return entry_; }
+	Elf64_Off phoff() const { return phoff_; }
 	Elf64_Word flags() const { return flags_; }
 
 	std::string dump() const;
@@ -33,6 +35,7 @@ class elf_header
 	Elf64_Half machine_;
 	Elf64_Word version_;
 	Elf64_Addr entry_;
+	Elf64_Off phoff_;
 	Elf64_Word flags_;
 };
 
