@@ -194,6 +194,7 @@ class lifter
 				       arm64_cc cc);
 	ir::tree::rstm arm64_handle_CSET(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_CSEL(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_CSINC(const disas_insn &insn);
 
 	ir::tree::rstm translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
 				      int imms);
@@ -216,6 +217,7 @@ class lifter
 	ir::tree::rstm arm64_handle_MSR(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_ORR(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_EOR(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_REV(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_CLZ(const disas_insn &insn);

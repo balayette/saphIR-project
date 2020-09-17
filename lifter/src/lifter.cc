@@ -1137,6 +1137,18 @@ ir::tree::rstm lifter::arm64_handle_CSET(const disas_insn &insn)
 			       ARM64_REG_XZR, invert_cc(mach_det->cc));
 }
 
+ir::tree::rstm lifter::arm64_handle_CSINC(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto rm = mach_det->operands[2].reg;
+	auto cc = mach_det->cc;
+
+	return translate_CSINC(rd, rn, rm, cc);
+}
+
 ir::tree::rstm lifter::arm64_handle_CSEL(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
@@ -1305,6 +1317,26 @@ ir::tree::rstm lifter::arm64_handle_MOVN(const disas_insn &insn)
 	return MOVE(GPR8(rd), CNST(~imm));
 }
 
+ir::tree::rstm lifter::arm64_handle_EOR(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto third = mach_det->operands[2];
+
+	if (third.type == ARM64_OP_IMM)
+		return MOVE(GPR8(rd), BINOP(BITXOR, GPR(rn), CNST(third.imm),
+					    arm_target_->gpr_type()));
+	else
+		return MOVE(
+			GPR8(rd),
+			BINOP(BITXOR, GPR(rn),
+			      shift_or_extend(GPR(third.reg), third.shift.type,
+					      third.shift.value, third.ext),
+			      arm_target_->gpr_type()));
+}
+
 ir::tree::rstm lifter::arm64_handle_ORR(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
@@ -1447,6 +1479,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(CCMP);
 		HANDLER(CMN);
 		HANDLER(CMP);
+		HANDLER(CSINC);
 		HANDLER(CSEL);
 		HANDLER(CSET);
 		HANDLER(CLZ);
@@ -1468,6 +1501,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(NEG);
 		HANDLER(NOP);
 		HANDLER(ORR);
+		HANDLER(EOR);
 		HANDLER(RET);
 		HANDLER(REV);
 		HANDLER(STP);
@@ -1485,6 +1519,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(UBFX);
 		HANDLER(UDIV);
 		NOPHANDLER(PRFM);
+		NOPHANDLER(HINT);
 	default:
 		UNREACHABLE("Unimplemented instruction {} ({})", insn.as_str(),
 			    insn.insn_name());
@@ -1547,8 +1582,8 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 #endif
 
 	auto ret_lbl = make_unique("ret");
-	return mach::fun_fragment(frame->proc_entry_exit_1(body, ret_lbl),
-				  frame, ret_lbl, make_unique("epi"));
+	return mach::fun_fragment(frame->prepare_temps(body, ret_lbl), frame,
+				  ret_lbl, make_unique("epi"));
 }
 
 lifter::lifter()
