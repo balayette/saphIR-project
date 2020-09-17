@@ -26,6 +26,8 @@
 
 #define STACK_SIZE (4096 * 100)
 
+extern char **environ;
+
 namespace dyn
 {
 emu::emu(utils::mapped_file &file) : file_(file), bin_(file), exited_(false)
@@ -83,13 +85,47 @@ void emu::run()
 	char random_data[16];
 	getrandom(random_data, sizeof(random_data), 0);
 	Elf64_auxv_t at_random = {AT_RANDOM, {(uint64_t)random_data}};
+	Elf64_auxv_t at_pagesz = {AT_PAGESZ, {4096}};
+	Elf64_auxv_t at_hwcap = {AT_HWCAP, {0xecfffffb}};
+	Elf64_auxv_t at_clktck = {
+		AT_CLKTCK, {static_cast<uint64_t>(sysconf(_SC_CLK_TCK))}};
+	Elf64_auxv_t at_phdr = {
+		AT_PHDR,
+		{reinterpret_cast<uint64_t>(elf_map_) + bin_.ehdr().phoff()}};
+	Elf64_auxv_t at_phent = {AT_PHENT, {sizeof(Elf64_Phdr)}};
+	Elf64_auxv_t at_phnum = {AT_PHNUM, {bin_.phdrs().size()}};
 
-	push(0);			     // auxp end
-	push(&at_random, sizeof(at_random)); // random data for libc
-	push(0);			     // envp end
-	push(0);			     // argv end
-	push((uint64_t)filename.c_str());    // program name
-	push(1);			     // argc
+	Elf64_auxv_t at_uid = {AT_UID, {getuid()}};
+	Elf64_auxv_t at_euid = {AT_EUID, {geteuid()}};
+	Elf64_auxv_t at_gid = {AT_GID, {getgid()}};
+	Elf64_auxv_t at_egid = {AT_EGID, {getegid()}};
+
+	Elf64_auxv_t at_end = {AT_NULL, {0}};
+
+	/*
+	 * Push the auxv in the same order as QEMU, to make it easier to diff
+	 * the execution traces
+	 */
+	push(&at_end, sizeof(Elf64_auxv_t));	// auxp end
+	push(&at_random, sizeof(Elf64_auxv_t)); // random data for libc
+	push(&at_clktck, sizeof(Elf64_auxv_t));
+	push(&at_hwcap, sizeof(Elf64_auxv_t));
+	push(&at_egid, sizeof(Elf64_auxv_t));
+	push(&at_gid, sizeof(Elf64_auxv_t));
+	push(&at_euid, sizeof(Elf64_auxv_t));
+	push(&at_uid, sizeof(Elf64_auxv_t));
+	push(&at_pagesz, sizeof(Elf64_auxv_t));
+	push(&at_phnum, sizeof(Elf64_auxv_t));
+	push(&at_phent, sizeof(Elf64_auxv_t));
+	push(&at_phdr, sizeof(Elf64_auxv_t));
+
+	push(0); // envp end
+	for (char **env = environ; *env; env++)
+		push((uint64_t)*env);
+
+	push(0);			  // argv end
+	push((uint64_t)filename.c_str()); // program name
+	push(1);			  // argc
 
 	size_t executed = 0;
 
