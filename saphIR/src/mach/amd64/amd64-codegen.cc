@@ -624,14 +624,17 @@ void generator::visit_binop(tree::binop &b)
 		oper_sz = b.lhs()->assem_size();
 
 	b.lhs()->accept(*this);
-	auto lhs = assem::temp(oper_sz);
+	auto lhs = assem::temp(oper_sz, b.lhs()->ty()->get_signedness());
 	EMIT(simple_move(lhs, ret_));
 
 	b.rhs()->accept(*this);
-	auto rhs = assem::temp(oper_sz);
+	auto rhs = assem::temp(oper_sz, b.rhs()->ty()->get_signedness());
 	EMIT(simple_move(rhs, ret_));
 
-	assem::temp dst(oper_sz);
+	assem::temp dst(oper_sz, b.ty()->get_signedness());
+	ASSERT(oper_sz == b.ty()->assem_size(),
+	       "binop oper_sz ({}) does not match binop type ({})", oper_sz,
+	       b.ty()->assem_size());
 
 	if (b.op_ != ops::binop::MINUS && b.op_ != ops::binop::BITLSHIFT
 	    && b.op_ != ops::binop::BITRSHIFT

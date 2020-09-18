@@ -31,7 +31,8 @@ void ir_pretty_printer::visit_temp(tree::temp &n)
 
 void ir_pretty_printer::visit_binop(tree::binop &n)
 {
-	indent() << "(binop " << ops::binop_to_string(n.op_) << "\n";
+	indent() << "(binop" << n.ty()->assem_size() << " "
+		 << ops::binop_to_string(n.op_) << "\n";
 	lvl_++;
 	n.lhs()->accept(*this);
 	n.rhs()->accept(*this);

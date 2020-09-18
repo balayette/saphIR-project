@@ -21,8 +21,11 @@
 #define MEM(E) amd_target_->make_mem(E)
 #define LABEL(L) amd_target_->make_label(L)
 #define NAME(N) amd_target_->make_name(N)
-#define CNST(C) amd_target_->make_cnst(C)
+#define CNST(C) amd_target_->make_cnst(C, types::signedness::UNSIGNED, 8)
 #define CNST2(C) amd_target_->make_cnst(C, types::signedness::UNSIGNED, 2)
+#define CNSTS(C, T)                                                            \
+	amd_target_->make_cnst(C, types::signedness::UNSIGNED,                 \
+			       (T)->assem_size())
 #define TTEMP(R, T) amd_target_->make_temp(R, T)
 #define RTEMP(R) amd_target_->make_temp(R, arm_target_->gpr_type())
 #define GPR(R) translate_gpr(R, false, 0, types::signedness::UNSIGNED)
@@ -154,11 +157,9 @@ ir::tree::rexp lifter::shift(ir::tree::rexp exp, arm64_shifter shifter,
 	case ARM64_SFT_INVALID:
 		return exp;
 	case ARM64_SFT_LSL:
-		return BINOP(BITLSHIFT, exp, CNST(value),
-			     arm_target_->integer_type());
+		return BINOP(BITLSHIFT, exp, CNST(value), exp->ty()->clone());
 	case ARM64_SFT_LSR:
-		return BINOP(BITRSHIFT, exp, CNST(value),
-			     arm_target_->integer_type());
+		return BINOP(BITRSHIFT, exp, CNST(value), exp->ty()->clone());
 	default:
 		UNREACHABLE("Unhandled shift");
 	}
@@ -205,16 +206,22 @@ ir::tree::rstm lifter::arm64_handle_MOVZ(const disas_insn &insn)
 
 ir::tree::rexp lifter::arm64_handle_ADD_imm(cs_arm64_op rn, cs_arm64_op imm)
 {
-	return ADD(GPR(rn.reg),
-		   shift(CNST2(imm.imm), imm.shift.type, imm.shift.value),
-		   amd_target_->gpr_type());
+	ir::tree::rexp l = GPR(rn.reg);
+
+	return ADD(
+		l,
+		shift(CNSTS(imm.imm, l->ty()), imm.shift.type, imm.shift.value),
+		l->ty()->clone());
 }
 
 ir::tree::rexp lifter::arm64_handle_ADD_reg(cs_arm64_op rn, cs_arm64_op rm)
 {
-	return ADD(GPR(rn.reg),
-		   shift(GPR(rm.reg), rm.shift.type, rm.shift.value),
-		   arm_target_->gpr_type());
+	ir::tree::rexp l = GPR(rn.reg);
+
+	return ADD(l,
+		   shift_or_extend(GPR(rm.reg), rm.shift.type, rm.shift.value,
+				   rm.ext),
+		   l->ty()->clone());
 }
 
 ir::tree::rstm lifter::arm64_handle_ADD(const disas_insn &insn)
@@ -244,7 +251,7 @@ ir::tree::rstm lifter::translate_ADDS(size_t addr, arm64_reg rd, arm64_reg rn,
 	ir::tree::rexp rhs = shift_or_extend(GPR(rm.reg), rm.shift.type,
 					     rm.shift.value, rm.ext);
 
-	ir::tree::rexp res = BINOP(PLUS, lhs, rhs, arm_target_->gpr_type());
+	ir::tree::rexp res = BINOP(PLUS, lhs, rhs, lhs->ty()->clone());
 
 	return SEQ(MOVE(GPR8(rd), res),
 		   set_cmp_values(addr, lhs, rhs,
@@ -281,23 +288,37 @@ ir::tree::rstm lifter::arm64_handle_CMN(const disas_insn &insn)
 
 ir::tree::rexp lifter::extend(ir::tree::rexp e, arm64_extender ext)
 {
-	(void)e;
-	(void)ext;
+	/*
+	 * Zext can be used to change the size of an expression, even to a
+	 * lower size.
+	 */
+	auto gpr_ty = arm_target_->gpr_type();
 
-	UNREACHABLE("Unimplemented extension");
+	switch (ext) {
+	case ARM64_EXT_INVALID:
+		return e;
+	case ARM64_EXT_SXTW:
+		return amd_target_->make_sext(
+			amd_target_->make_zext(
+				e, arm_target_->integer_type(
+					   types::signedness::SIGNED, 4)),
+			gpr_ty);
+	default:
+		UNREACHABLE("Unimplemented extension");
+	}
 }
 
 ir::tree::rexp lifter::shift_or_extend(ir::tree::rexp e, arm64_shifter shifter,
 				       unsigned s, arm64_extender ext)
 {
-	ASSERT(!(ext != ARM64_EXT_INVALID && shifter != ARM64_SFT_INVALID),
-	       "Does not handle shift and extension");
+	ir::tree::rexp ret = e;
 
 	if (shifter != ARM64_SFT_INVALID)
-		return shift(e, shifter, s);
-	else if (ext != ARM64_EXT_INVALID)
-		return extend(e, ext);
-	return e;
+		ret = shift(e, shifter, s);
+	if (ext != ARM64_EXT_INVALID)
+		ret = extend(ret, ext);
+
+	return ret;
 }
 
 ir::tree::rstm lifter::arm64_handle_SUB_reg(arm64_reg rd, arm64_reg rn,
@@ -376,7 +397,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
 ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
 						    cs_arm64_op src, size_t sz)
 {
-	auto t = GPR(xt.reg);
+	auto t = GPR8(xt.reg);
 	auto addr = translate_mem_op(src.mem, sz);
 
 	return MOVE(t, MEM(addr));
@@ -385,7 +406,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
 ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
 					     cs_arm64_op imm, size_t sz)
 {
-	auto t = GPR(xt.reg);
+	auto t = GPR8(xt.reg);
 	auto base = translate_mem_op(src.mem, sz);
 
 	return SEQ(MOVE(t, MEM(base)),
@@ -463,7 +484,7 @@ ir::tree::rstm lifter::arm64_handle_MOVK(const disas_insn &insn)
 
 	return MOVE(dest, BINOP(BITOR, dest,
 				shift(cnst, imm.shift.type, imm.shift.value),
-				dest->ty_));
+				dest->ty()->clone()));
 }
 
 ir::tree::rstm lifter::next_address(ir::tree::rexp addr)
@@ -1022,10 +1043,11 @@ ir::tree::rstm lifter::translate_CSINC(arm64_reg xd, arm64_reg xn, arm64_reg xm,
 
 	auto cj = translate_cc(cc).un_cx(t, f);
 
+	ir::tree::rexp m = GPR(xm);
+
 	return SEQ(cj, LABEL(t), MOVE(GPR8(xd), GPR(xn)),
 		   JUMP(NAME(end), {end}), LABEL(f),
-		   MOVE(GPR8(xd),
-			BINOP(PLUS, GPR(xm), CNST(1), amd_target_->gpr_type())),
+		   MOVE(GPR8(xd), BINOP(PLUS, m, CNST(1), m->ty()->clone())),
 		   LABEL(end));
 }
 
@@ -1115,9 +1137,11 @@ ir::tree::rstm lifter::arm64_handle_LSL(const disas_insn &insn)
 		return translate_UBFM(rd, rn,
 				      utils::math::mod(-third.imm, regsize),
 				      regsize - 1 - third.imm);
-	else
-		return MOVE(GPR8(rd), BINOP(BITLSHIFT, GPR(rn), GPR(third.reg),
-					    arm_target_->gpr_type()));
+	else {
+		ir::tree::rexp n = GPR(rn);
+		return MOVE(GPR8(rd), BINOP(BITLSHIFT, n, GPR(third.reg),
+					    n->ty()->clone()));
+	}
 }
 
 arm64_cc lifter::invert_cc(arm64_cc cc)
@@ -1187,12 +1211,13 @@ ir::tree::rstm lifter::arm64_handle_CSEL(const disas_insn &insn)
 ir::tree::rstm lifter::translate_ANDS(arm64_reg rd, arm64_reg rn,
 				      cs_arm64_op reg_or_imm, size_t addr)
 {
+	ir::tree::rexp n = GPR(rn);
+
 	ir::tree::rexp third = reg_or_imm.type == ARM64_OP_IMM
-				       ? CNST(reg_or_imm.imm)
+				       ? CNSTS(reg_or_imm.imm, n->ty())
 				       : GPR(reg_or_imm.reg);
 
-	ir::tree::rexp bits =
-		BINOP(BITAND, GPR(rn), third, arm_target_->gpr_type());
+	ir::tree::rexp bits = BINOP(BITAND, n, third, n->ty()->clone());
 
 	return SEQ(MOVE(GPR8(rd), bits),
 		   set_cmp_values(addr, GPR(rn), bits,
@@ -1221,15 +1246,15 @@ ir::tree::rstm lifter::arm64_handle_AND(const disas_insn &insn)
 	auto rn = mach_det->operands[1].reg;
 	auto reg_or_imm = mach_det->operands[2];
 
+	ir::tree::rexp n = GPR(rn);
 	ir::tree::rexp third = reg_or_imm.type == ARM64_OP_IMM
-				       ? CNST(reg_or_imm.imm)
+				       ? CNSTS(reg_or_imm.imm, n->ty())
 				       : shift_or_extend(GPR(reg_or_imm.reg),
 							 reg_or_imm.shift.type,
 							 reg_or_imm.shift.value,
 							 reg_or_imm.ext);
 
-	ir::tree::rexp bits =
-		BINOP(BITAND, GPR(rn), third, arm_target_->gpr_type());
+	ir::tree::rexp bits = BINOP(BITAND, n, third, n->ty()->clone());
 
 	return MOVE(GPR8(rd), bits);
 }
@@ -1334,16 +1359,18 @@ ir::tree::rstm lifter::arm64_handle_EOR(const disas_insn &insn)
 	auto rn = mach_det->operands[1].reg;
 	auto third = mach_det->operands[2];
 
+	ir::tree::rexp n = GPR(rn);
+
 	if (third.type == ARM64_OP_IMM)
-		return MOVE(GPR8(rd), BINOP(BITXOR, GPR(rn), CNST(third.imm),
-					    arm_target_->gpr_type()));
+		return MOVE(GPR8(rd), BINOP(BITXOR, n, CNST(third.imm),
+					    n->ty()->clone()));
 	else
 		return MOVE(
 			GPR8(rd),
-			BINOP(BITXOR, GPR(rn),
+			BINOP(BITXOR, n,
 			      shift_or_extend(GPR(third.reg), third.shift.type,
 					      third.shift.value, third.ext),
-			      arm_target_->gpr_type()));
+			      n->ty()->clone()));
 }
 
 ir::tree::rstm lifter::arm64_handle_ORR(const disas_insn &insn)
@@ -1354,16 +1381,18 @@ ir::tree::rstm lifter::arm64_handle_ORR(const disas_insn &insn)
 	auto rn = mach_det->operands[1].reg;
 	auto third = mach_det->operands[2];
 
+	ir::tree::rexp n = GPR(rn);
+
 	if (third.type == ARM64_OP_IMM)
-		return MOVE(GPR8(rd), BINOP(BITOR, GPR(rn), CNST(third.imm),
-					    arm_target_->gpr_type()));
+		return MOVE(GPR8(rd), BINOP(BITOR, n, CNST2(third.imm),
+					    n->ty()->clone()));
 	else
 		return MOVE(
 			GPR8(rd),
-			BINOP(BITOR, GPR(rn),
+			BINOP(BITOR, n,
 			      shift_or_extend(GPR(third.reg), third.shift.type,
 					      third.shift.value, third.ext),
-			      arm_target_->gpr_type()));
+			      n->ty()->clone()));
 }
 
 ir::tree::rstm lifter::arm64_handle_UDIV(const disas_insn &insn)
