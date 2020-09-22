@@ -20,7 +20,7 @@ addressing::addressing(std::optional<assem::temp> base, assem::temp index,
 {
 }
 
-std::string addressing::to_string(size_t &temp_index) const
+std::string addressing::to_string(size_t *temp_index) const
 {
 	std::string repr;
 
@@ -29,14 +29,14 @@ std::string addressing::to_string(size_t &temp_index) const
 	repr += "(";
 
 	if (base_) {
-		repr += fmt::format("`s{}", temp_index++);
+		repr += fmt::format("`s{}", (*temp_index)++);
 		if (!index_)
 			return repr + ")";
 	}
 	repr += ",";
 
 	if (index_)
-		repr += fmt::format("`s{}", temp_index++);
+		repr += fmt::format("`s{}", (*temp_index)++);
 	repr += ",";
 
 	if (scale_)
@@ -46,10 +46,9 @@ std::string addressing::to_string(size_t &temp_index) const
 	return repr;
 }
 
-std::string addressing::to_string() const
+std::string addressing::to_string(size_t temp_index) const
 {
-	size_t x = 0;
-	return to_string(x);
+	return to_string(&temp_index);
 }
 
 std::vector<assem::temp> addressing::regs() const
@@ -259,8 +258,8 @@ load::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 }
 
 store::store(addressing addressing, assem::temp src, size_t sz)
-    : move(addressing.to_string(), std::string(src), {}, {src}),
-      addressing_(addressing), sz_(sz)
+    : move(addressing.to_string(1), "`s0", {}, {src}), addressing_(addressing),
+      sz_(sz)
 {
 	for (const auto &r : addressing_.regs())
 		src_.push_back(r);
@@ -273,8 +272,7 @@ store::to_string(std::function<std::string(utils::temp, unsigned)> f) const
 
 	std::string repr = fmt::format("mov{} `s0, ", size_str(ssize));
 
-	size_t temp_idx = 1;
-	repr += addressing_.to_string(temp_idx);
+	repr += addressing_.to_string(1);
 
 	std::vector<std::string> v;
 	v.push_back(f(src_[0].temp_, ssize));

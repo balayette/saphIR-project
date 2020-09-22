@@ -23,8 +23,8 @@ class addressing
 	 * placeholder indices starting from temp_index.
 	 * Updates temp_index to the next available placeholder index
 	 */
-	std::string to_string(size_t &temp_index) const;
-	std::string to_string() const;
+	std::string to_string(size_t *temp_index) const;
+	std::string to_string(size_t temp_index = 0) const;
 
 	std::vector<assem::temp> regs() const;
 	size_t reg_count() const;
