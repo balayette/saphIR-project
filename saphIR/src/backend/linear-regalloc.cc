@@ -79,13 +79,13 @@ struct linear_allocator {
 		std::unordered_map<utils::temp, interval> range_map;
 
 #if LOG_LINEAR_REGALLOC
-		for (utils::node_id n = 0; n < cfg.cfg_.size(); n++) {
-			auto &node = cfg.cfg_.nodes_[n];
+		for (utils::node_id n = 0; n < cfg.graph().size(); n++) {
+			auto &node = cfg.graph().nodes()[n];
 			fmt::print("{}       | Defs:", node->debug);
-			for (const auto &d : cfg.cfg_.get(n)->def)
+			for (const auto &d : cfg.graph().get(n)->def)
 				fmt::print(" {}", std::string(d));
 			fmt::print(" | Uses:");
-			for (const auto &d : cfg.cfg_.get(n)->use)
+			for (const auto &d : cfg.graph().get(n)->use)
 				fmt::print(" {}", std::string(d));
 			fmt::print("\n");
 
