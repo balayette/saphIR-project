@@ -9,6 +9,9 @@ template <typename T> gnode<T>::gnode(T value) : elm_(value) {}
 template <typename T> T &gnode<T>::operator*() { return elm_; }
 template <typename T> T *gnode<T>::operator->() { return &elm_; }
 
+template <typename T> const T &gnode<T>::operator*() const { return elm_; }
+template <typename T> const T *gnode<T>::operator->() const { return &elm_; }
+
 template <typename T> node_id graph<T>::add_node(T value)
 {
 	nodes_.emplace_back(value);

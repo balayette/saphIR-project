@@ -35,6 +35,9 @@ template <typename T> class gnode
 	T &operator*();
 	T *operator->();
 
+	const T &operator*() const;
+	const T *operator->() const;
+
 	T elm_;
 
 	const std::vector<node_id> &preds() const { return pred_; }
