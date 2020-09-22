@@ -17,6 +17,7 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 
 	for (auto &inst : instrs) {
 		std::vector<ir::tree::rstm> moves;
+		std::unordered_map<assem::temp, assem::temp> new_temps;
 
 		for (auto &src : inst->src_) {
 			if (std::find(spills.begin(), spills.end(), src)
@@ -27,6 +28,8 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 			nsrc.size_ = src.size_;
 			nsrc.is_signed_ = src.is_signed_;
 
+			new_temps[src] = nsrc;
+
 			src = nsrc;
 		}
 
@@ -35,8 +38,13 @@ void rewrite(std::vector<assem::rinstr> &instrs,
 			    == spills.end())
 				continue;
 
-			assem::temp vi(unique_temp(), dst.size_,
-				       dst.is_signed_);
+			assem::temp vi =
+				new_temps.count(dst)
+					? new_temps[dst]
+					: assem::temp(make_unique("new_dest"),
+						      dst.size_,
+						      dst.is_signed_);
+
 			moves.push_back(target.make_move(
 				temp_to_acc[dst]->exp(),
 				target.make_temp(vi, temp_to_acc[dst]->ty_)));
