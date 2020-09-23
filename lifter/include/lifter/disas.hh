@@ -66,12 +66,18 @@ class disas_bb
 class disas
 {
       public:
-	disas();
+	/*
+	 * singlestep mode means that each basic block will contain a single
+	 * instruction, even if the instruction does not actually end a normal
+	 * basic block. Thus disas_bb::complete() will be false.
+	 */
+	disas(bool singlestep = false);
 	~disas();
 
 	disas_bb next(const uint8_t *buf, size_t sz, size_t addr);
 
       private:
 	csh handle_;
+	bool singlestep_;
 };
 } // namespace lifter

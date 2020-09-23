@@ -24,10 +24,10 @@ disas_insn::disas_insn(std::shared_ptr<cs_insn> insn, csh handle)
 	regs_ -= ARM64_REG_XZR;
 	regs_ -= ARM64_REG_WZR;
 
-        /*
-         * 'ret' really is 'ret x30', but capstone does not list x30 in the
-         * accessed registers.
-         */
+	/*
+	 * 'ret' really is 'ret x30', but capstone does not list x30 in the
+	 * accessed registers.
+	 */
 	if (is_ret() && mach_detail()->op_count == 0)
 		regs_ += ARM64_REG_X30;
 }
@@ -83,7 +83,7 @@ std::string disas_bb::dump() const
 	return ret;
 }
 
-disas::disas()
+disas::disas(bool singlestep) : singlestep_(singlestep)
 {
 	ASSERT(cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &handle_) == CS_ERR_OK,
 	       "Couldn't init capstone");
@@ -105,7 +105,7 @@ disas_bb disas::next(const uint8_t *buf, size_t sz, size_t addr)
 			handle_));
 
 		insn = nullptr;
-		if (ret.complete())
+		if (singlestep_ || ret.complete())
 			return ret;
 	}
 
