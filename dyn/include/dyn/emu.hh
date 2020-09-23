@@ -20,8 +20,12 @@ class emu
 {
       public:
 	emu(utils::mapped_file &file);
-	~emu();
+	virtual ~emu();
+
+	void setup();
+	std::pair<uint64_t, size_t> singlestep();
 	void run();
+
 	lifter::state &state() { return state_; }
 	std::string state_dump() const;
 

@@ -30,7 +30,8 @@ extern char **environ;
 
 namespace dyn
 {
-emu::emu(utils::mapped_file &file) : file_(file), bin_(file), exited_(false)
+emu::emu(utils::mapped_file &file)
+    : file_(file), bin_(file), disas_(lifter::disas(false)), exited_(false)
 {
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
 	       "Couldn't init keystone");
@@ -68,7 +69,7 @@ void emu::push(const void *data, size_t sz)
 	std::memcpy((void *)state_.regs[mach::aarch64::regs::SP], data, sz);
 }
 
-void emu::run()
+void emu::setup()
 {
 	/*
 	 * The stack frame at the entry point is as follows
@@ -126,7 +127,47 @@ void emu::run()
 	push(0);			  // argv end
 	push((uint64_t)filename.c_str()); // program name
 	push(1);			  // argc
+}
 
+std::pair<uint64_t, size_t> emu::singlestep()
+{
+	const auto &chunk = find_or_compile(pc_);
+	/* Not printing the message if we exited because of a
+	 * comparison to print one message per QEMU chunk and
+	 * make debugging easier
+	 */
+#if EMU_STATE_LOG
+	if (state_.exit_reason != lifter::SET_FLAGS)
+		fmt::print("Chunk for {:#x} @ {} ({})\n", pc_, chunk.map,
+			   chunk.symbol);
+	fmt::print(state_dump());
+#endif
+	bb_fn fn = (bb_fn)(chunk.map);
+	auto next = fn(&state_);
+	switch (state_.exit_reason) {
+	case lifter::BB_END:
+		break;
+	case lifter::SET_FLAGS:
+		flag_update();
+		break;
+	case lifter::SYSCALL:
+		syscall();
+		break;
+	default:
+		UNREACHABLE("Unimplemented exit reason {}\n",
+			    state_.exit_reason);
+	}
+
+#if EMU_STATE_LOG
+	fmt::print("Exited basic block.\n");
+	fmt::print(state_dump());
+#endif
+
+	return std::make_pair(next, chunk.insn_count);
+}
+
+void emu::run()
+{
 	size_t executed = 0;
 
 	std::chrono::high_resolution_clock clock;
@@ -134,38 +175,9 @@ void emu::run()
 
 	size_t bb_count = 0;
 	while (!exited_ && bb_count < 1000000) {
-		const auto &chunk = find_or_compile(pc_);
-		/* Not printing the message if we exited because of a
-		 * comparison to print one message per QEMU chunk and
-		 * make debugging easier
-		 */
-#if EMU_STATE_LOG
-		if (state_.exit_reason != lifter::SET_FLAGS)
-			fmt::print("Chunk for {:#x} @ {} ({})\n", pc_,
-				   chunk.map, chunk.symbol);
-		fmt::print(state_dump());
-#endif
-		bb_fn fn = (bb_fn)(chunk.map);
-		executed += chunk.insn_count;
-		auto next = fn(&state_);
-		switch (state_.exit_reason) {
-		case lifter::BB_END:
-			break;
-		case lifter::SET_FLAGS:
-			flag_update();
-			break;
-		case lifter::SYSCALL:
-			syscall();
-			break;
-		default:
-			UNREACHABLE("Unimplemented exit reason {}\n",
-				    state_.exit_reason);
-		}
+		auto [next, exec] = singlestep();
+		executed += exec;
 		pc_ = next;
-#if EMU_STATE_LOG
-		fmt::print("Exited basic block.\n");
-		fmt::print(state_dump());
-#endif
 	}
 
 	auto end = clock.now();
