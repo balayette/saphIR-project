@@ -52,6 +52,7 @@ class emu
 	void sys_brk();
 	void sys_uname();
 	void sys_readlinkat();
+	void sys_mmap();
 
 	utils::mapped_file &file_;
 	elf::elf bin_;

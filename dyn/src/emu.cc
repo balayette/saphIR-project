@@ -266,6 +266,19 @@ void emu::sys_brk()
 		utils::syscall(__NR_brk, state_.regs[mach::aarch64::regs::R0]);
 }
 
+void emu::sys_mmap()
+{
+	uint64_t addr = state_.regs[mach::aarch64::regs::R0];
+	size_t len = (size_t)state_.regs[mach::aarch64::regs::R1];
+	int prot = (int)state_.regs[mach::aarch64::regs::R2];
+	int flags = (int)state_.regs[mach::aarch64::regs::R3];
+	int fildes = (int)state_.regs[mach::aarch64::regs::R4];
+	off_t off = (off_t)state_.regs[mach::aarch64::regs::R5];
+
+	state_.regs[mach::aarch64::regs::R0] =
+		utils::syscall(__NR_mmap, addr, len, prot, flags, fildes, off);
+}
+
 void emu::syscall()
 {
 	auto nr = state_.regs[mach::aarch64::regs::R8];
@@ -282,6 +295,7 @@ void emu::syscall()
 		{ARM64_NR_brk, &emu::sys_brk},
 		{ARM64_NR_uname, &emu::sys_uname},
 		{ARM64_NR_readlinkat, &emu::sys_readlinkat},
+		{ARM64_NR_mmap, &emu::sys_mmap},
 	};
 
 	auto it = syscall_handlers.find(nr);
