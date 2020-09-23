@@ -1607,6 +1607,17 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 		ret.push_back(r);
 	}
 
+	/*
+	 * In single step mode, basic blocks are not necessarily complete, and
+	 * the exit reason and return value are not necessarily set.
+	 * We set them ourselves to point to the next instruction.
+	 */
+	if (!bb.complete()) {
+		ASSERT(bb.size() == 1,
+		       "Singlestep mode, but more than one instruction");
+		ret.push_back(next_address(CNST(bb.insns()[0].address() + 4)));
+	}
+
 	for (auto reg : used_regs)
 		ret.push_back(MOVE(
 			MEM(ADD(bank_->exp(), CNST(8 * reg),
