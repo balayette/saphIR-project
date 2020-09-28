@@ -14,6 +14,9 @@ set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "Build cstool" FORCE)
 
 set(BUILD_LIBS_ONLY ON CACHE BOOL "Build only libs" FORCE)
 
+set(UNICORN_BUILD_SHARED OFF CACHE BOOL "Build shared unicorn" FORCE)
+set(UNICORN_ARCH "aarch64" CACHE STRING "unicorn archs" FORCE)
+
 FetchContent_Declare(
         Capstone
         GIT_REPOSITORY https://github.com/aquynh/capstone/
@@ -24,11 +27,15 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/keystone-engine/keystone
         GIT_TAG 03d5d24a008e90210359abbd7b7071efd28c8abe
 )
-FetchContent_MakeAvailable(Capstone Keystone)
+FetchContent_Declare(
+        Unicorn
+        GIT_REPOSITORY https://github.com/unicorn-engine/unicorn
+        GIT_TAG 21235916b9f4f5853da2a24b74b3eed86195d607
+)
+FetchContent_MakeAvailable(Capstone Keystone Unicorn)
 
 get_target_property(Capstone_SOURCE_DIR capstone-static SOURCE_DIR)
 set_property(TARGET capstone-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Capstone_SOURCE_DIR}/include)
-
 
 get_target_property(Keystone_SOURCE_DIR keystone SOURCE_DIR)
 get_target_property(Keystone_INCLUDE_DIRS keystone INCLUDE_DIRECTORIES)
