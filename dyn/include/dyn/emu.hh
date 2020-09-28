@@ -3,6 +3,7 @@
 #include "lifter/disas.hh"
 #include "utils/fs.hh"
 #include "elf/elf.hh"
+#include "dyn/base-emu.hh"
 #include "keystone/keystone.h"
 #include <unordered_map>
 
@@ -16,25 +17,20 @@ struct chunk {
 	std::string symbol;
 };
 
-class emu
+class emu : public base_emu
 {
       public:
 	emu(utils::mapped_file &file);
 	virtual ~emu();
 
-	void setup();
-	std::pair<uint64_t, size_t> singlestep();
-	void run();
-
-	lifter::state &state() { return state_; }
-	std::string state_dump() const;
+	std::pair<uint64_t, size_t> singlestep() override;
 
       private:
 	using bb_fn = size_t (*)(lifter::state *);
 	using syscall_handler = void (emu::*)(void);
 
-	void push(size_t val);
-	void push(const void *data, size_t sz);
+	void push(size_t val) override;
+	void push(const void *data, size_t sz) override;
 
 	const chunk &find_or_compile(size_t pc);
 	chunk compile(size_t pc);
@@ -58,21 +54,13 @@ class emu
 	void sys_readlinkat();
 	void sys_mmap();
 
-	utils::mapped_file &file_;
-	elf::elf bin_;
 	ks_engine *ks_;
 
 	lifter::lifter lifter_;
 	lifter::disas disas_;
 
 	void *stack_;
-	lifter::state state_;
-	size_t pc_;
-	void *elf_map_;
 	size_t elf_map_sz_;
-
-	bool exited_;
-	int exit_code_;
 
 	std::unordered_map<size_t, chunk> bb_cache_;
 };
