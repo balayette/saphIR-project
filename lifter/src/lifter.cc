@@ -1384,7 +1384,7 @@ ir::tree::rstm lifter::arm64_handle_ORR(const disas_insn &insn)
 	ir::tree::rexp n = GPR(rn);
 
 	if (third.type == ARM64_OP_IMM)
-		return MOVE(GPR8(rd), BINOP(BITOR, n, CNST2(third.imm),
+		return MOVE(GPR8(rd), BINOP(BITOR, n, CNSTS(third.imm, n->ty()),
 					    n->ty()->clone()));
 	else
 		return MOVE(
