@@ -30,8 +30,8 @@ extern char **environ;
 
 namespace dyn
 {
-emu::emu(utils::mapped_file &file)
-    : base_emu(file), disas_(lifter::disas(false))
+emu::emu(utils::mapped_file &file, bool singlestep)
+    : base_emu(file), disas_(lifter::disas(singlestep))
 {
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
 	       "Couldn't init keystone");
@@ -41,8 +41,8 @@ emu::emu(utils::mapped_file &file)
 	state_.nzcv = lifter::Z;
 	state_.tpidr_el0 = 0;
 
-	stack_ = mmap(NULL, STACK_SIZE, PROT_READ | PROT_WRITE,
-		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	stack_ = mmap((void *)0x13370000, STACK_SIZE, PROT_READ | PROT_WRITE,
+		      MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
 	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + STACK_SIZE;
 
 	auto [elf_map, size] = elf::map_elf(bin_, file_);
@@ -61,12 +61,20 @@ emu::~emu()
 		munmap(v.map, v.size);
 }
 
-void emu::push(size_t val) { push(&val, sizeof(size_t)); }
+void emu::align_stack(size_t align)
+{
+	state_.regs[mach::aarch64::regs::SP] =
+		ROUND_DOWN(state_.regs[mach::aarch64::regs::SP], align);
+}
 
-void emu::push(const void *data, size_t sz)
+uint64_t emu::push(size_t val) { return push(&val, sizeof(size_t)); }
+
+uint64_t emu::push(const void *data, size_t sz)
 {
 	state_.regs[mach::aarch64::regs::SP] -= sz;
 	std::memcpy((void *)state_.regs[mach::aarch64::regs::SP], data, sz);
+
+	return state_.regs[mach::aarch64::regs::SP];
 }
 
 std::pair<uint64_t, size_t> emu::singlestep()

@@ -27,7 +27,13 @@ void base_emu::setup()
 	 * argc <-- sp
 	 */
 
-	const auto &filename = file_.filename();
+	uint64_t filename =
+		push(file_.filename().c_str(), file_.filename().size() + 1);
+	std::vector<uint64_t> envs;
+	for (char **env = environ; *env; env++)
+		envs.push_back(push(*env, strlen(*env) + 1));
+	align_stack(16);
+
 	char random_data[16];
 	getrandom(random_data, sizeof(random_data), 0);
 	Elf64_auxv_t at_random = {AT_RANDOM, {(uint64_t)random_data}};
@@ -38,7 +44,6 @@ void base_emu::setup()
 	Elf64_auxv_t at_phdr = {
 		AT_PHDR,
 		{reinterpret_cast<uint64_t>(elf_map_) + bin_.ehdr().phoff()}};
-	fmt::print("at_phdr: {:#x}\n", at_phdr.a_un.a_val);
 	Elf64_auxv_t at_phent = {AT_PHENT, {sizeof(Elf64_Phdr)}};
 	Elf64_auxv_t at_phnum = {AT_PHNUM, {bin_.phdrs().size()}};
 
@@ -67,12 +72,12 @@ void base_emu::setup()
 	push(&at_phdr, sizeof(Elf64_auxv_t));
 
 	push(0); // envp end
-	for (char **env = environ; *env; env++)
-		push((uint64_t)*env);
+	for (const auto &e : envs)
+		push(e);
 
-	push(0);			  // argv end
-	push((uint64_t)filename.c_str()); // program name
-	push(1);			  // argc
+	push(0);	// argv end
+	push(filename); // program name
+	push(1);	// argc
 }
 
 void base_emu::run()

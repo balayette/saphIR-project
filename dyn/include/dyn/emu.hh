@@ -20,7 +20,7 @@ struct chunk {
 class emu : public base_emu
 {
       public:
-	emu(utils::mapped_file &file);
+	emu(utils::mapped_file &file, bool singlestep = false);
 	virtual ~emu();
 
 	std::pair<uint64_t, size_t> singlestep() override;
@@ -29,8 +29,9 @@ class emu : public base_emu
 	using bb_fn = size_t (*)(lifter::state *);
 	using syscall_handler = void (emu::*)(void);
 
-	void push(size_t val) override;
-	void push(const void *data, size_t sz) override;
+	void align_stack(size_t align) override;
+	uint64_t push(size_t val) override;
+	uint64_t push(const void *data, size_t sz) override;
 
 	const chunk &find_or_compile(size_t pc);
 	chunk compile(size_t pc);

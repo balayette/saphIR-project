@@ -1,6 +1,7 @@
 #include <iostream>
 #include "utils/fs.hh"
 #include "dyn/emu.hh"
+#include "dyn/unicorn-emu.hh"
 
 int main(int argc, char *argv[])
 {

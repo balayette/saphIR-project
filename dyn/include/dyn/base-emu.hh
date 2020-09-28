@@ -17,11 +17,16 @@ class base_emu
 	virtual void run();
 
 	lifter::state &state() { return state_; }
+	const lifter::state &state() const { return state_; }
 	std::string state_dump() const;
 
+	size_t pc() const { return pc_; }
+	void set_pc(size_t pc) { pc_ = pc; }
+
       protected:
-	virtual void push(size_t val) = 0;
-	virtual void push(const void *data, size_t sz) = 0;
+	virtual void align_stack(size_t align) = 0;
+	virtual uint64_t push(size_t val) = 0;
+	virtual uint64_t push(const void *data, size_t sz) = 0;
 
 	utils::mapped_file &file_;
 	elf::elf bin_;

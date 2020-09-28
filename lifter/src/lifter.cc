@@ -1303,9 +1303,9 @@ ir::tree::rstm lifter::arm64_handle_MRS(const disas_insn &insn)
 	uint64_t reg = mach_det->operands[1].reg;
 
 	if (reg == ARM64_SYSREG_DCZID_EL0)
-		return MOVE(GPR8(rt), CNST(0x7)); // Same value as QEMU
+		return MOVE(GPR8(rt), CNST(0x4)); // Same value as Unicorn
 	if (reg == ARM64_SYSREG_MIDR_EL1)
-		return MOVE(GPR8(rt), CNST(0xf0510)); // Same as QEMU
+		return MOVE(GPR8(rt), CNST(0x411fd070)); // Same as Unicorn
 	else if (reg == 0xde82) // tpidr_el0 missing from capstone
 		return MOVE(GPR8(rt), get_state_field("tpidr_el0"));
 	else

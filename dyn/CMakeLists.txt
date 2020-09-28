@@ -4,6 +4,7 @@ include(Fmt)
 add_library(emu STATIC
         src/base-emu.cc
         src/emu.cc
+        src/unicorn-emu.cc
 )
 
 target_include_directories(emu
@@ -16,6 +17,8 @@ target_link_libraries(emu
                 lifter
                 elf_loader
                 keystone
+                unicorn
+                pthread
         PRIVATE
                 IR
                 utils
@@ -26,7 +29,17 @@ add_executable(dyn
         src/main.cc
 )
 
+add_executable(harness
+        src/harness.cc
+)
+
 target_link_libraries(dyn
+        PRIVATE
+                emu
+                utils
+)
+
+target_link_libraries(harness
         PRIVATE
                 emu
                 utils
