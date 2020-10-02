@@ -40,5 +40,11 @@ class unicorn_emu : public base_emu
 	void state_to_unicorn();
 
 	uc_engine *uc_;
+
+      private:
+	void register_hooks();
+
+	uc_hook mem_read_hdl_;
+	uc_hook mem_write_hdl_;
 };
 } // namespace dyn

@@ -3,6 +3,19 @@
 
 namespace dyn
 {
+void mem_cb(uc_engine *, uc_mem_type type, uint64_t address, int size,
+	    int64_t value, void *user_data)
+{
+	auto *emu = static_cast<unicorn_emu *>(user_data);
+
+	if (type == UC_MEM_READ)
+		emu->mem_read_cb(address, size);
+	else if (type == UC_MEM_WRITE)
+		emu->mem_write_cb(address, size, value);
+	else
+		UNREACHABLE("Unimplemented callback");
+}
+
 unicorn_emu::unicorn_emu(utils::mapped_file &file, uint64_t stack_addr,
 			 uint64_t stack_sz, uint64_t brk_addr, uint64_t brk_sz)
     : base_emu(file, brk_addr, brk_sz)
@@ -11,6 +24,8 @@ unicorn_emu::unicorn_emu(utils::mapped_file &file, uint64_t stack_addr,
 	       "Couldn't init unicorn");
 
 	elf_map_ = map_elf();
+
+	register_hooks();
 
 	ASSERT(uc_mem_map(uc_, stack_addr, stack_sz,
 			  UC_PROT_READ | UC_PROT_WRITE)
@@ -28,6 +43,19 @@ unicorn_emu::unicorn_emu(utils::mapped_file &file, uint64_t stack_addr,
 	state_.tpidr_el0 = 0;
 
 	pc_ = bin_.ehdr().entry();
+}
+
+void unicorn_emu::register_hooks()
+{
+	ASSERT(uc_hook_add(uc_, &mem_read_hdl_, UC_HOOK_MEM_READ,
+			   reinterpret_cast<void *>(mem_cb), this, 1, 0)
+		       == UC_ERR_OK,
+	       "Couldn't add read hook");
+
+	ASSERT(uc_hook_add(uc_, &mem_write_hdl_, UC_HOOK_MEM_WRITE,
+			   reinterpret_cast<void *>(mem_cb), this, 1, 0)
+		       == UC_ERR_OK,
+	       "Couldn't add write hook");
 }
 
 std::pair<uint64_t, size_t> unicorn_emu::singlestep()

@@ -31,6 +31,11 @@ class base_emu
 	size_t pc() const { return pc_; }
 	void set_pc(size_t pc) { pc_ = pc; }
 
+	bool exited() const { return exited_; }
+
+	virtual void mem_read_cb(uint64_t address, int size);
+	virtual void mem_write_cb(uint64_t address, int size, uint64_t value);
+
       protected:
 	using syscall_handler = void (base_emu::*)(void);
 

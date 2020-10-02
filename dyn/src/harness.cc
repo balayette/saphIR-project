@@ -77,5 +77,10 @@ int main(int argc, char *argv[])
 			fmt::print(emu.state_dump());
 			break;
 		}
+
+		if (emu.exited() || ref_emu.exited()) {
+			fmt::print("Exited\n");
+			break;
+		}
 	}
 }

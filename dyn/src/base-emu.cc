@@ -48,7 +48,7 @@ void base_emu::setup()
 	uint64_t rand_addr = push(random_data, sizeof(random_data));
 	Elf64_auxv_t at_random = {AT_RANDOM, {rand_addr}};
 	Elf64_auxv_t at_pagesz = {AT_PAGESZ, {4096}};
-	Elf64_auxv_t at_hwcap = {AT_HWCAP, {0xecfffffb}};
+	Elf64_auxv_t at_hwcap = {AT_HWCAP, {0}};
 	Elf64_auxv_t at_clktck = {
 		AT_CLKTCK, {static_cast<uint64_t>(sysconf(_SC_CLK_TCK))}};
 	Elf64_auxv_t at_phdr = {
@@ -129,6 +129,17 @@ std::string base_emu::string_read(uint64_t guest_addr)
 	}
 
 	return ret;
+}
+
+void base_emu::mem_read_cb(uint64_t address, int size)
+{
+	fmt::print("MEM [READ{}] {:#x}\n", size, address);
+}
+
+void base_emu::mem_write_cb(uint64_t address, int size, uint64_t value)
+{
+	fmt::print("MEM WRITE{} {:#018x} @ {:#018x} (unicorn)\n", size, value,
+		   address);
 }
 
 void base_emu::run()

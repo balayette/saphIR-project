@@ -185,7 +185,7 @@ chunk emu::compile(size_t pc)
 	auto instrs = generator->output();
 	ff.frame_->add_live_registers(instrs);
 
-	backend::regalloc::linear_alloc(instrs, ff);
+	backend::regalloc::graph_alloc(instrs, ff);
 
 	auto ret = assemble(lifter_.amd64_target(), instrs, ff.body_lbl_);
 	ret.insn_count = bb.size();
@@ -199,9 +199,20 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 {
 	std::string text;
 
+	/*
+	 * FIXME: This sub $0x500, %rsp is the most disgusting hack I have
+	 * ever written in this project, fix ASAP.
+	 * Now that the basic blocks are not necessarily leaves (because of
+	 * callbacks), we actually need to reverse room on the stack for
+	 * locals and not just hope that the System-V red zone is enough.
+	 * This was already somewhat broken because, in theory, we could need
+	 * more stack space than what the System-V red zone affords us, and get
+	 * rekt by interrupt handlers.
+	 */
 	text += fmt::format(
 		"\tpush %rbp\n"
 		"\tmov %rsp, %rbp\n"
+		"\tsub $0x500, %rsp\n"
 		"\tjmp .L_{}\n",
 		body_lbl.get());
 
