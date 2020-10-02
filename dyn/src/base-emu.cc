@@ -44,9 +44,9 @@ void base_emu::setup()
 	}
 	align_stack(16);
 
-	char random_data[16];
-	getrandom(random_data, sizeof(random_data), 0);
-	Elf64_auxv_t at_random = {AT_RANDOM, {(uint64_t)random_data}};
+	uint64_t random_data[2] = {0xdeadbeefbeefdead, 0x1337177337717337};
+	uint64_t rand_addr = push(random_data, sizeof(random_data));
+	Elf64_auxv_t at_random = {AT_RANDOM, {rand_addr}};
 	Elf64_auxv_t at_pagesz = {AT_PAGESZ, {4096}};
 	Elf64_auxv_t at_hwcap = {AT_HWCAP, {0xecfffffb}};
 	Elf64_auxv_t at_clktck = {
