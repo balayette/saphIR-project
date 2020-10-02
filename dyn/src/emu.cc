@@ -248,9 +248,8 @@ void emu::add_with_carry32(uint32_t x, uint32_t y, int carry)
 {
 	uint64_t usum = UInt(x) + UInt(y) + UInt(carry);
 	int32_t ssum;
-	bool overflow = __builtin_sadd_overflow(SInt(x), SInt(y), &ssum);
-	if (!overflow)
-		overflow = __builtin_sadd_overflow(ssum, SInt(carry), &ssum);
+	bool overflow =
+		__builtin_sadd_overflow(SInt(x), SInt(y) + UInt(carry), &ssum);
 
 	uint32_t result = usum;
 
@@ -268,9 +267,8 @@ void emu::add_with_carry64(uint64_t x, uint64_t y, int carry)
 {
 	__uint128_t usum = UInt(x) + UInt(y) + UInt(carry);
 	int64_t ssum;
-	bool overflow = __builtin_saddl_overflow(SInt(x), SInt(y), &ssum);
-	if (!overflow)
-		overflow = __builtin_saddl_overflow(ssum, SInt(carry), &ssum);
+	bool overflow =
+		__builtin_saddl_overflow(SInt(x), SInt(y) + UInt(carry), &ssum);
 
 	uint64_t result = usum;
 
