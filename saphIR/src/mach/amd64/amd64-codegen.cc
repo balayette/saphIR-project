@@ -746,7 +746,7 @@ void generator::visit_unaryop(tree::unaryop &b)
 		ret_ = dst;
 	} else if (b.op_ == ops::unaryop::CLZ) {
 		assem::temp dst(val.size_, val.is_signed_);
-		EMIT(oper("lzcnt `d0, `s0", {dst}, {val}, {}));
+		EMIT(oper("lzcnt `s0, `d0", {dst}, {val}, {}));
 		ret_ = dst;
 	} else
 		UNREACHABLE("Unimplemented unaryop\n");
