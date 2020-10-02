@@ -303,6 +303,12 @@ ir::tree::rexp lifter::extend(ir::tree::rexp e, arm64_extender ext)
 				e, arm_target_->integer_type(
 					   types::signedness::SIGNED, 4)),
 			gpr_ty);
+	case ARM64_EXT_UXTW:
+		return amd_target_->make_sext(
+			amd_target_->make_zext(
+				e, arm_target_->integer_type(
+					   types::signedness::UNSIGNED, 4)),
+			gpr_ty);
 	default:
 		UNREACHABLE("Unimplemented extension");
 	}
