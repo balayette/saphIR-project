@@ -251,9 +251,16 @@ void base_emu::sys_mmap()
 	int fildes = (int)reg_read(mach::aarch64::regs::R4);
 	off_t off = (off_t)reg_read(mach::aarch64::regs::R5);
 
-	reg_write(
-		mach::aarch64::regs::R0,
-		utils::syscall(__NR_mmap, addr, len, prot, flags, fildes, off));
+	if (flags & MAP_FIXED) {
+		reg_write(mach::aarch64::regs::R0, addr);
+		mem_map(addr, len, prot, flags, fildes, off);
+		return;
+	}
+
+	addr = mmap_offt_;
+	mmap_offt_ += ROUND_UP(len, 4096);
+	reg_write(mach::aarch64::regs::R0, addr);
+	mem_map(addr, len, prot, flags, fildes, off);
 }
 
 void base_emu::syscall()

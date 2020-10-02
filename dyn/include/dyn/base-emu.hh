@@ -5,10 +5,11 @@
 #include "lifter/lifter.hh"
 #include "mach/aarch64/aarch64-common.hh"
 
-#define DEFAULT_STACK_ADDR 0xBEEF0000
+#define DEFAULT_STACK_ADDR 0x7331BEEF0000
 #define DEFAULT_STACK_SIZE (0x1000 * 100)
-#define DEFAULT_BRK_ADDR 0xDEAD0000
+#define DEFAULT_BRK_ADDR 0x1337DEAD0000
 #define DEFAULT_BRK_SIZE (0x1000 * 100)
+#define DEFAULT_MMAP_ADDR 0xDEADBEEF0000
 
 namespace dyn
 {
@@ -40,6 +41,8 @@ class base_emu
 	virtual void reg_write(mach::aarch64::regs r, uint64_t val);
 	virtual uint64_t reg_read(mach::aarch64::regs r);
 
+	virtual void mem_map(uint64_t guest_addr, size_t length, int prot,
+			     int flags, int fd = -1, off_t offset = 0) = 0;
 	virtual void mem_write(uint64_t guest_addr, const void *src,
 			       size_t sz) = 0;
 	virtual void mem_read(void *dst, uint64_t guest_addr, size_t sz) = 0;
@@ -65,6 +68,8 @@ class base_emu
 	uint64_t brk_addr_;
 	uint64_t curr_brk_;
 	size_t brk_sz_;
+
+	uint64_t mmap_offt_;
 
 	lifter::state state_;
 	size_t pc_;

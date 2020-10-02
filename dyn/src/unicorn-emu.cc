@@ -54,6 +54,24 @@ std::pair<uint64_t, size_t> unicorn_emu::singlestep()
 	return std::make_pair(ureg_read(UC_ARM64_REG_PC), 1);
 }
 
+void unicorn_emu::mem_map(uint64_t guest_addr, size_t length, int prot,
+			  int flags, int fd, off_t offset)
+{
+	(void)flags;
+
+	ASSERT(uc_mem_map(uc_, guest_addr, length, prot) == UC_ERR_OK,
+	       "Couldn't map {:#x}", guest_addr);
+	if (fd != -1) {
+		lseek(fd, offset, SEEK_SET);
+		for (size_t i = 0; i < length; i++) {
+			uint8_t buf;
+			read(fd, &buf, sizeof(buf));
+			mem_write(guest_addr + i * sizeof(buf), &buf,
+				  sizeof(buf));
+		}
+	}
+}
+
 void unicorn_emu::mem_write(size_t guest_addr, const void *data, size_t sz)
 {
 	ASSERT(uc_mem_write(uc_, guest_addr, data, sz) == UC_ERR_OK,

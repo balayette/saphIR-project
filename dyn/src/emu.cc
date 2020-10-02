@@ -130,6 +130,14 @@ void emu::flag_update()
 		UNREACHABLE("Unimplemented flag update");
 }
 
+void emu::mem_map(uint64_t guest_addr, size_t length, int prot, int flags,
+		  int fd, off_t offset)
+{
+	ASSERT(mmap((void *)guest_addr, length, prot, flags, fd, offset)
+		       != MAP_FAILED,
+	       "Couldn't map address {:#x}\n", guest_addr);
+}
+
 void emu::mem_write(uint64_t guest_addr, const void *src, size_t sz)
 {
 	std::memcpy((void *)guest_addr, src, sz);

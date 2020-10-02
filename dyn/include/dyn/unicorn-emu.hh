@@ -20,6 +20,8 @@ class unicorn_emu : public base_emu
       protected:
 	void *map_elf();
 
+	void mem_map(uint64_t guest_addr, size_t length, int prot, int flags,
+		     int fd = -1, off_t offset = 0) override;
 	void mem_write(uint64_t guest_addr, const void *src,
 		       size_t sz) override;
 	void mem_read(void *dst, uint64_t guest_addr, size_t sz) override;

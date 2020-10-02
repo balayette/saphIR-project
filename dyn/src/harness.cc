@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 		ref_emu.set_pc(ref_pc);
 
 		if (!state_divergence(ref_emu, emu))
-			fmt::print("{:#x}: OK\n", curr_pc);
+			fmt::print("{:#018x} - OK\n", curr_pc);
 		else {
 			fmt::print(
 				"State divergence after {:#x}! Next instruction: {:#x}\n",
