@@ -20,18 +20,21 @@ struct chunk {
 class emu : public base_emu
 {
       public:
-	emu(utils::mapped_file &file, bool singlestep = false);
+	emu(utils::mapped_file &file, bool singlestep,
+	    uint64_t stack_addr = DEFAULT_STACK_ADDR,
+	    uint64_t stack_sz = DEFAULT_STACK_SIZE,
+	    uint64_t brk_addr = DEFAULT_BRK_ADDR,
+	    uint64_t brk_sz = DEFAULT_BRK_SIZE);
 	virtual ~emu();
 
 	std::pair<uint64_t, size_t> singlestep() override;
 
       private:
 	using bb_fn = size_t (*)(lifter::state *);
-	using syscall_handler = void (emu::*)(void);
 
-	void align_stack(size_t align) override;
-	uint64_t push(size_t val) override;
-	uint64_t push(const void *data, size_t sz) override;
+	void mem_write(uint64_t guest_addr, const void *src,
+		       size_t sz) override;
+	void mem_read(void *dst, uint64_t guest_addr, size_t sz) override;
 
 	const chunk &find_or_compile(size_t pc);
 	chunk compile(size_t pc);
@@ -43,24 +46,13 @@ class emu : public base_emu
 
 	void flag_update();
 
-	/* Syscalls */
-	void syscall();
-	void sys_exit();
-	void sys_getuid();
-	void sys_geteuid();
-	void sys_getgid();
-	void sys_getegid();
-	void sys_brk();
-	void sys_uname();
-	void sys_readlinkat();
-	void sys_mmap();
-
 	ks_engine *ks_;
 
 	lifter::lifter lifter_;
 	lifter::disas disas_;
 
 	void *stack_;
+	size_t stack_sz_;
 	size_t elf_map_sz_;
 
 	std::unordered_map<size_t, chunk> bb_cache_;

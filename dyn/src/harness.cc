@@ -47,13 +47,18 @@ int main(int argc, char *argv[])
 	}
 
 	utils::mapped_file file(argv[1]);
-	dyn::unicorn_emu ref_emu(file, 0x13370000, 4096 * 100);
-	dyn::emu emu(file, true);
 
-	emu.setup();
+	dyn::unicorn_emu ref_emu(file);
+	dyn::emu emu(file, true);
+	ASSERT(!state_divergence(ref_emu, emu), "State divergence at creation");
+
 	ref_emu.setup();
+	emu.setup();
+	ASSERT(!state_divergence(ref_emu, emu), "State divergence at setup");
 
 	for (int i = 0; i < 10000000; i++) {
+		auto curr_pc = ref_emu.pc();
+
 		auto [emu_pc, _] = emu.singlestep();
 		auto [ref_pc, __] = ref_emu.singlestep();
 
@@ -61,11 +66,11 @@ int main(int argc, char *argv[])
 		ref_emu.set_pc(ref_pc);
 
 		if (!state_divergence(ref_emu, emu))
-			fmt::print("{:#x}: OK\n", ref_emu.pc());
+			fmt::print("{:#x}: OK\n", curr_pc);
 		else {
 			fmt::print(
-				"State divergence! Next instruction: {:#x}\n",
-				ref_pc);
+				"State divergence after {:#x}! Next instruction: {:#x}\n",
+				curr_pc, ref_pc);
 			fmt::print("Reference state:\n");
 			fmt::print(ref_emu.state_dump());
 			fmt::print("Emulator state:\n");

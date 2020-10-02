@@ -19,19 +19,17 @@
 #include <sys/utsname.h>
 #include <chrono>
 
-#define EMU_STATE_LOG 1
-#define EMU_SYSCALL_LOG 0
-#define EMU_ASSEMBLE_LOG 1
+#define EMU_STATE_LOG 0
+#define EMU_ASSEMBLE_LOG 0
 #define EMU_COMPILE_LOG 0
-
-#define STACK_SIZE (4096 * 100)
 
 extern char **environ;
 
 namespace dyn
 {
-emu::emu(utils::mapped_file &file, bool singlestep)
-    : base_emu(file), disas_(lifter::disas(singlestep))
+emu::emu(utils::mapped_file &file, bool singlestep, uint64_t stack_addr,
+	 uint64_t stack_sz, uint64_t brk_addr, uint64_t brk_sz)
+    : base_emu(file, brk_addr, brk_sz), disas_(lifter::disas(singlestep))
 {
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
 	       "Couldn't init keystone");
@@ -41,9 +39,15 @@ emu::emu(utils::mapped_file &file, bool singlestep)
 	state_.nzcv = lifter::Z;
 	state_.tpidr_el0 = 0;
 
-	stack_ = mmap((void *)0x13370000, STACK_SIZE, PROT_READ | PROT_WRITE,
+	stack_ = mmap((void *)stack_addr, stack_sz, PROT_READ | PROT_WRITE,
 		      MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
-	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + STACK_SIZE;
+	stack_sz_ = stack_sz;
+	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + stack_sz;
+
+	ASSERT(mmap((void *)brk_addr_, brk_sz_, PROT_READ | PROT_WRITE,
+		    MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1,
+		    0) != MAP_FAILED,
+	       "Couldn't map brk'");
 
 	auto [elf_map, size] = elf::map_elf(bin_, file_);
 	elf_map_ = elf_map;
@@ -55,26 +59,10 @@ emu::emu(utils::mapped_file &file, bool singlestep)
 emu::~emu()
 {
 	ks_close(ks_);
-	munmap(stack_, STACK_SIZE);
+	munmap(stack_, stack_sz_);
 
 	for (const auto &[_, v] : bb_cache_)
 		munmap(v.map, v.size);
-}
-
-void emu::align_stack(size_t align)
-{
-	state_.regs[mach::aarch64::regs::SP] =
-		ROUND_DOWN(state_.regs[mach::aarch64::regs::SP], align);
-}
-
-uint64_t emu::push(size_t val) { return push(&val, sizeof(size_t)); }
-
-uint64_t emu::push(const void *data, size_t sz)
-{
-	state_.regs[mach::aarch64::regs::SP] -= sz;
-	std::memcpy((void *)state_.regs[mach::aarch64::regs::SP], data, sz);
-
-	return state_.regs[mach::aarch64::regs::SP];
 }
 
 std::pair<uint64_t, size_t> emu::singlestep()
@@ -142,93 +130,14 @@ void emu::flag_update()
 		UNREACHABLE("Unimplemented flag update");
 }
 
-void emu::sys_exit()
+void emu::mem_write(uint64_t guest_addr, const void *src, size_t sz)
 {
-	exited_ = true;
-	exit_code_ = state_.regs[mach::aarch64::regs::R0];
+	std::memcpy((void *)guest_addr, src, sz);
 }
 
-void emu::sys_getuid() { state_.regs[mach::aarch64::regs::R0] = getuid(); }
-
-void emu::sys_geteuid() { state_.regs[mach::aarch64::regs::R0] = geteuid(); }
-
-void emu::sys_getgid() { state_.regs[mach::aarch64::regs::R0] = getgid(); }
-
-void emu::sys_getegid() { state_.regs[mach::aarch64::regs::R0] = getegid(); }
-
-void emu::sys_readlinkat()
+void emu::mem_read(void *dst, uint64_t guest_addr, size_t sz)
 {
-	int dirfd = state_.regs[mach::aarch64::regs::R0];
-	const char *pathname =
-		(const char *)state_.regs[mach::aarch64::regs::R1];
-	char *buf = (char *)state_.regs[mach::aarch64::regs::R2];
-	size_t bufsiz = state_.regs[mach::aarch64::regs::R3];
-
-	if (!strcmp(pathname, "/proc/self/exe")) {
-		auto path =
-			std::filesystem::canonical(file_.filename()).string();
-		strncpy(buf, path.c_str(), bufsiz);
-		state_.regs[mach::aarch64::regs::R0] =
-			path.size() <= bufsiz ? path.size() : bufsiz;
-
-	} else
-		state_.regs[mach::aarch64::regs::R0] =
-			readlinkat(dirfd, pathname, buf, bufsiz);
-}
-
-void emu::sys_uname()
-{
-	struct utsname *buf =
-		(struct utsname *)state_.regs[mach::aarch64::regs::R0];
-	int ret = uname(buf);
-	strcpy(buf->machine, "aarch64");
-
-	state_.regs[mach::aarch64::regs::R0] = ret;
-}
-
-void emu::sys_brk()
-{
-	/* Bypass libc */
-	state_.regs[mach::aarch64::regs::R0] =
-		utils::syscall(__NR_brk, state_.regs[mach::aarch64::regs::R0]);
-}
-
-void emu::sys_mmap()
-{
-	uint64_t addr = state_.regs[mach::aarch64::regs::R0];
-	size_t len = (size_t)state_.regs[mach::aarch64::regs::R1];
-	int prot = (int)state_.regs[mach::aarch64::regs::R2];
-	int flags = (int)state_.regs[mach::aarch64::regs::R3];
-	int fildes = (int)state_.regs[mach::aarch64::regs::R4];
-	off_t off = (off_t)state_.regs[mach::aarch64::regs::R5];
-
-	state_.regs[mach::aarch64::regs::R0] =
-		utils::syscall(__NR_mmap, addr, len, prot, flags, fildes, off);
-}
-
-void emu::syscall()
-{
-	auto nr = state_.regs[mach::aarch64::regs::R8];
-#if EMU_SYSCALL_LOG
-	fmt::print("Syscall {:#x}\n", nr);
-#endif
-
-	static std::unordered_map<uint64_t, syscall_handler> syscall_handlers{
-		{ARM64_NR_exit, &emu::sys_exit},
-		{ARM64_NR_getuid, &emu::sys_getuid},
-		{ARM64_NR_geteuid, &emu::sys_geteuid},
-		{ARM64_NR_getgid, &emu::sys_getgid},
-		{ARM64_NR_getegid, &emu::sys_getegid},
-		{ARM64_NR_brk, &emu::sys_brk},
-		{ARM64_NR_uname, &emu::sys_uname},
-		{ARM64_NR_readlinkat, &emu::sys_readlinkat},
-		{ARM64_NR_mmap, &emu::sys_mmap},
-	};
-
-	auto it = syscall_handlers.find(nr);
-	ASSERT(it != syscall_handlers.end(), "Unimplemented syscall {}", nr);
-
-	return std::invoke(it->second, this);
+	std::memcpy(dst, (void *)guest_addr, sz);
 }
 
 const chunk &emu::find_or_compile(size_t pc)

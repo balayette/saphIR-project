@@ -8,24 +8,34 @@ namespace dyn
 class unicorn_emu : public base_emu
 {
       public:
-	unicorn_emu(utils::mapped_file &file, uint64_t stack_addr,
-		    uint64_t stack_sz);
+	unicorn_emu(utils::mapped_file &file,
+		    uint64_t stack_addr = DEFAULT_STACK_ADDR,
+		    uint64_t stack_sz = DEFAULT_STACK_SIZE,
+		    uint64_t brk_addr = DEFAULT_BRK_ADDR,
+		    uint64_t brk_sz = DEFAULT_BRK_SIZE);
 	virtual ~unicorn_emu() = default;
 
 	std::pair<uint64_t, size_t> singlestep() override;
 
-      private:
-	void align_stack(size_t align) override;
+      protected:
 	void *map_elf();
 
-	uint64_t push(size_t val) override;
-	uint64_t push(const void *data, size_t sz) override;
+	void mem_write(uint64_t guest_addr, const void *src,
+		       size_t sz) override;
+	void mem_read(void *dst, uint64_t guest_addr, size_t sz) override;
 
-	void mem_write(size_t addr, const void *data, size_t sz);
-	uint64_t reg_read(int reg);
-	void reg_write(int reg, uint64_t val);
+	void reg_write(mach::aarch64::regs r, uint64_t val) override;
 
-	void update_state();
+	void ureg_write(int reg, uint64_t val);
+	uint64_t ureg_read(int reg);
+
+	/*
+	 * We need to maintain the lifter::state and unicorn state in sync
+	 * When modifying state_, update the unicorn state with state_to_unicorn
+	 * and when modifying unicorn state, update state_ with unicorn_to_state
+	 */
+	void unicorn_to_state();
+	void state_to_unicorn();
 
 	uc_engine *uc_;
 };

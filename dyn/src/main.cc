@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 	}
 
 	utils::mapped_file file(argv[1]);
-	dyn::emu emu(file);
+	dyn::emu emu(file, false);
 
 	emu.setup();
 	emu.run();

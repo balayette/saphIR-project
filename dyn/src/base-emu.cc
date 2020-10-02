@@ -1,16 +1,25 @@
 #include "dyn/base-emu.hh"
+#include "arm_syscall_list.hh"
 #include "lifter/lifter.hh"
+#include "utils/misc.hh"
+#include "utils/syscall.hh"
 #include <chrono>
+#include <filesystem>
+#include <sys/utsname.h>
+#include <asm/unistd.h>
 #include <sys/random.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 extern char **environ;
 
+#define EMU_SYSCALL_LOG 0
+
 namespace dyn
 {
-base_emu::base_emu(utils::mapped_file &file)
-    : file_(file), bin_(file), exited_(false)
+base_emu::base_emu(utils::mapped_file &file, uint64_t brk_addr, uint64_t brk_sz)
+    : file_(file), bin_(file), brk_addr_(brk_addr), curr_brk_(brk_addr_),
+      brk_sz_(brk_sz), exited_(false)
 {
 }
 
@@ -30,8 +39,9 @@ void base_emu::setup()
 	uint64_t filename =
 		push(file_.filename().c_str(), file_.filename().size() + 1);
 	std::vector<uint64_t> envs;
-	for (char **env = environ; *env; env++)
+	for (char **env = environ; *env; env++) {
 		envs.push_back(push(*env, strlen(*env) + 1));
+	}
 	align_stack(16);
 
 	char random_data[16];
@@ -78,6 +88,47 @@ void base_emu::setup()
 	push(0);	// argv end
 	push(filename); // program name
 	push(1);	// argc
+}
+
+void base_emu::align_stack(size_t align)
+{
+	uint64_t sp = reg_read(mach::aarch64::regs::SP);
+	sp = ROUND_DOWN(sp, align);
+	reg_write(mach::aarch64::regs::SP, sp);
+}
+
+uint64_t base_emu::push(size_t val) { return push(&val, sizeof(val)); }
+
+uint64_t base_emu::push(const void *data, size_t sz)
+{
+	uint64_t sp = reg_read(mach::aarch64::regs::SP);
+	sp -= sz;
+
+	mem_write(sp, data, sz);
+	reg_write(mach::aarch64::regs::SP, sp);
+
+	return sp;
+}
+
+void base_emu::reg_write(mach::aarch64::regs r, uint64_t val)
+{
+	state_.regs[r] = val;
+}
+
+uint64_t base_emu::reg_read(mach::aarch64::regs r) { return state_.regs[r]; }
+
+std::string base_emu::string_read(uint64_t guest_addr)
+{
+	std::string ret;
+	char c;
+	mem_read(&c, guest_addr, sizeof(c));
+
+	for (size_t i = 1; c; i++) {
+		ret.append(c, 1);
+		mem_read(&c, guest_addr + i, sizeof(c));
+	}
+
+	return ret;
 }
 
 void base_emu::run()
@@ -135,4 +186,99 @@ std::string base_emu::state_dump() const
 
 	return repr;
 }
+
+void base_emu::sys_exit()
+{
+	exited_ = true;
+	exit_code_ = reg_read(mach::aarch64::regs::R0);
+}
+
+void base_emu::sys_getuid() { reg_write(mach::aarch64::regs::R0, getuid()); }
+
+void base_emu::sys_geteuid() { reg_write(mach::aarch64::regs::R0, geteuid()); }
+
+void base_emu::sys_getgid() { reg_write(mach::aarch64::regs::R0, getgid()); }
+
+void base_emu::sys_getegid() { reg_write(mach::aarch64::regs::R0, getegid()); }
+
+void base_emu::sys_readlinkat()
+{
+	int dirfd = reg_read(mach::aarch64::regs::R0);
+	auto pathname = string_read(reg_read(mach::aarch64::regs::R1));
+	char *buf = (char *)state_.regs[mach::aarch64::regs::R2];
+	size_t bufsiz = state_.regs[mach::aarch64::regs::R3];
+
+	if (!strcmp(pathname.c_str(), "/proc/self/exe")) {
+		auto path =
+			std::filesystem::canonical(file_.filename()).string();
+		strncpy(buf, path.c_str(), bufsiz);
+		state_.regs[mach::aarch64::regs::R0] =
+			path.size() <= bufsiz ? path.size() : bufsiz;
+
+	} else
+		state_.regs[mach::aarch64::regs::R0] =
+			readlinkat(dirfd, pathname.c_str(), buf, bufsiz);
+}
+
+void base_emu::sys_uname()
+{
+	struct utsname buf;
+	uint64_t buf_addr = reg_read(mach::aarch64::regs::R0);
+	mem_read(&buf, buf_addr, sizeof(buf));
+
+	int ret = uname(&buf);
+	strcpy(buf.machine, "aarch64");
+
+	mem_write(buf_addr, &buf, sizeof(buf));
+	reg_write(mach::aarch64::regs::R0, ret);
+}
+
+void base_emu::sys_brk()
+{
+	uint64_t new_addr = reg_read(mach::aarch64::regs::R0);
+	if (new_addr > brk_addr_ && new_addr < brk_addr_ + brk_sz_)
+		curr_brk_ = new_addr;
+
+	reg_write(mach::aarch64::regs::R0, curr_brk_);
+}
+
+void base_emu::sys_mmap()
+{
+	uint64_t addr = reg_read(mach::aarch64::regs::R0);
+	size_t len = (size_t)reg_read(mach::aarch64::regs::R1);
+	int prot = (int)reg_read(mach::aarch64::regs::R2);
+	int flags = (int)reg_read(mach::aarch64::regs::R3);
+	int fildes = (int)reg_read(mach::aarch64::regs::R4);
+	off_t off = (off_t)reg_read(mach::aarch64::regs::R5);
+
+	reg_write(
+		mach::aarch64::regs::R0,
+		utils::syscall(__NR_mmap, addr, len, prot, flags, fildes, off));
+}
+
+void base_emu::syscall()
+{
+	auto nr = state_.regs[mach::aarch64::regs::R8];
+#if EMU_SYSCALL_LOG
+	fmt::print("Syscall {:#x}\n", nr);
+#endif
+
+	static std::unordered_map<uint64_t, syscall_handler> syscall_handlers{
+		{ARM64_NR_exit, &base_emu::sys_exit},
+		{ARM64_NR_getuid, &base_emu::sys_getuid},
+		{ARM64_NR_geteuid, &base_emu::sys_geteuid},
+		{ARM64_NR_getgid, &base_emu::sys_getgid},
+		{ARM64_NR_getegid, &base_emu::sys_getegid},
+		{ARM64_NR_brk, &base_emu::sys_brk},
+		{ARM64_NR_uname, &base_emu::sys_uname},
+		{ARM64_NR_readlinkat, &base_emu::sys_readlinkat},
+		{ARM64_NR_mmap, &base_emu::sys_mmap},
+	};
+
+	auto it = syscall_handlers.find(nr);
+	ASSERT(it != syscall_handlers.end(), "Unimplemented syscall {}", nr);
+
+	return std::invoke(it->second, this);
+}
+
 } // namespace dyn

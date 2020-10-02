@@ -7,7 +7,7 @@
 #include "utils/math.hh"
 #include "utils/bits.hh"
 
-#define LIFTER_INSTRUCTION_LOG 1
+#define LIFTER_INSTRUCTION_LOG 0
 
 #define HANDLER(Kind)                                                          \
 	case ARM64_INS_##Kind:                                                 \
