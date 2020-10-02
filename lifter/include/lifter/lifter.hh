@@ -8,6 +8,7 @@
 #include "ir/ir.hh"
 #include "utils/ref.hh"
 #include "lifter/disas.hh"
+#include "lifter/lifter-callbacks.hh"
 
 namespace lifter
 {
@@ -237,5 +238,7 @@ class lifter
 	utils::ref<types::ty> update_flags_ty_;
 
 	std::array<utils::temp, 32> regs_;
+
+	lifter_callbacks lifter_cb_;
 };
 } // namespace lifter

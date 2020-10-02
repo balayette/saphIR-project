@@ -3,6 +3,7 @@ include(Fmt)
 
 add_library(lifter STATIC
         src/lifter.cc
+        src/lifter-callbacks.cc
         src/disas.cc
 )
 
