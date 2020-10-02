@@ -108,6 +108,7 @@ void unicorn_emu::unicorn_to_state()
 		state_.regs[i] = ureg_read(all_regs[i]);
 
 	state_.nzcv = ureg_read(UC_ARM64_REG_NZCV) >> 28;
+	state_.tpidr_el0 = ureg_read(UC_ARM64_REG_TPIDR_EL0);
 }
 
 void unicorn_emu::state_to_unicorn()
@@ -130,6 +131,7 @@ void unicorn_emu::state_to_unicorn()
 		ureg_write(all_regs[i], state_.regs[i]);
 
 	ureg_write(UC_ARM64_REG_NZCV, state_.nzcv << 28);
+	ureg_write(UC_ARM64_REG_TPIDR_EL0, state_.tpidr_el0);
 }
 
 void *unicorn_emu::map_elf()

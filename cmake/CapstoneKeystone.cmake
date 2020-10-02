@@ -40,3 +40,7 @@ set_property(TARGET capstone-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Cap
 get_target_property(Keystone_SOURCE_DIR keystone SOURCE_DIR)
 get_target_property(Keystone_INCLUDE_DIRS keystone INCLUDE_DIRECTORIES)
 set_property(TARGET keystone PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Keystone_INCLUDE_DIRS} ${Keystone_SOURCE_DIR}/include)
+
+
+get_target_property(Unicorn_SOURCE_DIR unicorn SOURCE_DIR)
+set_property(TARGET unicorn PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Unicorn_INCLUDE_DIRS} ${Unicorn_SOURCE_DIR}/include)
