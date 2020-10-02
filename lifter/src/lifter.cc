@@ -1347,8 +1347,11 @@ ir::tree::rstm lifter::arm64_handle_MOVN(const disas_insn &insn)
 	auto rd = mach_det->operands[0].reg;
 	auto imm = mach_det->operands[1].imm;
 
-	// XXX: Maybe truncate the CNST
-	return MOVE(GPR8(rd), CNST(~imm));
+	uint64_t val = ~imm;
+	if (register_size(rd) == 32)
+		val = utils::extract_bits(val, 31, 0);
+
+	return MOVE(GPR8(rd), CNST(val));
 }
 
 ir::tree::rstm lifter::arm64_handle_EOR(const disas_insn &insn)
