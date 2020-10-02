@@ -257,6 +257,8 @@ struct fun_ty : public ty {
 		return signedness::INVALID;
 	}
 
+	virtual size_t assem_size() const override { return 8; }
+
 	utils::ref<types::ty> ret_ty_;
 	std::vector<utils::ref<types::ty>> arg_tys_;
 	bool variadic_;
