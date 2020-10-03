@@ -41,9 +41,10 @@ ir::tree::rnode lifter_callbacks::write_callback(utils::ref<ir::tree::move> mv)
 	auto call = target_.make_call(
 		target_.make_temp(fun, write_callback_->ty()->clone()),
 		{
+			target_.make_cnst(data_),
 			target_.make_temp(addr, addr_type->clone()),
+			target_.make_cnst(mv->lhs()->ty()->assem_size()),
 			target_.make_temp(value, source->ty()->clone()),
-			target_.make_cnst(mv->rhs()->ty()->assem_size()),
 		},
 		write_callback_->ty()->clone());
 

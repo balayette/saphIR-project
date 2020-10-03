@@ -131,15 +131,18 @@ std::string base_emu::string_read(uint64_t guest_addr)
 	return ret;
 }
 
-void base_emu::mem_read_cb(uint64_t address, int size)
+void base_emu::mem_read_cb(uint64_t address, uint64_t size)
 {
-	fmt::print("MEM [READ{}] {:#x}\n", size, address);
+	uint64_t value;
+	mem_read(&value, address, size);
+
+	fmt::print("MEM READ{} @ {:#018x} ({:#018x})\n", size, address, value);
 }
 
-void base_emu::mem_write_cb(uint64_t address, int size, uint64_t value)
+void base_emu::mem_write_cb(uint64_t address, uint64_t size, uint64_t value)
 {
-	fmt::print("MEM WRITE{} {:#018x} @ {:#018x} (unicorn)\n", size, value,
-		   address);
+	fmt::print("MEM WRITE{} {:#018x} @ {:#018x}\n", size, value, address);
+	writes_.push_back({address, size, value});
 }
 
 void base_emu::run()

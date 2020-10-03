@@ -47,11 +47,19 @@ struct state {
 class lifter
 {
       public:
+	using mem_write_callback = void (*)(uint64_t addr, uint64_t size,
+					    uint64_t val, void *user_data);
+
 	lifter();
 	mach::fun_fragment lift(const disas_bb &bb);
 
 	mach::amd64::amd64_target &amd64_target() { return *amd_target_; }
 	mach::aarch64::aarch64_target &aarch64_target() { return *arm_target_; }
+
+	void add_mem_write_callback(mem_write_callback cb, void *user_data);
+
+	void dispatch_mem_write_callback(uint64_t addr, uint64_t size,
+					 uint64_t val);
 
       private:
 	ir::tree::rstm lift(const disas_insn &insn);
@@ -240,5 +248,6 @@ class lifter
 	std::array<utils::temp, 32> regs_;
 
 	lifter_callbacks lifter_cb_;
+	std::vector<std::pair<mem_write_callback, void *>> mem_write_cbs_;
 };
 } // namespace lifter

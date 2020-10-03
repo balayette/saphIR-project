@@ -2,6 +2,12 @@
 #include "dyn/emu.hh"
 #include "dyn/unicorn-emu.hh"
 
+static void dump_writes(const std::vector<dyn::mem_write_payload> &v)
+{
+	for (const auto &p : v)
+		fmt::print("{}\n", p.to_string());
+}
+
 bool state_divergence(const dyn::base_emu &ref, const dyn::base_emu &emu)
 {
 	bool difference = false;
@@ -34,6 +40,30 @@ bool state_divergence(const dyn::base_emu &ref, const dyn::base_emu &emu)
 		fmt::print("NZCV different : Expected {:#x}, got {:#x}\n",
 			   ref_state.nzcv, emu_state.nzcv);
 		difference = true;
+	}
+
+	const auto &ref_wr = ref.mem_writes();
+	const auto &emu_wr = emu.mem_writes();
+
+	if (ref_wr.size() != emu_wr.size()) {
+		fmt::print("Different number of writes\n");
+		fmt::print("Reference writes:\n");
+		dump_writes(ref_wr);
+		fmt::print("Emu writes:\n");
+		dump_writes(emu_wr);
+		difference = true;
+	} else {
+		for (size_t i = 0; i < ref_wr.size(); i++) {
+			auto r = ref_wr[i];
+			auto e = emu_wr[i];
+
+			if (r != e) {
+				fmt::print("Different write:\n");
+				fmt::print("  Expected {}\n", r.to_string());
+				fmt::print("  Got      {}\n", e.to_string());
+				difference = true;
+			}
+		}
 	}
 
 	return difference;
@@ -82,5 +112,8 @@ int main(int argc, char *argv[])
 			fmt::print("Exited\n");
 			break;
 		}
+
+		emu.clear_mem_writes();
+		ref_emu.clear_mem_writes();
 	}
 }

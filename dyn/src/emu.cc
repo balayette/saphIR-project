@@ -54,6 +54,13 @@ emu::emu(utils::mapped_file &file, bool singlestep, uint64_t stack_addr,
 	elf_map_sz_ = size;
 
 	pc_ = bin_.ehdr().entry();
+
+	lifter_.add_mem_write_callback(
+		[](uint64_t addr, uint64_t size, uint64_t val, void *data) {
+			emu *e = static_cast<emu *>(data);
+			e->mem_write_cb(addr, size, val);
+		},
+		this);
 }
 
 emu::~emu()

@@ -1650,16 +1650,29 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 				  ret_lbl, make_unique("epi"));
 }
 
-static void write_cb(uint64_t addr, uint64_t val, uint64_t size)
+static void write_cb(void *data, uint64_t addr, uint64_t size, uint64_t val)
 {
-	fmt::print("MEM WRITE{} {:#018x} @ {:#018x} (saphIR)\n", size, val,
-		   addr);
+	lifter *l = static_cast<lifter *>(data);
+
+	l->dispatch_mem_write_callback(addr, size, val);
+}
+
+void lifter::dispatch_mem_write_callback(uint64_t addr, uint64_t size,
+					 uint64_t val)
+{
+	for (const auto &[f, d] : mem_write_cbs_)
+		f(addr, size, val, d);
+}
+
+void lifter::add_mem_write_callback(mem_write_callback cb, void *user_data)
+{
+	mem_write_cbs_.emplace_back(cb, user_data);
 }
 
 lifter::lifter()
     : amd_target_(new mach::amd64::amd64_target()),
       arm_target_(new mach::aarch64::aarch64_target()),
-      lifter_cb_(*amd_target_, nullptr, nullptr)
+      lifter_cb_(*amd_target_, nullptr, nullptr, this)
 {
 	std::vector<symbol> names;
 	std::vector<utils::ref<types::ty>> types;
@@ -1701,6 +1714,7 @@ lifter::lifter()
 	auto c = amd_target_->make_cnst((uint64_t)write_cb);
 	c->ty_ = new types::fun_ty(amd_target_->void_type(),
 				   {
+					   amd_target_->gpr_type(),
 					   amd_target_->gpr_type(),
 					   amd_target_->gpr_type(),
 					   amd_target_->gpr_type(),
