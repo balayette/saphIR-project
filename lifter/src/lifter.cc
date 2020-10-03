@@ -26,6 +26,7 @@
 #define CNSTS(C, T)                                                            \
 	amd_target_->make_cnst(C, types::signedness::UNSIGNED,                 \
 			       (T)->assem_size())
+#define CNSTZ(C, S) amd_target_->make_cnst(C, types::signedness::UNSIGNED, S);
 #define TTEMP(R, T) amd_target_->make_temp(R, T)
 #define RTEMP(R) amd_target_->make_temp(R, arm_target_->gpr_type())
 #define GPR(R) translate_gpr(R, false, 0, types::signedness::UNSIGNED)
@@ -120,8 +121,10 @@ ir::tree::rexp lifter::get_state_field(const std::string &name)
 ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
 				     size_t forced, types::signedness sign)
 {
-	if (r == ARM64_REG_XZR || r == ARM64_REG_WZR)
+	if (r == ARM64_REG_XZR)
 		return CNST(0);
+	if (r == ARM64_REG_WZR)
+		return CNSTZ(0, 4);
 
 	auto reg = creg_to_reg(r);
 	unsigned sz = forced;
@@ -1059,7 +1062,8 @@ ir::tree::rstm lifter::translate_CSINC(arm64_reg xd, arm64_reg xn, arm64_reg xm,
 
 	return SEQ(cj, LABEL(t), MOVE(GPR8(xd), GPR(xn)),
 		   JUMP(NAME(end), {end}), LABEL(f),
-		   MOVE(GPR8(xd), BINOP(PLUS, m, CNST(1), m->ty()->clone())),
+		   MOVE(GPR8(xd),
+			BINOP(PLUS, m, CNSTS(1, m->ty()), m->ty()->clone())),
 		   LABEL(end));
 }
 
