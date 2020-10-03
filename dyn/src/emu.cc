@@ -61,6 +61,13 @@ emu::emu(utils::mapped_file &file, bool singlestep, uint64_t stack_addr,
 			e->mem_write_cb(addr, size, val);
 		},
 		this);
+
+	lifter_.add_mem_read_callback(
+		[](uint64_t addr, uint64_t size, void *data) {
+			emu *e = static_cast<emu *>(data);
+			e->mem_read_cb(addr, size);
+		},
+		this);
 }
 
 emu::~emu()

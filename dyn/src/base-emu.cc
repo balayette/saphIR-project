@@ -124,7 +124,7 @@ std::string base_emu::string_read(uint64_t guest_addr)
 	mem_read(&c, guest_addr, sizeof(c));
 
 	for (size_t i = 1; c; i++) {
-		ret.append(c, 1);
+		ret.append(1, c);
 		mem_read(&c, guest_addr + i, sizeof(c));
 	}
 
@@ -133,10 +133,11 @@ std::string base_emu::string_read(uint64_t guest_addr)
 
 void base_emu::mem_read_cb(uint64_t address, uint64_t size)
 {
-	uint64_t value;
+	uint64_t value = 0;
 	mem_read(&value, address, size);
 
 	fmt::print("MEM READ{} @ {:#018x} ({:#018x})\n", size, address, value);
+	reads_.push_back({address, size, value});
 }
 
 void base_emu::mem_write_cb(uint64_t address, uint64_t size, uint64_t value)
@@ -219,19 +220,23 @@ void base_emu::sys_readlinkat()
 {
 	int dirfd = reg_read(mach::aarch64::regs::R0);
 	auto pathname = string_read(reg_read(mach::aarch64::regs::R1));
-	char *buf = (char *)state_.regs[mach::aarch64::regs::R2];
-	size_t bufsiz = state_.regs[mach::aarch64::regs::R3];
+	auto buf = reg_read(mach::aarch64::regs::R2);
+	size_t bufsiz = reg_read(mach::aarch64::regs::R3);
 
 	if (!strcmp(pathname.c_str(), "/proc/self/exe")) {
 		auto path =
 			std::filesystem::canonical(file_.filename()).string();
-		strncpy(buf, path.c_str(), bufsiz);
-		state_.regs[mach::aarch64::regs::R0] =
-			path.size() <= bufsiz ? path.size() : bufsiz;
+		mem_write(buf, path.c_str(), bufsiz);
+		reg_write(mach::aarch64::regs::R0,
+			  path.size() <= bufsiz ? path.size() : bufsiz);
+	} else {
+		char temp_buf[4096] = {0};
+		ssize_t ret =
+			readlinkat(dirfd, pathname.c_str(), temp_buf, bufsiz);
 
-	} else
-		state_.regs[mach::aarch64::regs::R0] =
-			readlinkat(dirfd, pathname.c_str(), buf, bufsiz);
+		mem_write(buf, temp_buf, ret);
+		reg_write(mach::aarch64::regs::R0, ret);
+	}
 }
 
 void base_emu::sys_uname()

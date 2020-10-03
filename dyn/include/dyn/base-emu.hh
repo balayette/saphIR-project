@@ -36,6 +36,29 @@ struct mem_write_payload {
 	}
 };
 
+struct mem_read_payload {
+	uint64_t addr;
+	uint64_t size;
+	uint64_t val;
+
+	bool operator==(const mem_read_payload &other) const
+	{
+		return addr == other.addr && size == other.size
+		       && val == other.val;
+	}
+
+	bool operator!=(const mem_read_payload &other) const
+	{
+		return !(*this == other);
+	}
+
+	std::string to_string() const
+	{
+		return fmt::format("MEM READ{} {:#018x} @ {:#018x}", size, val,
+				   addr);
+	}
+};
+
 class base_emu
 {
       public:
@@ -65,6 +88,12 @@ class base_emu
 		return writes_;
 	}
 	void clear_mem_writes() { writes_.clear(); }
+
+	const std::vector<mem_read_payload> &mem_reads() const
+	{
+		return reads_;
+	}
+	void clear_mem_reads() { reads_.clear(); }
 
       protected:
 	using syscall_handler = void (base_emu::*)(void);
@@ -113,5 +142,6 @@ class base_emu
 	int exit_code_;
 
 	std::vector<mem_write_payload> writes_;
+	std::vector<mem_read_payload> reads_;
 };
 } // namespace dyn

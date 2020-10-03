@@ -2,7 +2,7 @@
 #include "dyn/emu.hh"
 #include "dyn/unicorn-emu.hh"
 
-static void dump_writes(const std::vector<dyn::mem_write_payload> &v)
+template <typename T> static void dump_mem(const std::vector<T> &v)
 {
 	for (const auto &p : v)
 		fmt::print("{}\n", p.to_string());
@@ -48,9 +48,9 @@ bool state_divergence(const dyn::base_emu &ref, const dyn::base_emu &emu)
 	if (ref_wr.size() != emu_wr.size()) {
 		fmt::print("Different number of writes\n");
 		fmt::print("Reference writes:\n");
-		dump_writes(ref_wr);
+		dump_mem(ref_wr);
 		fmt::print("Emu writes:\n");
-		dump_writes(emu_wr);
+		dump_mem(emu_wr);
 		difference = true;
 	} else {
 		for (size_t i = 0; i < ref_wr.size(); i++) {
@@ -59,6 +59,30 @@ bool state_divergence(const dyn::base_emu &ref, const dyn::base_emu &emu)
 
 			if (r != e) {
 				fmt::print("Different write:\n");
+				fmt::print("  Expected {}\n", r.to_string());
+				fmt::print("  Got      {}\n", e.to_string());
+				difference = true;
+			}
+		}
+	}
+
+	const auto &ref_re = ref.mem_reads();
+	const auto &emu_re = emu.mem_reads();
+
+	if (ref_re.size() != emu_re.size()) {
+		fmt::print("Different number of reads\n");
+		fmt::print("Reference reads:\n");
+		dump_mem(ref_re);
+		fmt::print("Emu reads:\n");
+		dump_mem(emu_re);
+		difference = true;
+	} else {
+		for (size_t i = 0; i < ref_re.size(); i++) {
+			auto r = ref_re[i];
+			auto e = emu_re[i];
+
+			if (r != e) {
+				fmt::print("Different read:\n");
 				fmt::print("  Expected {}\n", r.to_string());
 				fmt::print("  Got      {}\n", e.to_string());
 				difference = true;
@@ -115,5 +139,8 @@ int main(int argc, char *argv[])
 
 		emu.clear_mem_writes();
 		ref_emu.clear_mem_writes();
+
+		emu.clear_mem_reads();
+		ref_emu.clear_mem_reads();
 	}
 }
