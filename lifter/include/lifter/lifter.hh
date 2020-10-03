@@ -49,6 +49,8 @@ class lifter
       public:
 	using mem_write_callback = void (*)(uint64_t addr, uint64_t size,
 					    uint64_t val, void *user_data);
+	using mem_read_callback = void (*)(uint64_t addr, uint64_t size,
+					   void *user_data);
 
 	lifter();
 	mach::fun_fragment lift(const disas_bb &bb);
@@ -57,9 +59,11 @@ class lifter
 	mach::aarch64::aarch64_target &aarch64_target() { return *arm_target_; }
 
 	void add_mem_write_callback(mem_write_callback cb, void *user_data);
+	void add_mem_read_callback(mem_read_callback cb, void *user_data);
 
 	void dispatch_mem_write_callback(uint64_t addr, uint64_t size,
 					 uint64_t val);
+	void dispatch_mem_read_callback(uint64_t addr, uint64_t size);
 
       private:
 	ir::tree::rstm lift(const disas_insn &insn);
@@ -249,5 +253,6 @@ class lifter
 
 	lifter_callbacks lifter_cb_;
 	std::vector<std::pair<mem_write_callback, void *>> mem_write_cbs_;
+	std::vector<std::pair<mem_read_callback, void *>> mem_read_cbs_;
 };
 } // namespace lifter

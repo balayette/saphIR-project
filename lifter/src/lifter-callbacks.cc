@@ -12,13 +12,15 @@ void lifter_callbacks::visit_move(ir::tree::move &m)
 
 	auto lmem = lhs.as<ir::tree::mem>();
 	auto rmem = rhs.as<ir::tree::mem>();
+	auto rext = rhs.as<ir::tree::zext>();
 
 	if (lmem && rmem)
 		return;
 
 	if (lmem && write_callback_)
 		ret_ = write_callback(mv);
-	else if (rmem && read_callback_)
+	else if ((rmem || (rext && rext->e().as<ir::tree::mem>()))
+		 && read_callback_)
 		ret_ = read_callback(mv);
 }
 
@@ -64,6 +66,43 @@ ir::tree::rnode lifter_callbacks::write_callback(utils::ref<ir::tree::move> mv)
 
 ir::tree::rnode lifter_callbacks::read_callback(utils::ref<ir::tree::move> mv)
 {
-	return mv;
+	auto rext = mv->rhs().as<ir::tree::zext>();
+	auto source = rext ? rext->e().as<ir::tree::mem>()
+			   : mv->rhs().as<ir::tree::mem>();
+	auto addr_type = source->e()->ty();
+
+	utils::temp addr, fun;
+
+	auto move_addr = target_.make_move(
+		target_.make_temp(addr, addr_type->clone()), source->e());
+	auto move_fun = target_.make_move(
+		target_.make_temp(fun, read_callback_->ty()->clone()),
+		read_callback_);
+
+	auto call = target_.make_call(
+		target_.make_temp(fun, read_callback_->ty()->clone()),
+		{
+			target_.make_cnst(data_),
+			target_.make_temp(addr, addr_type->clone()),
+			target_.make_cnst(source->ty()->assem_size()),
+		},
+		read_callback_->ty()->clone());
+
+
+	ir::tree::rexp new_source =
+		target_.make_mem(target_.make_temp(addr, addr_type->clone()));
+	if (rext) {
+		rext->children()[0] = new_source;
+		new_source = rext;
+	}
+
+	auto move = target_.make_move(mv->lhs(), new_source);
+
+	return target_.make_seq({
+		move_fun,
+		move_addr,
+		target_.make_sexp(call),
+		move,
+	});
 }
 } // namespace lifter
