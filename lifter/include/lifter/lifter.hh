@@ -70,7 +70,10 @@ class lifter
 	ir::tree::rstm lifter_move(ir::tree::rexp d, ir::tree::rexp s);
 	ir::tree::rexp translate_gpr(arm64_reg r, bool force_size,
 				     size_t forced, types::signedness sign);
-	ir::tree::rexp translate_mem_op(arm64_op_mem r, size_t sz);
+	ir::tree::rexp translate_mem_op(arm64_op_mem r, size_t sz,
+					arm64_shifter st = ARM64_SFT_INVALID,
+					unsigned s = 0,
+					arm64_extender ext = ARM64_EXT_INVALID);
 	ir::tree::rstm set_state_field(const std::string &name,
 				       ir::tree::rexp val);
 	ir::tree::rexp get_state_field(const std::string &name);

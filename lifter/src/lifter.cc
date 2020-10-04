@@ -135,7 +135,9 @@ ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
 	return TTEMP(regs_[reg], arm_target_->integer_type(sign, sz));
 }
 
-ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m, size_t sz)
+ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m, size_t sz,
+					arm64_shifter st, unsigned s,
+					arm64_extender ext)
 {
 	auto base = GPR(m.base);
 	base->ty_ = new types::pointer_ty(
@@ -143,7 +145,8 @@ ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m, size_t sz)
 
 	if (m.base != ARM64_REG_INVALID && m.index != ARM64_REG_INVALID) {
 		auto index = GPR(m.index);
-		return ADD(base, index, base->ty_->clone());
+		return ADD(base, shift_or_extend(index, st, s, ext),
+			   base->ty_->clone());
 	} else if (m.base != ARM64_REG_INVALID && m.disp != 0) {
 		return ADD(base, CNST(m.disp), base->ty_->clone());
 	} else if (m.base != ARM64_REG_INVALID && m.disp == 0) {
@@ -322,10 +325,10 @@ ir::tree::rexp lifter::shift_or_extend(ir::tree::rexp e, arm64_shifter shifter,
 {
 	ir::tree::rexp ret = e;
 
-	if (shifter != ARM64_SFT_INVALID)
-		ret = shift(e, shifter, s);
 	if (ext != ARM64_EXT_INVALID)
 		ret = extend(ret, ext);
+	if (shifter != ARM64_SFT_INVALID)
+		ret = shift(ret, shifter, s);
 
 	return ret;
 }
@@ -389,7 +392,8 @@ ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm,
 ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
 					    size_t sz)
 {
-	auto m = MEM(translate_mem_op(src.mem, sz));
+	auto m = MEM(translate_mem_op(src.mem, sz, src.shift.type,
+				      src.shift.value, src.ext));
 
 	return lifter_cb_.perform(MOVE(GPR8(xt.reg), m));
 }
