@@ -9,6 +9,7 @@
 #include <asm/unistd.h>
 #include <sys/random.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 extern char **environ;
@@ -136,13 +137,13 @@ void base_emu::mem_read_cb(uint64_t address, uint64_t size)
 	uint64_t value = 0;
 	mem_read(&value, address, size);
 
-	fmt::print("MEM READ{} @ {:#018x} ({:#018x})\n", size, address, value);
+	fmt::print("MEM RD{} {:#018x} @ {:#018x}\n", size, value, address);
 	reads_.push_back({address, size, value});
 }
 
 void base_emu::mem_write_cb(uint64_t address, uint64_t size, uint64_t value)
 {
-	fmt::print("MEM WRITE{} {:#018x} @ {:#018x}\n", size, value, address);
+	fmt::print("MEM WR{} {:#018x} @ {:#018x}\n", size, value, address);
 	writes_.push_back({address, size, value});
 }
 
@@ -289,6 +290,29 @@ void base_emu::sys_set_tid_address()
 	 */
 }
 
+void base_emu::sys_ioctl()
+{
+	/*
+	 * We should be fine with a no-op here.
+	 */
+}
+
+void base_emu::sys_writev()
+{
+	int fd = reg_read(mach::aarch64::regs::R0);
+	uint64_t iov = reg_read(mach::aarch64::regs::R1);
+	int iovcnt = reg_read(mach::aarch64::regs::R2);
+
+	auto iov_host = new struct iovec[iovcnt];
+	mem_read(iov_host, iov, iovcnt * sizeof(struct iovec));
+
+	ssize_t ret = writev(fd, iov_host, iovcnt);
+
+	delete[] iov_host;
+
+	reg_write(mach::aarch64::regs::R0, ret);
+}
+
 void base_emu::syscall()
 {
 	auto nr = state_.regs[mach::aarch64::regs::R8];
@@ -308,6 +332,8 @@ void base_emu::syscall()
 		{ARM64_NR_readlinkat, &base_emu::sys_readlinkat},
 		{ARM64_NR_mmap, &base_emu::sys_mmap},
 		{ARM64_NR_set_tid_address, &base_emu::sys_set_tid_address},
+		{ARM64_NR_ioctl, &base_emu::sys_ioctl},
+		{ARM64_NR_writev, &base_emu::sys_writev},
 	};
 
 	auto it = syscall_handlers.find(nr);

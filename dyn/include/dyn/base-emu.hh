@@ -125,6 +125,8 @@ class base_emu
 	void sys_readlinkat();
 	void sys_mmap();
 	void sys_set_tid_address();
+	void sys_ioctl();
+	void sys_writev();
 
 	utils::mapped_file &file_;
 	elf::elf bin_;
