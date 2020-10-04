@@ -166,6 +166,9 @@ ir::tree::rexp lifter::shift(ir::tree::rexp exp, arm64_shifter shifter,
 		return BINOP(BITLSHIFT, exp, CNST(value), exp->ty()->clone());
 	case ARM64_SFT_LSR:
 		return BINOP(BITRSHIFT, exp, CNST(value), exp->ty()->clone());
+	case ARM64_SFT_ASR:
+		return BINOP(ARITHBITRSHIFT, exp, CNST(value),
+			     exp->ty()->clone());
 	default:
 		UNREACHABLE("Unhandled shift");
 	}
@@ -1185,6 +1188,22 @@ ir::tree::rstm lifter::arm64_handle_UBFX(const disas_insn &insn)
 		mach_det->operands[2].imm + mach_det->operands[3].imm - 1);
 }
 
+ir::tree::rstm lifter::arm64_handle_ASR(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto third = mach_det->operands[2];
+
+	auto n = GPR(rn);
+	auto shift =
+		third.type == ARM64_OP_IMM ? CNST(third.imm) : GPR(third.reg);
+
+	return MOVE(GPR8(rd),
+		    BINOP(ARITHBITRSHIFT, n, shift, n->ty()->clone()));
+}
+
 ir::tree::rstm lifter::arm64_handle_LSR(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
@@ -1609,6 +1628,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(LDRSW);
 		HANDLER(LSL);
 		HANDLER(LSR);
+		HANDLER(ASR);
 		HANDLER(MADD);
 		HANDLER(MOV);
 		HANDLER(MOVK);

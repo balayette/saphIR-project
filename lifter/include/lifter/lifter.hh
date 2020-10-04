@@ -226,6 +226,8 @@ class lifter
 				      int imms);
 	ir::tree::rstm arm64_handle_UBFIZ(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_UBFX(const disas_insn &insn);
+
+	ir::tree::rstm arm64_handle_ASR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_LSR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_LSL(const disas_insn &insn);
 
