@@ -800,8 +800,28 @@ ir::tree::rstm lifter::arm64_handle_STXR(const disas_insn &insn)
 	auto xt = mach_det->operands[1].reg;
 	auto xn = mach_det->operands[2];
 
-	return SEQ(lifter_cb_.perform(
-			   MOVE(MEM(translate_mem_op(xn.mem, 4)), GPR(xt))),
+	auto t = GPR(xt);
+
+	/*
+	 * unicorn performs a read of the address before storing to it for
+	 * some reason, so do the same here to avoid breaking the harness.
+	 */
+	utils::temp unused_temp;
+
+	utils::temp addr;
+	auto addr_move =
+		MOVE(TTEMP(addr, new types::pointer_ty(t->ty()->clone())),
+		     translate_mem_op(xn.mem, 4));
+
+	auto useless_move =
+		MOVE(TTEMP(unused_temp, t->ty()->clone()),
+		     MEM(TTEMP(addr, new types::pointer_ty(t->ty()->clone()))));
+
+	return SEQ(addr_move, lifter_cb_.perform(useless_move),
+		   lifter_cb_.perform(MOVE(
+			   MEM(TTEMP(addr,
+				     new types::pointer_ty(t->ty()->clone()))),
+			   t)),
 		   MOVE(GPR8(xs), CNST(0)));
 }
 

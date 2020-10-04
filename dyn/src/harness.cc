@@ -123,8 +123,8 @@ int main(int argc, char *argv[])
 			fmt::print("{:#018x} - OK\n", curr_pc);
 		else {
 			fmt::print(
-				"State divergence after {:#x}! Next instruction: {:#x}\n",
-				curr_pc, ref_pc);
+				"State divergence after {} instructions @ {:#x}! Next instruction: {:#x}\n",
+				i, curr_pc, ref_pc);
 			fmt::print("Reference state:\n");
 			fmt::print(ref_emu.state_dump());
 			fmt::print("Emulator state:\n");
