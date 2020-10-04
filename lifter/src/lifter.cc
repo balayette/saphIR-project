@@ -1014,7 +1014,24 @@ ir::tree::meta_cx lifter::translate_cc(arm64_cc cond)
 		auto ret = translate_cc(ARM64_CC_GT);
 		return CX(ops::cmpop::EQ, ret.un_ex(), CNST(0));
 	}
-
+	if (cond == ARM64_CC_GE) {
+		auto nbit = BINOP(
+			BITRSHIFT,
+			BINOP(BITAND, nzcv, CNST(N), amd_target_->gpr_type()),
+			CNST(3), amd_target_->gpr_type());
+		auto vbit =
+			BINOP(BITAND, nzcv, CNST(V), amd_target_->gpr_type());
+		return CX(ops::cmpop::EQ, nbit, vbit);
+	}
+	if (cond == ARM64_CC_LT) {
+		auto nbit = BINOP(
+			BITRSHIFT,
+			BINOP(BITAND, nzcv, CNST(N), amd_target_->gpr_type()),
+			CNST(3), amd_target_->gpr_type());
+		auto vbit =
+			BINOP(BITAND, nzcv, CNST(V), amd_target_->gpr_type());
+		return CX(ops::cmpop::NEQ, nbit, vbit);
+	}
 	UNREACHABLE("Unimplemented translate_cc");
 }
 
@@ -1033,6 +1050,7 @@ ir::tree::rstm lifter::cc_jump(arm64_cc cc, ir::tree::rexp true_addr,
 
 	return conditional_jump(translate_cc(cc), true_addr, false_addr);
 }
+
 ir::tree::rstm lifter::cc_jump(arm64_cc cc, utils::label true_label,
 			       utils::label false_label)
 {
