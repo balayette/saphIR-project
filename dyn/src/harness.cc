@@ -133,7 +133,12 @@ int main(int argc, char *argv[])
 		}
 
 		if (emu.exited() || ref_emu.exited()) {
-			fmt::print("Exited\n");
+			ASSERT(emu.exited() == ref_emu.exited(),
+			       "Both did not exit");
+			ASSERT(emu.exit_code() == ref_emu.exit_code(),
+			       "Exited with different exit codes");
+			fmt::print("Exited with code {}\n",
+				   ref_emu.exit_code());
 			break;
 		}
 

@@ -78,6 +78,7 @@ class base_emu
 	void set_pc(size_t pc) { pc_ = pc; }
 
 	bool exited() const { return exited_; }
+	int exit_code() const { return exit_code_; }
 
 	virtual void mem_read_cb(uint64_t address, uint64_t size);
 	virtual void mem_write_cb(uint64_t address, uint64_t size,
@@ -123,6 +124,7 @@ class base_emu
 	void sys_uname();
 	void sys_readlinkat();
 	void sys_mmap();
+	void sys_set_tid_address();
 
 	utils::mapped_file &file_;
 	elf::elf bin_;

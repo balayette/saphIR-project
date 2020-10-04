@@ -282,6 +282,13 @@ void base_emu::sys_mmap()
 	mem_map(addr, len, prot, flags, fildes, off);
 }
 
+void base_emu::sys_set_tid_address()
+{
+	/*
+	 * We should be fine with a no-op here.
+	 */
+}
+
 void base_emu::syscall()
 {
 	auto nr = state_.regs[mach::aarch64::regs::R8];
@@ -291,6 +298,7 @@ void base_emu::syscall()
 
 	static std::unordered_map<uint64_t, syscall_handler> syscall_handlers{
 		{ARM64_NR_exit, &base_emu::sys_exit},
+		{ARM64_NR_exit_group, &base_emu::sys_exit},
 		{ARM64_NR_getuid, &base_emu::sys_getuid},
 		{ARM64_NR_geteuid, &base_emu::sys_geteuid},
 		{ARM64_NR_getgid, &base_emu::sys_getgid},
@@ -299,6 +307,7 @@ void base_emu::syscall()
 		{ARM64_NR_uname, &base_emu::sys_uname},
 		{ARM64_NR_readlinkat, &base_emu::sys_readlinkat},
 		{ARM64_NR_mmap, &base_emu::sys_mmap},
+		{ARM64_NR_set_tid_address, &base_emu::sys_set_tid_address},
 	};
 
 	auto it = syscall_handlers.find(nr);
