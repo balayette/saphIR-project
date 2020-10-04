@@ -186,8 +186,13 @@ class lifter
 	ir::tree::rstm arm64_handle_ADRP(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_STXR(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_STLXR(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_LDXR(const disas_insn &insn);
+
 	ir::tree::rstm arm64_handle_STRB(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STRH(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_STUR(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_STURB(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STR_size(const disas_insn &insn, size_t sz);
 	ir::tree::rstm arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst,

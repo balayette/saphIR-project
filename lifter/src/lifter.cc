@@ -825,6 +825,19 @@ ir::tree::rstm lifter::arm64_handle_STXR(const disas_insn &insn)
 		   MOVE(GPR8(xs), CNST(0)));
 }
 
+ir::tree::rstm lifter::arm64_handle_STLXR(const disas_insn &insn)
+{
+	return arm64_handle_STXR(insn);
+}
+
+ir::tree::rstm lifter::arm64_handle_LDXR(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto sz = register_size(mach_det->operands[0].reg) / 8;
+	return arm64_handle_LDR_size(insn, sz);
+}
+
 ir::tree::rstm lifter::arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst,
 					    size_t sz)
 {
@@ -878,6 +891,17 @@ ir::tree::rstm lifter::arm64_handle_STR(const disas_insn &insn)
 	/* wd or xd */
 	size_t sz = register_size(insn.mach_detail()->operands[0].reg) / 8;
 	return arm64_handle_STR_size(insn, sz);
+}
+
+ir::tree::rstm lifter::arm64_handle_STUR(const disas_insn &insn)
+{
+	size_t sz = register_size(insn.mach_detail()->operands[0].reg) / 8;
+	return arm64_handle_STR_size(insn, sz);
+}
+
+ir::tree::rstm lifter::arm64_handle_STURB(const disas_insn &insn)
+{
+	return arm64_handle_STR_size(insn, 1);
 }
 
 ir::tree::rstm lifter::arm64_handle_STR_size(const disas_insn &insn, size_t sz)
@@ -1587,9 +1611,13 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(REV);
 		HANDLER(STP);
 		HANDLER(STR);
+		HANDLER(STUR);
+		HANDLER(STURB);
 		HANDLER(STRB);
 		HANDLER(STRH);
 		HANDLER(STXR);
+		HANDLER(STLXR);
+		HANDLER(LDXR);
 		HANDLER(SUB);
 		HANDLER(SVC);
 		HANDLER(SXTW);
