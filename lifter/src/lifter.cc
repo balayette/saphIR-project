@@ -1478,10 +1478,11 @@ ir::tree::rstm lifter::arm64_handle_UDIV(const disas_insn &insn)
 ir::tree::rstm lifter::translate_MADD(arm64_reg rd, arm64_reg rn, arm64_reg rm,
 				      arm64_reg ra)
 {
-	return MOVE(GPR8(rd), BINOP(PLUS,
-				    BINOP(MULT, GPR(rn), GPR(rm),
-					  arm_target_->gpr_type()),
-				    GPR(ra), arm_target_->gpr_type()));
+	auto n = GPR(rn);
+
+	return MOVE(GPR8(rd),
+		    BINOP(PLUS, BINOP(MULT, n, GPR(rm), n->ty()->clone()),
+			  GPR(ra), n->ty()->clone()));
 }
 
 ir::tree::rstm lifter::arm64_handle_MUL(const disas_insn &insn)
