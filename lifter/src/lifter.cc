@@ -213,6 +213,18 @@ ir::tree::rstm lifter::arm64_handle_MOVZ(const disas_insn &insn)
 		    shift(CNST(imm.imm), imm.shift.type, imm.shift.value));
 }
 
+ir::tree::rstm lifter::arm64_handle_MVN(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rm = mach_det->operands[1];
+
+	return translate_ORN(
+		rd, register_size(rd) == 32 ? ARM64_REG_WZR : ARM64_REG_XZR,
+		rm);
+}
+
 ir::tree::rexp lifter::arm64_handle_ADD_imm(cs_arm64_op rn, cs_arm64_op imm)
 {
 	ir::tree::rexp l = GPR(rn.reg);
@@ -1511,6 +1523,18 @@ ir::tree::rstm lifter::arm64_handle_ORR(const disas_insn &insn)
 			      n->ty()->clone()));
 }
 
+ir::tree::rstm lifter::translate_ORN(arm64_reg rd, arm64_reg rn, cs_arm64_op rm)
+{
+	auto n = GPR(rn);
+	return MOVE(GPR8(rd),
+		    BINOP(BITOR, n,
+			  UNARYOP(BITNOT,
+				  shift_or_extend(GPR(rm.reg), rm.shift.type,
+						  rm.shift.value, rm.ext),
+				  n->ty()->clone()),
+			  n->ty()->clone()));
+}
+
 ir::tree::rstm lifter::arm64_handle_UDIV(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
@@ -1651,6 +1675,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(MOV);
 		HANDLER(MOVK);
 		HANDLER(MOVN);
+		HANDLER(MVN);
 		HANDLER(MOVZ);
 		HANDLER(MRS);
 		HANDLER(MSR);
