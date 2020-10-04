@@ -125,21 +125,26 @@ class lifter
 	ir::tree::rstm arm64_handle_CMN(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_LDAXR(const disas_insn &insn);
-	ir::tree::rstm arm64_handle_LDR_size(const disas_insn &insn, size_t sz);
+	ir::tree::rstm arm64_handle_LDR_size(
+		const disas_insn &insn, size_t sz,
+		types::signedness sign = types::signedness::UNSIGNED);
 	ir::tree::rstm arm64_handle_LDR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op label,
-					    size_t sz);
+					    size_t sz, types::signedness sign);
 	ir::tree::rstm arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
-					    size_t sz);
+					    size_t sz, types::signedness sign);
 	ir::tree::rstm arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
-					    size_t sz);
+					    size_t sz, types::signedness sign);
 	ir::tree::rstm arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
-					     cs_arm64_op imm, size_t sz);
+					     cs_arm64_op imm, size_t sz,
+					     types::signedness sign);
 	ir::tree::rstm arm64_handle_LDR_base_offset(cs_arm64_op xt,
-						    cs_arm64_op src, size_t sz);
+						    cs_arm64_op src, size_t sz,
+						    types::signedness sign);
 
 	ir::tree::rstm arm64_handle_LDRH(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_LDRB(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_LDRSW(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_MOVK(const disas_insn &insn);
 

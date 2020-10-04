@@ -380,54 +380,61 @@ ir::tree::rstm lifter::arm64_handle_NEG(const disas_insn &insn)
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm,
-					    size_t sz)
+					    size_t sz, types::signedness sign)
 {
 	auto *cnst = CNST(imm.imm);
-	cnst->ty_ = new types::pointer_ty(
-		arm_target_->integer_type(types::signedness::UNSIGNED, sz));
+	cnst->ty_ = new types::pointer_ty(arm_target_->integer_type(sign, sz));
 
 	return lifter_cb_.perform(MOVE(GPR8(xt.reg), MEM(cnst)));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
-					    size_t sz)
+					    size_t sz, types::signedness sign)
 {
 	auto m = MEM(translate_mem_op(src.mem, sz, src.shift.type,
 				      src.shift.value, src.ext));
+	m->ty()->set_signedness(sign);
 
 	return lifter_cb_.perform(MOVE(GPR8(xt.reg), m));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
-					    size_t sz)
+					    size_t sz, types::signedness sign)
 {
 	auto base = translate_mem_op(src.mem, sz);
 
-	return SEQ(arm64_handle_LDR_base_offset(xt, src, sz),
+	return SEQ(arm64_handle_LDR_base_offset(xt, src, sz, sign),
 		   MOVE(GPR8(src.mem.base), base));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
-						    cs_arm64_op src, size_t sz)
+						    cs_arm64_op src, size_t sz,
+						    types::signedness sign)
 {
 	auto t = GPR8(xt.reg);
 	auto addr = translate_mem_op(src.mem, sz);
+	auto m = MEM(addr);
+	m->ty()->set_signedness(sign);
 
-	return lifter_cb_.perform(MOVE(t, MEM(addr)));
+	return lifter_cb_.perform(MOVE(t, m));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
-					     cs_arm64_op imm, size_t sz)
+					     cs_arm64_op imm, size_t sz,
+					     types::signedness sign)
 {
 	auto t = GPR8(xt.reg);
 	auto base = translate_mem_op(src.mem, sz);
+	auto m = MEM(base);
+	m->ty()->set_signedness(sign);
 
-	return SEQ(lifter_cb_.perform(MOVE(t, MEM(base))),
+	return SEQ(lifter_cb_.perform(MOVE(t, m)),
 		   MOVE(GPR8(src.mem.base),
 			ADD(GPR8(src.mem.base), CNST(imm.imm), base->ty_)));
 }
 
-ir::tree::rstm lifter::arm64_handle_LDR_size(const disas_insn &insn, size_t sz)
+ir::tree::rstm lifter::arm64_handle_LDR_size(const disas_insn &insn, size_t sz,
+					     types::signedness sign)
 {
 	const cs_arm64 *mach_det = insn.mach_detail();
 
@@ -438,7 +445,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_size(const disas_insn &insn, size_t sz)
 	 * ldr x0, label
 	 */
 	if (base.type == ARM64_OP_IMM)
-		return arm64_handle_LDR_imm(xt, base, sz);
+		return arm64_handle_LDR_imm(xt, base, sz, sign);
 
 	if (mach_det->op_count == 2) {
 		/*
@@ -447,19 +454,19 @@ ir::tree::rstm lifter::arm64_handle_LDR_size(const disas_insn &insn, size_t sz)
 		 */
 		if (is_offset_addressing(base.mem)
 		    || is_base_reg_addressing(base.mem))
-			return arm64_handle_LDR_reg(xt, base, sz);
+			return arm64_handle_LDR_reg(xt, base, sz, sign);
 
 		if (mach_det->writeback)
-			return arm64_handle_LDR_pre(xt, base, sz);
+			return arm64_handle_LDR_pre(xt, base, sz, sign);
 		else
-			return arm64_handle_LDR_base_offset(xt, base, sz);
+			return arm64_handle_LDR_base_offset(xt, base, sz, sign);
 	}
 	if (mach_det->op_count == 3) {
 		/*
 		 * ldr x0, [x1], #imm
 		 */
 		return arm64_handle_LDR_post(xt, base, mach_det->operands[2],
-					     sz);
+					     sz, sign);
 	}
 
 	UNREACHABLE("Unimplemented LDR form");
@@ -479,6 +486,11 @@ ir::tree::rstm lifter::arm64_handle_LDRH(const disas_insn &insn)
 ir::tree::rstm lifter::arm64_handle_LDRB(const disas_insn &insn)
 {
 	return arm64_handle_LDR_size(insn, 1);
+}
+
+ir::tree::rstm lifter::arm64_handle_LDRSW(const disas_insn &insn)
+{
+	return arm64_handle_LDR_size(insn, 4, types::signedness::SIGNED);
 }
 
 ir::tree::rstm lifter::arm64_handle_LDAXR(const disas_insn &insn)
@@ -1594,6 +1606,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(LDR);
 		HANDLER(LDRB);
 		HANDLER(LDRH);
+		HANDLER(LDRSW);
 		HANDLER(LSL);
 		HANDLER(LSR);
 		HANDLER(MADD);
