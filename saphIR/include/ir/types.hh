@@ -56,6 +56,11 @@ struct ty {
 		return signedness::INVALID;
 	}
 
+	virtual void set_signedness(types::signedness)
+	{
+		UNREACHABLE("Trying to set signedness on type {}", to_string());
+	}
+
 	/*
 	 * Structs and arrays have a size which is different from the size
 	 * that the codegen uses to manipulate them: they're actually
@@ -100,6 +105,11 @@ struct builtin_ty : public ty {
 	virtual signedness get_signedness() const override
 	{
 		return is_signed_;
+	}
+
+	virtual void set_signedness(types::signedness sign) override
+	{
+		is_signed_ = sign;
 	}
 
       private:
