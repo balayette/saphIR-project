@@ -233,26 +233,30 @@ struct eseq : public exp {
 	rexp rhs() { return children_[1].as<exp>(); }
 };
 
-struct sext : public exp {
-	sext(mach::target &target, rexp e, utils::ref<types::ty> type)
+struct ext : public exp {
+	ext(mach::target &target, rexp e, utils::ref<types::ty> type)
 	    : exp(target, type)
 	{
 		children_ = {e};
 	}
-	TREE_KIND(sext)
 
 	rexp e() { return children_[0].as<exp>(); }
 };
 
-struct zext : public exp {
-	zext(mach::target &target, rexp e, utils::ref<types::ty> type)
-	    : exp(target, type)
+struct sext : public ext {
+	sext(mach::target &target, rexp e, utils::ref<types::ty> type)
+	    : ext(target, e, type)
 	{
-		children_ = {e};
+	}
+	TREE_KIND(sext)
+};
+
+struct zext : public ext {
+	zext(mach::target &target, rexp e, utils::ref<types::ty> type)
+	    : ext(target, e, type)
+	{
 	}
 	TREE_KIND(zext)
-
-	rexp e() { return children_[0].as<exp>(); }
 };
 
 struct move : public stm {

@@ -12,7 +12,7 @@ void lifter_callbacks::visit_move(ir::tree::move &m)
 
 	auto lmem = lhs.as<ir::tree::mem>();
 	auto rmem = rhs.as<ir::tree::mem>();
-	auto rext = rhs.as<ir::tree::zext>();
+	auto rext = rhs.as<ir::tree::ext>();
 
 	if (lmem && rmem)
 		return;
@@ -66,7 +66,7 @@ ir::tree::rnode lifter_callbacks::write_callback(utils::ref<ir::tree::move> mv)
 
 ir::tree::rnode lifter_callbacks::read_callback(utils::ref<ir::tree::move> mv)
 {
-	auto rext = mv->rhs().as<ir::tree::zext>();
+	auto rext = mv->rhs().as<ir::tree::ext>();
 	auto source = rext ? rext->e().as<ir::tree::mem>()
 			   : mv->rhs().as<ir::tree::mem>();
 	auto addr_type = source->e()->ty();
