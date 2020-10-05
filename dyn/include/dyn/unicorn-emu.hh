@@ -17,8 +17,8 @@ class unicorn_emu : public base_emu
 
 	std::pair<uint64_t, size_t> singlestep() override;
 
-      protected:
-	void *map_elf();
+	void add_mem_read_callback(mem_read_callback cb, void *data) override;
+	void add_mem_write_callback(mem_write_callback cb, void *data) override;
 
 	void mem_map(uint64_t guest_addr, size_t length, int prot, int flags,
 		     int fd = -1, off_t offset = 0) override;
@@ -27,6 +27,9 @@ class unicorn_emu : public base_emu
 	void mem_read(void *dst, uint64_t guest_addr, size_t sz) override;
 
 	void reg_write(mach::aarch64::regs r, uint64_t val) override;
+
+      protected:
+	void *map_elf();
 
 	void ureg_write(int reg, uint64_t val);
 	uint64_t ureg_read(int reg);
@@ -42,8 +45,6 @@ class unicorn_emu : public base_emu
 	uc_engine *uc_;
 
       private:
-	void register_hooks();
-
 	uc_hook mem_read_hdl_;
 	uc_hook mem_write_hdl_;
 };

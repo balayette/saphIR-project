@@ -132,21 +132,6 @@ std::string base_emu::string_read(uint64_t guest_addr)
 	return ret;
 }
 
-void base_emu::mem_read_cb(uint64_t address, uint64_t size)
-{
-	uint64_t value = 0;
-	mem_read(&value, address, size);
-
-	fmt::print("MEM RD{} {:#018x} @ {:#018x}\n", size, value, address);
-	reads_.push_back({address, size, value});
-}
-
-void base_emu::mem_write_cb(uint64_t address, uint64_t size, uint64_t value)
-{
-	fmt::print("MEM WR{} {:#018x} @ {:#018x}\n", size, value, address);
-	writes_.push_back({address, size, value});
-}
-
 void base_emu::run()
 {
 	size_t executed = 0;
@@ -342,4 +327,18 @@ void base_emu::syscall()
 	return std::invoke(it->second, this);
 }
 
+void base_emu::dispatch_read_cb(uint64_t address, uint64_t size)
+{
+	uint64_t val = 0;
+	mem_read(&val, address, size);
+
+	for (const auto &[f, p] : mem_read_cbs_)
+		f(address, size, val, p);
+}
+
+void base_emu::dispatch_write_cb(uint64_t address, uint64_t size, uint64_t val)
+{
+	for (const auto &[f, p] : mem_read_cbs_)
+		f(address, size, val, p);
+}
 } // namespace dyn

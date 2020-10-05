@@ -9,7 +9,8 @@ class lifter_callbacks : public ir::ir_cloner_visitor
 	lifter_callbacks(mach::target &target, ir::tree::rexp write_callback,
 			 ir::tree::rexp read_callback, void *data)
 	    : ir::ir_cloner_visitor(target), write_callback_(write_callback),
-	      read_callback_(read_callback), data_(reinterpret_cast<uintptr_t>(data))
+	      read_callback_(read_callback),
+	      data_(reinterpret_cast<uintptr_t>(data))
 	{
 	}
 

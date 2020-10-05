@@ -13,55 +13,14 @@
 
 namespace dyn
 {
-struct mem_write_payload {
-	uint64_t addr;
-	uint64_t size;
-	uint64_t val;
-
-	bool operator==(const mem_write_payload &other) const
-	{
-		return addr == other.addr && size == other.size
-		       && val == other.val;
-	}
-
-	bool operator!=(const mem_write_payload &other) const
-	{
-		return !(*this == other);
-	}
-
-	std::string to_string() const
-	{
-		return fmt::format("MEM WRITE{} {:#018x} @ {:#018x}", size, val,
-				   addr);
-	}
-};
-
-struct mem_read_payload {
-	uint64_t addr;
-	uint64_t size;
-	uint64_t val;
-
-	bool operator==(const mem_read_payload &other) const
-	{
-		return addr == other.addr && size == other.size
-		       && val == other.val;
-	}
-
-	bool operator!=(const mem_read_payload &other) const
-	{
-		return !(*this == other);
-	}
-
-	std::string to_string() const
-	{
-		return fmt::format("MEM READ{} {:#018x} @ {:#018x}", size, val,
-				   addr);
-	}
-};
-
 class base_emu
 {
       public:
+	using mem_write_callback = void (*)(uint64_t addr, uint64_t size,
+					    uint64_t val, void *user_data);
+	using mem_read_callback = void (*)(uint64_t addr, uint64_t size,
+					   uint64_t val, void *user_data);
+
 	base_emu(utils::mapped_file &file, uint64_t brk_addr = DEFAULT_BRK_ADDR,
 		 uint64_t brk_sz = DEFAULT_BRK_SIZE);
 	virtual ~base_emu() = default;
@@ -80,38 +39,34 @@ class base_emu
 	bool exited() const { return exited_; }
 	int exit_code() const { return exit_code_; }
 
-	virtual void mem_read_cb(uint64_t address, uint64_t size);
-	virtual void mem_write_cb(uint64_t address, uint64_t size,
-				  uint64_t value);
+	virtual void add_mem_read_callback(mem_read_callback cb,
+					   void *data) = 0;
+	virtual void add_mem_write_callback(mem_write_callback cb,
+					    void *data) = 0;
 
-	const std::vector<mem_write_payload> &mem_writes() const
-	{
-		return writes_;
-	}
-	void clear_mem_writes() { writes_.clear(); }
+	virtual void reg_write(mach::aarch64::regs r, uint64_t val);
+	virtual uint64_t reg_read(mach::aarch64::regs r);
 
-	const std::vector<mem_read_payload> &mem_reads() const
-	{
-		return reads_;
-	}
-	void clear_mem_reads() { reads_.clear(); }
-
-      protected:
-	using syscall_handler = void (base_emu::*)(void);
+	virtual void mem_write(uint64_t guest_addr, const void *src,
+			       size_t sz) = 0;
+	virtual void mem_read(void *dst, uint64_t guest_addr, size_t sz) = 0;
 
 	virtual void align_stack(size_t align);
 	virtual uint64_t push(size_t val);
 	virtual uint64_t push(const void *data, size_t sz);
 
-	virtual void reg_write(mach::aarch64::regs r, uint64_t val);
-	virtual uint64_t reg_read(mach::aarch64::regs r);
-
 	virtual void mem_map(uint64_t guest_addr, size_t length, int prot,
 			     int flags, int fd = -1, off_t offset = 0) = 0;
-	virtual void mem_write(uint64_t guest_addr, const void *src,
-			       size_t sz) = 0;
-	virtual void mem_read(void *dst, uint64_t guest_addr, size_t sz) = 0;
 	virtual std::string string_read(uint64_t guest_addr);
+
+	/*
+	 * If you are using this, you better know what you are doing.
+	 */
+	void dispatch_read_cb(uint64_t address, uint64_t size);
+	void dispatch_write_cb(uint64_t address, uint64_t size, uint64_t val);
+
+      protected:
+	using syscall_handler = void (base_emu::*)(void);
 
 	/* Syscalls */
 	void syscall();
@@ -145,7 +100,7 @@ class base_emu
 	bool exited_;
 	int exit_code_;
 
-	std::vector<mem_write_payload> writes_;
-	std::vector<mem_read_payload> reads_;
+	std::vector<std::pair<mem_read_callback, void *>> mem_read_cbs_;
+	std::vector<std::pair<mem_write_callback, void *>> mem_write_cbs_;
 };
 } // namespace dyn

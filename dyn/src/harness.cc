@@ -8,6 +8,55 @@ template <typename T> static void dump_mem(const std::vector<T> &v)
 		fmt::print("{}\n", p.to_string());
 }
 
+struct mem_write_payload {
+	uint64_t addr;
+	uint64_t size;
+	uint64_t val;
+
+	bool operator==(const mem_write_payload &other) const
+	{
+		return addr == other.addr && size == other.size
+		       && val == other.val;
+	}
+
+	bool operator!=(const mem_write_payload &other) const
+	{
+		return !(*this == other);
+	}
+
+	std::string to_string() const
+	{
+		return fmt::format("MEM WRITE{} {:#018x} @ {:#018x}", size, val,
+				   addr);
+	}
+};
+
+struct mem_read_payload {
+	uint64_t addr;
+	uint64_t size;
+	uint64_t val;
+
+	bool operator==(const mem_read_payload &other) const
+	{
+		return addr == other.addr && size == other.size
+		       && val == other.val;
+	}
+
+	bool operator!=(const mem_read_payload &other) const
+	{
+		return !(*this == other);
+	}
+
+	std::string to_string() const
+	{
+		return fmt::format("MEM READ{} {:#018x} @ {:#018x}", size, val,
+				   addr);
+	}
+};
+
+std::vector<mem_read_payload> ref_rd, emu_rd;
+std::vector<mem_write_payload> ref_wr, emu_wr;
+
 bool state_divergence(const dyn::base_emu &ref, const dyn::base_emu &emu)
 {
 	bool difference = false;
@@ -42,9 +91,6 @@ bool state_divergence(const dyn::base_emu &ref, const dyn::base_emu &emu)
 		difference = true;
 	}
 
-	const auto &ref_wr = ref.mem_writes();
-	const auto &emu_wr = emu.mem_writes();
-
 	if (ref_wr.size() != emu_wr.size()) {
 		fmt::print("Different number of writes\n");
 		fmt::print("Reference writes:\n");
@@ -66,20 +112,17 @@ bool state_divergence(const dyn::base_emu &ref, const dyn::base_emu &emu)
 		}
 	}
 
-	const auto &ref_re = ref.mem_reads();
-	const auto &emu_re = emu.mem_reads();
-
-	if (ref_re.size() != emu_re.size()) {
+	if (ref_rd.size() != emu_rd.size()) {
 		fmt::print("Different number of reads\n");
 		fmt::print("Reference reads:\n");
-		dump_mem(ref_re);
+		dump_mem(ref_rd);
 		fmt::print("Emu reads:\n");
-		dump_mem(emu_re);
+		dump_mem(emu_rd);
 		difference = true;
 	} else {
-		for (size_t i = 0; i < ref_re.size(); i++) {
-			auto r = ref_re[i];
-			auto e = emu_re[i];
+		for (size_t i = 0; i < ref_rd.size(); i++) {
+			auto r = ref_rd[i];
+			auto e = emu_rd[i];
 
 			if (r != e) {
 				fmt::print("Different read:\n");
@@ -105,6 +148,27 @@ int main(int argc, char *argv[])
 	dyn::unicorn_emu ref_emu(file);
 	dyn::emu emu(file, true);
 	ASSERT(!state_divergence(ref_emu, emu), "State divergence at creation");
+
+	ref_emu.add_mem_read_callback(
+		[](uint64_t address, uint64_t size, uint64_t val, void *) {
+			ref_rd.push_back({address, size, val});
+		},
+		nullptr);
+	emu.add_mem_read_callback(
+		[](uint64_t address, uint64_t size, uint64_t val, void *) {
+			emu_rd.push_back({address, size, val});
+		},
+		nullptr);
+	ref_emu.add_mem_write_callback(
+		[](uint64_t address, uint64_t size, uint64_t val, void *) {
+			ref_wr.push_back({address, size, val});
+		},
+		nullptr);
+	emu.add_mem_write_callback(
+		[](uint64_t address, uint64_t size, uint64_t val, void *) {
+			emu_wr.push_back({address, size, val});
+		},
+		nullptr);
 
 	ref_emu.setup();
 	emu.setup();
@@ -142,10 +206,9 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-		emu.clear_mem_writes();
-		ref_emu.clear_mem_writes();
-
-		emu.clear_mem_reads();
-		ref_emu.clear_mem_reads();
+		ref_rd.clear();
+		emu_rd.clear();
+		ref_wr.clear();
+		emu_wr.clear();
 	}
 }

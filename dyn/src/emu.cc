@@ -54,20 +54,6 @@ emu::emu(utils::mapped_file &file, bool singlestep, uint64_t stack_addr,
 	elf_map_sz_ = size;
 
 	pc_ = bin_.ehdr().entry();
-
-	lifter_.add_mem_write_callback(
-		[](uint64_t addr, uint64_t size, uint64_t val, void *data) {
-			emu *e = static_cast<emu *>(data);
-			e->mem_write_cb(addr, size, val);
-		},
-		this);
-
-	lifter_.add_mem_read_callback(
-		[](uint64_t addr, uint64_t size, void *data) {
-			emu *e = static_cast<emu *>(data);
-			e->mem_read_cb(addr, size);
-		},
-		this);
 }
 
 emu::~emu()
@@ -77,6 +63,45 @@ emu::~emu()
 
 	for (const auto &[_, v] : bb_cache_)
 		munmap(v.map, v.size);
+}
+
+static void mem_read_cb(uint64_t address, uint64_t size, void *data)
+{
+	emu *e = static_cast<emu *>(data);
+
+	e->dispatch_read_cb(address, size);
+}
+
+static void mem_write_cb(uint64_t address, uint64_t size, uint64_t val,
+			 void *data)
+{
+	emu *e = static_cast<emu *>(data);
+
+	e->dispatch_write_cb(address, size, val);
+}
+
+void emu::add_mem_read_callback(mem_read_callback cb, void *data)
+{
+	auto needs_register = mem_read_cbs_.size() == 0;
+
+	mem_read_cbs_.push_back({cb, data});
+
+	if (!needs_register)
+		return;
+
+	lifter_.add_mem_read_callback(mem_read_cb, this);
+}
+
+void emu::add_mem_write_callback(mem_write_callback cb, void *data)
+{
+	auto needs_register = mem_write_cbs_.size() == 0;
+
+	mem_write_cbs_.push_back({cb, data});
+
+	if (!needs_register)
+		return;
+
+	lifter_.add_mem_write_callback(mem_write_cb, this);
 }
 
 std::pair<uint64_t, size_t> emu::singlestep()

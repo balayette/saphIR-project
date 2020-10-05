@@ -9,9 +9,9 @@ void mem_cb(uc_engine *, uc_mem_type type, uint64_t address, int size,
 	auto *emu = static_cast<unicorn_emu *>(user_data);
 
 	if (type == UC_MEM_READ)
-		emu->mem_read_cb(address, size);
+		emu->dispatch_read_cb(address, size);
 	else if (type == UC_MEM_WRITE)
-		emu->mem_write_cb(address, size, value);
+		emu->dispatch_write_cb(address, size, value);
 	else
 		UNREACHABLE("Unimplemented callback");
 }
@@ -24,8 +24,6 @@ unicorn_emu::unicorn_emu(utils::mapped_file &file, uint64_t stack_addr,
 	       "Couldn't init unicorn");
 
 	elf_map_ = map_elf();
-
-	register_hooks();
 
 	ASSERT(uc_mem_map(uc_, stack_addr, stack_sz,
 			  UC_PROT_READ | UC_PROT_WRITE)
@@ -45,12 +43,29 @@ unicorn_emu::unicorn_emu(utils::mapped_file &file, uint64_t stack_addr,
 	pc_ = bin_.ehdr().entry();
 }
 
-void unicorn_emu::register_hooks()
+void unicorn_emu::add_mem_read_callback(mem_read_callback cb, void *data)
 {
+	auto needs_register = mem_read_cbs_.size() == 0;
+
+	mem_read_cbs_.push_back({cb, data});
+
+	if (!needs_register)
+		return;
+
 	ASSERT(uc_hook_add(uc_, &mem_read_hdl_, UC_HOOK_MEM_READ,
 			   reinterpret_cast<void *>(mem_cb), this, 1, 0)
 		       == UC_ERR_OK,
 	       "Couldn't add read hook");
+}
+
+void unicorn_emu::add_mem_write_callback(mem_write_callback cb, void *data)
+{
+	auto needs_register = mem_write_cbs_.size() == 0;
+
+	mem_write_cbs_.push_back({cb, data});
+
+	if (!needs_register)
+		return;
 
 	ASSERT(uc_hook_add(uc_, &mem_write_hdl_, UC_HOOK_MEM_WRITE,
 			   reinterpret_cast<void *>(mem_cb), this, 1, 0)
