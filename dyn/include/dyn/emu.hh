@@ -30,8 +30,7 @@ class emu : public base_emu
 	std::pair<uint64_t, size_t> singlestep() override;
 
 	void add_mem_read_callback(mem_read_callback cb, void *data) override;
-	void add_mem_write_callback(mem_write_callback cb,
-				    void *data) override;
+	void add_mem_write_callback(mem_write_callback cb, void *data) override;
 
 	void mem_map(uint64_t guest_addr, size_t length, int prot, int flags,
 		     int fd = -1, off_t offset = 0) override;
@@ -44,8 +43,7 @@ class emu : public base_emu
 
 	const chunk &find_or_compile(size_t pc);
 	chunk compile(size_t pc);
-	chunk assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
-		       utils::label body_lbl);
+	chunk assemble(mach::target &target, mach::asm_function &f);
 
 	void add_with_carry32(uint32_t x, uint32_t y, int carry);
 	void add_with_carry64(uint64_t x, uint64_t y, int carry);

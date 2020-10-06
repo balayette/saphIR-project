@@ -1719,7 +1719,7 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 
 	auto frame = amd_target_->make_frame(
 		fmt::format("bb_{x}", bb.address()), {false},
-		{new types::pointer_ty(bank_type_)}, true);
+		{new types::pointer_ty(bank_type_)}, true, false);
 	frame->leaf_ = false;
 
 	bank_ = frame->formals()[0];

@@ -577,11 +577,11 @@ void translate_visitor::visit_decs(decs &s)
 
 	auto body = target_.make_seq(init_funs_);
 	utils::label ret_lbl = unique_label("init_vars_ret");
-	auto frame =
-		target_.make_frame(unique_label("init_vars"), {}, {}, false);
-	init_fun_ = new mach::fun_fragment(
-		frame->prepare_temps(body, ret_lbl), frame, ret_lbl,
-		unique_label("init_vars_epi"));
+	auto frame = target_.make_frame(unique_label("init_vars"), {}, {},
+					false);
+	init_fun_ = new mach::fun_fragment(frame->prepare_temps(body, ret_lbl),
+					   frame, ret_lbl,
+					   unique_label("init_vars_epi"));
 }
 
 void translate_visitor::visit_globaldec(globaldec &s)
@@ -607,9 +607,8 @@ void translate_visitor::visit_fundec(fundec &s)
 	}
 	auto body = target_.make_seq(stms);
 
-	funs_.emplace_back(s.frame_->prepare_temps(body, ret_lbl_),
-			   s.frame_, ret_lbl_,
-			   unique_label(s.name_.get() + "_epi"));
+	funs_.emplace_back(s.frame_->prepare_temps(body, ret_lbl_), s.frame_,
+			   ret_lbl_, unique_label(s.name_.get() + "_epi"));
 
 	ret_lbl_.leave();
 }

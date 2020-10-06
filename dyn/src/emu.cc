@@ -226,36 +226,23 @@ chunk emu::compile(size_t pc)
 
 	backend::regalloc::graph_alloc(instrs, ff);
 
-	auto ret = assemble(lifter_.amd64_target(), instrs, ff.body_lbl_);
+	auto f =
+		ff.frame_->make_asm_function(instrs, ff.body_lbl_, ff.epi_lbl_);
+
+	auto ret = assemble(lifter_.amd64_target(), f);
 	ret.insn_count = bb.size();
 	ret.symbol = bin_.symbolize_func(pc);
 
 	return ret;
 }
 
-chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
-		    utils::label body_lbl)
+chunk emu::assemble(mach::target &target, mach::asm_function &f)
 {
 	std::string text;
 
-	/*
-	 * FIXME: This sub $0x500, %rsp is the most disgusting hack I have
-	 * ever written in this project, fix ASAP.
-	 * Now that the basic blocks are not necessarily leaves (because of
-	 * callbacks), we actually need to reverse room on the stack for
-	 * locals and not just hope that the System-V red zone is enough.
-	 * This was already somewhat broken because, in theory, we could need
-	 * more stack space than what the System-V red zone affords us, and get
-	 * rekt by interrupt handlers.
-	 */
-	text += fmt::format(
-		"\tpush %rbp\n"
-		"\tmov %rsp, %rbp\n"
-		"\tsub $0x500, %rsp\n"
-		"\tjmp .L_{}\n",
-		body_lbl.get());
+	text += f.prologue_;
 
-	for (auto &i : instrs) {
+	for (auto &i : f.instrs_) {
 		if (i->repr().size() == 0)
 			continue;
 		if (!i.as<assem::label>())
@@ -265,9 +252,8 @@ chunk emu::assemble(mach::target &target, std::vector<assem::rinstr> &instrs,
 		}) + '\n';
 	}
 
-	text += fmt::format(
-		"\tleave\n"
-		"\tret\n");
+	text += f.epilogue_;
+	text += "\n";
 
 	uint8_t *out;
 	size_t size, count;
