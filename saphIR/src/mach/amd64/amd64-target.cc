@@ -9,9 +9,11 @@ namespace mach::amd64
 amd64_frame::amd64_frame(target &target, const symbol &s,
 			 const std::vector<bool> &args,
 			 std::vector<utils::ref<types::ty>> types,
-			 bool has_return)
-    : mach::frame(target, s, has_return), locals_size_(8), reg_count_(0),
-      canary_(alloc_local(true))
+			 bool has_return, bool needs_stack_protector)
+    : mach::frame(target, s, has_return),
+      locals_size_(needs_stack_protector ? 8 : 0), reg_count_(0),
+      canary_(needs_stack_protector ? alloc_local(true) : nullptr),
+      needs_stack_protector_(needs_stack_protector)
 {
 	/*
 	 * This struct contains a view of where the args should be when
@@ -115,16 +117,25 @@ amd64_frame::make_asm_function(std::vector<assem::rinstr> &instrs,
 		prologue += std::to_string(stack_space);
 		prologue += ", %rsp\n";
 	}
-	prologue += "\tmovq %fs:40, %r11\n";
-	prologue += "\tmovq %r11, -8(%rbp)\n";
-	prologue += "\txor %r11, %r11\n";
+
+	if (needs_stack_protector_) {
+		prologue += "\tmovq %fs:40, %r11\n";
+		prologue += "\tmovq %r11, -8(%rbp)\n";
+		prologue += "\txor %r11, %r11\n";
+	}
+
 	prologue += "\tjmp .L_" + body_lbl.get() + '\n';
 
-	std::string epilogue("\tmovq -8(%rbp), %r11\n");
-	epilogue += "\txorq %fs:40, %r11\n";
-	epilogue += "\tje .L_ok_" + epi_lbl.get() + "\n";
-	epilogue += "\tcall __stack_chk_fail@PLT\n";
-	epilogue += ".L_ok_" + epi_lbl.get() + ":\n";
+	std::string epilogue;
+
+	if (needs_stack_protector_) {
+		epilogue += "\tmovq -8(%rbp), %r11\n";
+		epilogue += "\txorq %fs:40, %r11\n";
+		epilogue += "\tje .L_ok_" + epi_lbl.get() + "\n";
+		epilogue += "\tcall __stack_chk_fail@PLT\n";
+		epilogue += ".L_ok_" + epi_lbl.get() + ":\n";
+	}
+
 	epilogue +=
 		"\tleave\n"
 		"\tret\n";
@@ -209,9 +220,10 @@ utils::ref<asm_generator> amd64_target::make_asm_generator()
 utils::ref<mach::frame>
 amd64_target::make_frame(const symbol &s, const std::vector<bool> &args,
 			 std::vector<utils::ref<types::ty>> types,
-			 bool has_return)
+			 bool has_return, bool needs_stack_protector)
 {
-	return new amd64_frame(*this, s, args, types, has_return);
+	return new amd64_frame(*this, s, args, types, has_return,
+			       needs_stack_protector);
 }
 
 utils::ref<access> amd64_target::alloc_global(const symbol &name,

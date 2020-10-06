@@ -125,8 +125,8 @@ struct target {
 
 	virtual utils::ref<frame>
 	make_frame(const symbol &s, const std::vector<bool> &args,
-		   std::vector<utils::ref<types::ty>> types,
-		   bool has_return) = 0;
+		   std::vector<utils::ref<types::ty>> types, bool has_return,
+		   bool needs_stack_protector = true) = 0;
 
 	virtual utils::ref<asm_generator> make_asm_generator() = 0;
 

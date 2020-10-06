@@ -15,7 +15,7 @@ struct aarch64_frame : public mach::frame {
 	virtual utils::ref<access> alloc_local(bool escapes) override;
 
 	virtual ir::tree::rstm prepare_temps(ir::tree::rstm s,
-						 utils::label ret_lbl) override;
+					     utils::label ret_lbl) override;
 
 	virtual void
 	add_live_registers(std::vector<assem::rinstr> &instrs) override;
@@ -60,8 +60,8 @@ struct aarch64_target : public mach::target {
 
 	virtual utils::ref<mach::frame>
 	make_frame(const symbol &s, const std::vector<bool> &args,
-		   std::vector<utils::ref<types::ty>> types,
-		   bool has_return) override;
+		   std::vector<utils::ref<types::ty>> types, bool has_return,
+		   bool needs_stack_protector) override;
 
 	virtual utils::ref<asm_generator> make_asm_generator() override;
 	virtual utils::ref<access>

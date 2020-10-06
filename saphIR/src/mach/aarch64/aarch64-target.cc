@@ -84,8 +84,11 @@ utils::ref<asm_generator> aarch64_target::make_asm_generator()
 utils::ref<mach::frame>
 aarch64_target::make_frame(const symbol &s, const std::vector<bool> &args,
 			   std::vector<utils::ref<types::ty>> types,
-			   bool has_return)
+			   bool has_return, bool needs_stack_protector)
 {
+	// XXX: aarch64 backend does not support stack protectors
+	(void)needs_stack_protector;
+
 	return new aarch64_frame(*this, s, args, types, has_return);
 }
 
@@ -127,7 +130,7 @@ utils::ref<access> aarch64_frame::alloc_local(bool escapes)
 }
 
 ir::tree::rstm aarch64_frame::prepare_temps(ir::tree::rstm s,
-						utils::label ret_lbl)
+					    utils::label ret_lbl)
 {
 	auto in_regs = args_regs();
 	auto *seq = target_.make_seq({});

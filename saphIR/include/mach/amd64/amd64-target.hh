@@ -22,14 +22,15 @@ namespace mach::amd64
 struct amd64_frame : public mach::frame {
 	amd64_frame(target &target_, const symbol &s,
 		    const std::vector<bool> &args,
-		    std::vector<utils::ref<types::ty>> types, bool has_return);
+		    std::vector<utils::ref<types::ty>> types, bool has_return,
+		    bool needs_stack_protector_ = true);
 
 	virtual utils::ref<access>
 	alloc_local(bool escapes, utils::ref<types::ty> ty) override;
 	virtual utils::ref<access> alloc_local(bool escapes) override;
 
 	virtual ir::tree::rstm prepare_temps(ir::tree::rstm s,
-						 utils::label ret_lbl) override;
+					     utils::label ret_lbl) override;
 
 	virtual void
 	add_live_registers(std::vector<assem::rinstr> &instrs) override;
@@ -42,6 +43,7 @@ struct amd64_frame : public mach::frame {
 	size_t locals_size_;
 	size_t reg_count_;
 	utils::ref<access> canary_;
+	bool needs_stack_protector_;
 
 	std::vector<utils::ref<access>> formals_;
 };
@@ -75,8 +77,8 @@ struct amd64_target : public mach::target {
 
 	virtual utils::ref<mach::frame>
 	make_frame(const symbol &s, const std::vector<bool> &args,
-		   std::vector<utils::ref<types::ty>> types,
-		   bool has_return) override;
+		   std::vector<utils::ref<types::ty>> types, bool has_return,
+		   bool needs_stack_protector) override;
 
 	virtual utils::ref<asm_generator> make_asm_generator() override;
 	virtual utils::ref<access>
