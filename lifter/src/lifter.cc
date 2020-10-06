@@ -1814,12 +1814,45 @@ void lifter::dispatch_mem_read_callback(uint64_t addr, uint64_t size)
 
 void lifter::add_mem_write_callback(mem_write_callback cb, void *user_data)
 {
-	mem_write_cbs_.emplace_back(cb, user_data);
+	auto needs_register = mem_write_cbs_.size() == 0;
+
+	mem_write_cbs_.push_back({cb, user_data});
+
+	if (!needs_register)
+		return;
+
+	auto c2 = amd_target_->make_cnst((uint64_t)write_cb);
+	c2->ty_ = new types::fun_ty(amd_target_->void_type(),
+				    {
+					    amd_target_->gpr_type(),
+					    amd_target_->gpr_type(),
+					    amd_target_->gpr_type(),
+					    amd_target_->gpr_type(),
+				    },
+				    false);
+
+	lifter_cb_.set_write_callback(c2);
 }
 
 void lifter::add_mem_read_callback(mem_read_callback cb, void *user_data)
 {
-	mem_read_cbs_.emplace_back(cb, user_data);
+	auto needs_register = mem_read_cbs_.size() == 0;
+
+	mem_read_cbs_.push_back({cb, user_data});
+
+	if (!needs_register)
+		return;
+
+	auto c2 = amd_target_->make_cnst((uint64_t)read_cb);
+	c2->ty_ = new types::fun_ty(amd_target_->void_type(),
+				    {
+					    amd_target_->gpr_type(),
+					    amd_target_->gpr_type(),
+					    amd_target_->gpr_type(),
+				    },
+				    false);
+
+	lifter_cb_.set_read_callback(c2);
 }
 
 lifter::lifter()
@@ -1863,27 +1896,5 @@ lifter::lifter()
 	bb_type_ =
 		new types::fun_ty(amd_target_->gpr_type(),
 				  {new types::pointer_ty(bank_type_)}, false);
-
-	auto c = amd_target_->make_cnst((uint64_t)write_cb);
-	c->ty_ = new types::fun_ty(amd_target_->void_type(),
-				   {
-					   amd_target_->gpr_type(),
-					   amd_target_->gpr_type(),
-					   amd_target_->gpr_type(),
-					   amd_target_->gpr_type(),
-				   },
-				   false);
-
-	auto c2 = amd_target_->make_cnst((uint64_t)read_cb);
-	c2->ty_ = new types::fun_ty(amd_target_->void_type(),
-				    {
-					    amd_target_->gpr_type(),
-					    amd_target_->gpr_type(),
-					    amd_target_->gpr_type(),
-				    },
-				    false);
-
-	lifter_cb_.set_write_callback(c);
-	lifter_cb_.set_read_callback(c2);
 }
 } // namespace lifter
