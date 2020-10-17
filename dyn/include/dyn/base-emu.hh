@@ -1,5 +1,7 @@
 #pragma once
 
+#include <fstream>
+
 #include "utils/fs.hh"
 #include "elf/elf.hh"
 #include "lifter/lifter.hh"
@@ -13,6 +15,32 @@
 
 namespace dyn
 {
+struct emu_params {
+	emu_params(bool singlestep = false,
+		   std::optional<std::string> coverage = std::nullopt,
+		   uint64_t stack_addr = DEFAULT_STACK_ADDR,
+		   uint64_t stack_sz = DEFAULT_STACK_SIZE,
+		   uint64_t brk_addr = DEFAULT_BRK_ADDR,
+		   uint64_t brk_sz = DEFAULT_BRK_SIZE,
+		   uint64_t mmap_addr = DEFAULT_MMAP_ADDR)
+	    : singlestep(singlestep), coverage(coverage),
+	      stack_addr(stack_addr), stack_sz(stack_sz), brk_addr(brk_addr),
+	      brk_sz(brk_sz), mmap_addr(mmap_addr)
+	{
+	}
+
+	bool singlestep;
+	std::optional<std::string> coverage;
+
+	uint64_t stack_addr;
+	uint64_t stack_sz;
+
+	uint64_t brk_addr;
+	uint64_t brk_sz;
+
+	uint64_t mmap_addr;
+};
+
 class base_emu
 {
       public:
@@ -21,8 +49,7 @@ class base_emu
 	using mem_read_callback = void (*)(uint64_t addr, uint64_t size,
 					   uint64_t val, void *user_data);
 
-	base_emu(utils::mapped_file &file, uint64_t brk_addr = DEFAULT_BRK_ADDR,
-		 uint64_t brk_sz = DEFAULT_BRK_SIZE);
+	base_emu(utils::mapped_file &file, const emu_params &p);
 	virtual ~base_emu() = default;
 
 	void setup();
@@ -102,5 +129,14 @@ class base_emu
 
 	std::vector<std::pair<mem_read_callback, void *>> mem_read_cbs_;
 	std::vector<std::pair<mem_write_callback, void *>> mem_write_cbs_;
+
+	/*
+	 * Should be called after executing an instructions / basic block,
+	 * handles coverage.
+	 */
+	virtual void coverage_hook(uint64_t pc);
+
+	bool coverage_;
+	std::ofstream coverage_file_;
 };
 } // namespace dyn

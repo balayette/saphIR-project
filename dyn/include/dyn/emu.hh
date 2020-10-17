@@ -20,11 +20,7 @@ struct chunk {
 class emu : public base_emu
 {
       public:
-	emu(utils::mapped_file &file, bool singlestep,
-	    uint64_t stack_addr = DEFAULT_STACK_ADDR,
-	    uint64_t stack_sz = DEFAULT_STACK_SIZE,
-	    uint64_t brk_addr = DEFAULT_BRK_ADDR,
-	    uint64_t brk_sz = DEFAULT_BRK_SIZE);
+	emu(utils::mapped_file &file, const emu_params &p);
 	virtual ~emu();
 
 	std::pair<uint64_t, size_t> singlestep() override;

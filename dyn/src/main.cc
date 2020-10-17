@@ -11,7 +11,8 @@ int main(int argc, char *argv[])
 	}
 
 	utils::mapped_file file(argv[1]);
-	dyn::emu emu(file, false);
+	// dyn::emu emu(file, dyn::emu_params(true, "lighthouse_out.txt"));
+	dyn::emu emu(file, dyn::emu_params(false));
 
 	emu.setup();
 	emu.run();

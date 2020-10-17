@@ -145,8 +145,10 @@ int main(int argc, char *argv[])
 
 	utils::mapped_file file(argv[1]);
 
-	dyn::unicorn_emu ref_emu(file);
-	dyn::emu emu(file, true);
+	dyn::emu_params p(true);
+
+	dyn::unicorn_emu ref_emu(file, p);
+	dyn::emu emu(file, p);
 	ASSERT(!state_divergence(ref_emu, emu), "State divergence at creation");
 
 	ref_emu.add_mem_read_callback(

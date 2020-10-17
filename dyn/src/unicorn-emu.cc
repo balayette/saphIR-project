@@ -16,22 +16,22 @@ void mem_cb(uc_engine *, uc_mem_type type, uint64_t address, int size,
 		UNREACHABLE("Unimplemented callback");
 }
 
-unicorn_emu::unicorn_emu(utils::mapped_file &file, uint64_t stack_addr,
-			 uint64_t stack_sz, uint64_t brk_addr, uint64_t brk_sz)
-    : base_emu(file, brk_addr, brk_sz)
+unicorn_emu::unicorn_emu(utils::mapped_file &file, const emu_params &p)
+    : base_emu(file, p)
 {
 	ASSERT(uc_open(UC_ARCH_ARM64, UC_MODE_ARM, &uc_) == UC_ERR_OK,
 	       "Couldn't init unicorn");
 
 	elf_map_ = map_elf();
 
-	ASSERT(uc_mem_map(uc_, stack_addr, stack_sz,
+	ASSERT(uc_mem_map(uc_, p.stack_addr, p.stack_sz,
 			  UC_PROT_READ | UC_PROT_WRITE)
 		       == UC_ERR_OK,
 	       "Couldn't map the stack");
-	ureg_write(UC_ARM64_REG_SP, stack_addr + stack_sz);
+	ureg_write(UC_ARM64_REG_SP, p.stack_addr + p.stack_sz);
 
-	ASSERT(uc_mem_map(uc_, brk_addr, brk_sz, UC_PROT_READ | UC_PROT_WRITE)
+	ASSERT(uc_mem_map(uc_, p.brk_addr, p.brk_sz,
+			  UC_PROT_READ | UC_PROT_WRITE)
 		       == UC_ERR_OK,
 	       "Couldn't map the brk");
 

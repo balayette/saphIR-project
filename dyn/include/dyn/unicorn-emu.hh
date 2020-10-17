@@ -8,11 +8,7 @@ namespace dyn
 class unicorn_emu : public base_emu
 {
       public:
-	unicorn_emu(utils::mapped_file &file,
-		    uint64_t stack_addr = DEFAULT_STACK_ADDR,
-		    uint64_t stack_sz = DEFAULT_STACK_SIZE,
-		    uint64_t brk_addr = DEFAULT_BRK_ADDR,
-		    uint64_t brk_sz = DEFAULT_BRK_SIZE);
+	unicorn_emu(utils::mapped_file &file, const emu_params &p);
 	virtual ~unicorn_emu() = default;
 
 	std::pair<uint64_t, size_t> singlestep() override;

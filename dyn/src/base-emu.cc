@@ -18,10 +18,13 @@ extern char **environ;
 
 namespace dyn
 {
-base_emu::base_emu(utils::mapped_file &file, uint64_t brk_addr, uint64_t brk_sz)
-    : file_(file), bin_(file), brk_addr_(brk_addr), curr_brk_(brk_addr_),
-      brk_sz_(brk_sz), exited_(false)
+base_emu::base_emu(utils::mapped_file &file, const emu_params &p)
+    : file_(file), bin_(file), brk_addr_(p.brk_addr), curr_brk_(p.brk_addr),
+      brk_sz_(p.brk_sz), mmap_offt_(p.mmap_addr), exited_(false),
+      coverage_(p.coverage != std::nullopt)
 {
+	if (coverage_)
+		coverage_file_ = std::ofstream(*p.coverage);
 }
 
 void base_emu::setup()
@@ -340,5 +343,13 @@ void base_emu::dispatch_write_cb(uint64_t address, uint64_t size, uint64_t val)
 {
 	for (const auto &[f, p] : mem_read_cbs_)
 		f(address, size, val, p);
+}
+
+void base_emu::coverage_hook(uint64_t pc)
+{
+	if (!coverage_)
+		return;
+
+	coverage_file_ << fmt::format("{:#x}\n", pc);
 }
 } // namespace dyn

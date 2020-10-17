@@ -27,9 +27,8 @@ extern char **environ;
 
 namespace dyn
 {
-emu::emu(utils::mapped_file &file, bool singlestep, uint64_t stack_addr,
-	 uint64_t stack_sz, uint64_t brk_addr, uint64_t brk_sz)
-    : base_emu(file, brk_addr, brk_sz), disas_(lifter::disas(singlestep))
+emu::emu(utils::mapped_file &file, const emu_params &p)
+    : base_emu(file, p), disas_(p.singlestep)
 {
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
 	       "Couldn't init keystone");
@@ -39,10 +38,10 @@ emu::emu(utils::mapped_file &file, bool singlestep, uint64_t stack_addr,
 	state_.nzcv = lifter::Z;
 	state_.tpidr_el0 = 0;
 
-	stack_ = mmap((void *)stack_addr, stack_sz, PROT_READ | PROT_WRITE,
+	stack_ = mmap((void *)p.stack_addr, p.stack_sz, PROT_READ | PROT_WRITE,
 		      MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
-	stack_sz_ = stack_sz;
-	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + stack_sz;
+	stack_sz_ = p.stack_sz;
+	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + stack_sz_;
 
 	ASSERT(mmap((void *)brk_addr_, brk_sz_, PROT_READ | PROT_WRITE,
 		    MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1,
@@ -138,6 +137,7 @@ std::pair<uint64_t, size_t> emu::singlestep()
 	fmt::print(state_dump());
 #endif
 
+	coverage_hook(pc_);
 	return std::make_pair(next, chunk.insn_count);
 }
 
