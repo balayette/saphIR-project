@@ -11,6 +11,8 @@ class unicorn_emu : public base_emu
 	unicorn_emu(utils::mapped_file &file, const emu_params &p);
 	virtual ~unicorn_emu() = default;
 
+	virtual void reset() override;
+
 	std::pair<uint64_t, size_t> singlestep() override;
 
 	void add_mem_read_callback(mem_read_callback cb, void *data) override;

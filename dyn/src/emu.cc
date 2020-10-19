@@ -34,31 +34,14 @@ emu::emu(utils::mapped_file &file, const emu_params &p)
 	       "Couldn't init keystone");
 	ks_option(ks_, KS_OPT_SYNTAX, KS_OPT_SYNTAX_ATT);
 
-	std::memset(state_.regs, 0, sizeof(state_.regs));
-	state_.nzcv = lifter::Z;
-	state_.tpidr_el0 = 0;
-
-	stack_ = mmap((void *)p.stack_addr, p.stack_sz, PROT_READ | PROT_WRITE,
-		      MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
-	stack_sz_ = p.stack_sz;
-	state_.regs[mach::aarch64::regs::SP] = (size_t)stack_ + stack_sz_;
-
-	ASSERT(mmap((void *)brk_addr_, brk_sz_, PROT_READ | PROT_WRITE,
-		    MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1,
-		    0) != MAP_FAILED,
-	       "Couldn't map brk'");
-
 	auto [elf_map, size] = elf::map_elf(bin_, file_);
 	elf_map_ = elf_map;
 	elf_map_sz_ = size;
-
-	pc_ = bin_.ehdr().entry();
 }
 
 emu::~emu()
 {
 	ks_close(ks_);
-	munmap(stack_, stack_sz_);
 
 	for (const auto &[_, v] : bb_cache_)
 		munmap(v.map, v.size);

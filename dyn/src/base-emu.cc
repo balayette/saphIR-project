@@ -19,12 +19,43 @@ extern char **environ;
 namespace dyn
 {
 base_emu::base_emu(utils::mapped_file &file, const emu_params &p)
-    : file_(file), bin_(file), brk_addr_(p.brk_addr), curr_brk_(p.brk_addr),
-      brk_sz_(p.brk_sz), mmap_offt_(p.mmap_addr), exited_(false),
+    : file_(file), bin_(file), stack_addr_(p.stack_addr), stack_sz_(p.stack_sz),
+      brk_addr_(p.brk_addr), curr_brk_(p.brk_addr), brk_sz_(p.brk_sz),
+      mmap_base_(p.mmap_addr), mmap_offt_(p.mmap_addr), exited_(false),
       coverage_(p.coverage != std::nullopt)
 {
 	if (coverage_)
 		coverage_file_ = std::ofstream(*p.coverage);
+}
+
+void base_emu::init()
+{
+	mem_map(stack_addr_, stack_sz_, PROT_READ | PROT_WRITE,
+		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+
+	mem_map(brk_addr_, brk_sz_, PROT_READ | PROT_WRITE,
+		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+
+	reset();
+}
+
+void base_emu::reset()
+{
+	exited_ = false;
+
+	std::memset(state_.regs, 0, sizeof(state_.regs));
+	state_.nzcv = lifter::Z;
+	state_.tpidr_el0 = 0;
+
+	mem_set(stack_addr_, 0, stack_sz_);
+	state_.regs[mach::aarch64::regs::SP] = stack_addr_ + stack_sz_;
+
+	mem_set(brk_addr_, 0, brk_sz_);
+	curr_brk_ = brk_addr_;
+
+	mmap_offt_ = mmap_base_;
+
+	pc_ = bin_.ehdr().entry();
 }
 
 void base_emu::setup()
@@ -112,6 +143,12 @@ uint64_t base_emu::push(const void *data, size_t sz)
 	reg_write(mach::aarch64::regs::SP, sp);
 
 	return sp;
+}
+
+void base_emu::mem_set(uint64_t guest_addr, int val, size_t sz)
+{
+	for (size_t i = 0; i < sz; i++)
+		mem_write(guest_addr + i, &val, 1);
 }
 
 void base_emu::reg_write(mach::aarch64::regs r, uint64_t val)

@@ -52,7 +52,25 @@ class base_emu
 	base_emu(utils::mapped_file &file, const emu_params &p);
 	virtual ~base_emu() = default;
 
+	/*
+	 * Bare minimum initialization of the emulator
+	 * - Map the stack
+	 * - Map the brk
+	 */
+	void init();
+	/*
+	 * Reset the emulator state
+	 * - Zeroes the stack (does not unmap it)
+	 * - Zeroes the brk and resets curr_brk_ (does not unmap it)
+	 * - Unmaps all mapped pages
+	 * - Resets the registers, sets pc to the entry point
+	 *
+	 * XXX: does not close all file descriptors created by open(), because
+	 * we simply forward syscalls.
+	 */
+	virtual void reset();
 	void setup();
+
 	virtual std::pair<uint64_t, size_t> singlestep() = 0;
 	virtual void run();
 
@@ -77,6 +95,7 @@ class base_emu
 	virtual void mem_write(uint64_t guest_addr, const void *src,
 			       size_t sz) = 0;
 	virtual void mem_read(void *dst, uint64_t guest_addr, size_t sz) = 0;
+	virtual void mem_set(uint64_t guest_addr, int val, size_t sz);
 
 	virtual void align_stack(size_t align);
 	virtual uint64_t push(size_t val);
@@ -115,10 +134,14 @@ class base_emu
 
 	void *elf_map_;
 
+	uint64_t stack_addr_;
+	uint64_t stack_sz_;
+
 	uint64_t brk_addr_;
 	uint64_t curr_brk_;
 	size_t brk_sz_;
 
+	uint64_t mmap_base_;
 	uint64_t mmap_offt_;
 
 	lifter::state state_;

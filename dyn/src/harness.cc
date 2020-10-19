@@ -149,7 +149,6 @@ int main(int argc, char *argv[])
 
 	dyn::unicorn_emu ref_emu(file, p);
 	dyn::emu emu(file, p);
-	ASSERT(!state_divergence(ref_emu, emu), "State divergence at creation");
 
 	ref_emu.add_mem_read_callback(
 		[](uint64_t address, uint64_t size, uint64_t val, void *) {
@@ -172,45 +171,54 @@ int main(int argc, char *argv[])
 		},
 		nullptr);
 
-	ref_emu.setup();
-	emu.setup();
-	ASSERT(!state_divergence(ref_emu, emu), "State divergence at setup");
+	ref_emu.init();
+	emu.init();
 
-	for (int i = 0; i < 10000000; i++) {
-		auto curr_pc = ref_emu.pc();
+	while (1) {
+		ref_emu.setup();
+		emu.setup();
+		ASSERT(!state_divergence(ref_emu, emu),
+		       "State divergence at setup");
 
-		auto [emu_pc, _] = emu.singlestep();
-		auto [ref_pc, __] = ref_emu.singlestep();
+		for (int i = 0; i < 10000000; i++) {
+			auto curr_pc = ref_emu.pc();
 
-		emu.set_pc(emu_pc);
-		ref_emu.set_pc(ref_pc);
+			auto [emu_pc, _] = emu.singlestep();
+			auto [ref_pc, __] = ref_emu.singlestep();
 
-		if (!state_divergence(ref_emu, emu))
-			fmt::print("{:#018x} - OK\n", curr_pc);
-		else {
-			fmt::print(
-				"State divergence after {} instructions @ {:#x}! Next instruction: {:#x}\n",
-				i, curr_pc, ref_pc);
-			fmt::print("Reference state:\n");
-			fmt::print(ref_emu.state_dump());
-			fmt::print("Emulator state:\n");
-			fmt::print(emu.state_dump());
-			break;
+			emu.set_pc(emu_pc);
+			ref_emu.set_pc(ref_pc);
+
+			if (!state_divergence(ref_emu, emu))
+				fmt::print("{:#018x} - OK\n", curr_pc);
+			else {
+				fmt::print(
+					"State divergence after {} instructions @ {:#x}! Next instruction: {:#x}\n",
+					i, curr_pc, ref_pc);
+				fmt::print("Reference state:\n");
+				fmt::print(ref_emu.state_dump());
+				fmt::print("Emulator state:\n");
+				fmt::print(emu.state_dump());
+				break;
+			}
+
+			if (emu.exited() || ref_emu.exited()) {
+				ASSERT(emu.exited() == ref_emu.exited(),
+				       "Both did not exit");
+				ASSERT(emu.exit_code() == ref_emu.exit_code(),
+				       "Exited with different exit codes");
+				fmt::print("Exited with code {}\n",
+					   ref_emu.exit_code());
+				break;
+			}
+
+			ref_rd.clear();
+			emu_rd.clear();
+			ref_wr.clear();
+			emu_wr.clear();
 		}
 
-		if (emu.exited() || ref_emu.exited()) {
-			ASSERT(emu.exited() == ref_emu.exited(),
-			       "Both did not exit");
-			ASSERT(emu.exit_code() == ref_emu.exit_code(),
-			       "Exited with different exit codes");
-			fmt::print("Exited with code {}\n",
-				   ref_emu.exit_code());
-			break;
-		}
-
-		ref_rd.clear();
-		emu_rd.clear();
-		ref_wr.clear();
-		emu_wr.clear();
+		ref_emu.reset();
+		emu.reset();
 	}
 }

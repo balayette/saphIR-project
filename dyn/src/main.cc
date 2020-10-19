@@ -52,6 +52,13 @@ int main(int argc, char *argv[])
 	utils::mapped_file file(opts.binary);
 	dyn::emu emu(file,
 		     dyn::emu_params(opts.singlestep, opts.coverage_file));
+	emu.init();
+	emu.setup();
+	emu.run();
+
+	fmt::print("\n\n\n----\n\n\n");
+
+	emu.reset();
 	emu.setup();
 	emu.run();
 }

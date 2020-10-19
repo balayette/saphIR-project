@@ -51,8 +51,6 @@ class emu : public base_emu
 	lifter::lifter lifter_;
 	lifter::disas disas_;
 
-	void *stack_;
-	size_t stack_sz_;
 	size_t elf_map_sz_;
 
 	std::unordered_map<size_t, chunk> bb_cache_;

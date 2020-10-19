@@ -23,24 +23,12 @@ unicorn_emu::unicorn_emu(utils::mapped_file &file, const emu_params &p)
 	       "Couldn't init unicorn");
 
 	elf_map_ = map_elf();
+}
 
-	ASSERT(uc_mem_map(uc_, p.stack_addr, p.stack_sz,
-			  UC_PROT_READ | UC_PROT_WRITE)
-		       == UC_ERR_OK,
-	       "Couldn't map the stack");
-	ureg_write(UC_ARM64_REG_SP, p.stack_addr + p.stack_sz);
-
-	ASSERT(uc_mem_map(uc_, p.brk_addr, p.brk_sz,
-			  UC_PROT_READ | UC_PROT_WRITE)
-		       == UC_ERR_OK,
-	       "Couldn't map the brk");
-
-	ureg_write(UC_ARM64_REG_NZCV, lifter::Z << 28);
-	unicorn_to_state();
-
-	state_.tpidr_el0 = 0;
-
-	pc_ = bin_.ehdr().entry();
+void unicorn_emu::reset()
+{
+	base_emu::reset();
+	state_to_unicorn();
 }
 
 void unicorn_emu::add_mem_read_callback(mem_read_callback cb, void *data)
