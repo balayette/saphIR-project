@@ -26,13 +26,17 @@ bool mmu::map_addr(vaddr_t start, size_t sz, int prots)
 	auto overlap = overlaps(start, sz);
 	ASSERT(overlap == ranges_.end(), "Overlapping allocation");
 
-	mmu_range r(start, sz, prots);
+	for (vaddr_t address = start; address < start + sz;
+	     address += MMU_PAGE_SZ) {
+		mmu_page r(address, prots);
 
-	ranges_.insert(std::upper_bound(ranges_.begin(), ranges_.end(), r,
-					[](const auto &a, const auto &b) {
-						return a.start() < b.start();
-					}),
-		       r);
+		ranges_.insert(
+			std::upper_bound(ranges_.begin(), ranges_.end(), r,
+					 [](const auto &a, const auto &b) {
+						 return a.start() < b.start();
+					 }),
+			r);
+	}
 
 	curr_sz_ += sz;
 
@@ -95,7 +99,7 @@ void mmu::reset(const mmu &base)
 	ranges_.clear();
 
 	for (const auto &r : base.ranges_) {
-		mmu_range nrange(r.start(), r.size(), r.prots());
+		mmu_page nrange(r.start(), r.prots());
 		std::memcpy(nrange.data(), r.data(), r.size());
 		ranges_.push_back(nrange);
 	}

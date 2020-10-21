@@ -11,16 +11,18 @@ namespace dyn
 {
 using vaddr_t = std::uintptr_t;
 
-class mmu_range
+#define MMU_PAGE_SZ (4096)
+
+class mmu_page
 {
       public:
-	mmu_range(vaddr_t start, size_t sz, int prots)
-	    : start_(start), sz_(sz), end_(start_ + sz_ - 1), prots_(prots),
-	      data_(new uint8_t[sz_]), dirty_(false)
+	mmu_page(vaddr_t start, int prots)
+	    : start_(start), end_(start_ + MMU_PAGE_SZ - 1), prots_(prots),
+	      data_(new uint8_t[MMU_PAGE_SZ]), dirty_(false)
 	{
 	}
 
-	size_t size() const { return sz_; }
+	size_t size() const { return MMU_PAGE_SZ; }
 	vaddr_t start() const { return start_; }
 	vaddr_t end() const { return end_; }
 	int prots() const { return prots_; }
@@ -32,22 +34,20 @@ class mmu_range
 	std::string to_string() const
 	{
 		return fmt::format("[{:#x} => {:#x} ({:#x}) {}]", start_, end_,
-				   sz_, dirty_ ? 'D' : 'C');
+				   MMU_PAGE_SZ, dirty_ ? 'D' : 'C');
 	}
 
-	mmu_range cow() const
+	mmu_page cow() const
 	{
-		fmt::print("CoW of range {:#x} {:#x}\n", start_, end_);
-		mmu_range ret(start_, sz_, prots_);
+		mmu_page ret(start_, prots_);
 		ret.dirty_ = true;
-		std::memcpy(ret.data(), &data_, sz_);
+		std::memcpy(ret.data(), &data_, MMU_PAGE_SZ);
 
 		return ret;
 	}
 
       private:
 	vaddr_t start_;
-	size_t sz_;
 	vaddr_t end_;
 
 	int prots_;
@@ -60,8 +60,8 @@ class mmu_range
 class mmu
 {
       private:
-	using mmu_const_it = std::vector<mmu_range>::const_iterator;
-	using mmu_it = std::vector<mmu_range>::iterator;
+	using mmu_const_it = std::vector<mmu_page>::const_iterator;
+	using mmu_it = std::vector<mmu_page>::iterator;
 
       public:
 	mmu(size_t mem_sz) : mem_sz_(mem_sz), curr_sz_(0) {}
@@ -102,7 +102,7 @@ class mmu
 	size_t mem_sz_;
 	size_t curr_sz_;
 
-	std::vector<mmu_range> ranges_;
+	std::vector<mmu_page> ranges_;
 };
 } // namespace dyn
 
