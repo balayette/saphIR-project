@@ -30,11 +30,21 @@ add_executable(dyn
         src/main.cc
 )
 
+add_executable(fuzzer
+	src/fuzzer.cc
+)
+
 add_executable(harness
         src/harness.cc
 )
 
 target_link_libraries(dyn
+        PRIVATE
+                emu
+                utils
+)
+
+target_link_libraries(fuzzer
         PRIVATE
                 emu
                 utils
