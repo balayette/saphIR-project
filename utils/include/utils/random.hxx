@@ -9,8 +9,7 @@ namespace utils
 {
 template <typename T> T rand(T low, T high)
 {
-        // XXX: Making this static somehow breaks register allocation...
-	std::mt19937 gen(1);
+	static std::mt19937 gen(1);
 
 	std::uniform_int_distribution<T> dis(low, high);
 
