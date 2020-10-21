@@ -1,41 +1,35 @@
 #include "dyn/mmu.hh"
 #include "utils/assert.hh"
+#include "utils/misc.hh"
 #include <fstream>
 
 namespace dyn
 {
 mmu::mmu_it mmu::overlaps(vaddr_t start, size_t sz)
 {
-	vaddr_t end = start + sz - 1;
+	ASSERT(start % MMU_PAGE_SZ == 0, "Address must be aligned");
 
-	for (auto it = ranges_.begin(); it != ranges_.end(); it++) {
-		if (start <= it->end() && it->start() <= end)
+	for (vaddr_t addr = start; addr < start + sz; addr += MMU_PAGE_SZ) {
+		auto it = pages_.find(addr);
+		if (it != pages_.end())
 			return it;
 	}
 
-	return ranges_.end();
+	return pages_.end();
 }
 
 bool mmu::map_addr(vaddr_t start, size_t sz, int prots)
 {
-	fmt::print("Mappping {:#x} {:#x} {:#x}\n", start, sz,
-		   mem_sz_ - curr_sz_);
 	ASSERT(curr_sz_ + sz <= mem_sz_, "out of memory, would need {:#x}",
 	       curr_sz_ + sz);
 
+	start = ROUND_DOWN(start, MMU_PAGE_SZ);
 	auto overlap = overlaps(start, sz);
-	ASSERT(overlap == ranges_.end(), "Overlapping allocation");
+	ASSERT(overlap == pages_.end(), "Overlapping allocation");
 
 	for (vaddr_t address = start; address < start + sz;
 	     address += MMU_PAGE_SZ) {
-		mmu_page r(address, prots);
-
-		ranges_.insert(
-			std::upper_bound(ranges_.begin(), ranges_.end(), r,
-					 [](const auto &a, const auto &b) {
-						 return a.start() < b.start();
-					 }),
-			r);
+		pages_[address] = mmu_page(address, prots);
 	}
 
 	curr_sz_ += sz;
@@ -46,19 +40,21 @@ bool mmu::map_addr(vaddr_t start, size_t sz, int prots)
 void mmu::read(uint8_t *dest, vaddr_t addr, size_t sz)
 {
 	while (sz) {
-		auto range = overlaps(addr, sz);
+		auto it = overlaps(ROUND_DOWN(addr, MMU_PAGE_SZ), sz);
 
-		ASSERT(range != ranges_.end(),
+		ASSERT(it != pages_.end(),
 		       "Read of size {} unmapped at address {:#x}", sz, addr);
-		ASSERT(range->start() <= addr,
+
+		auto &range = it->second;
+		ASSERT(range.start() <= addr,
 		       "Read of size {} at address {:#x} underflows", sz, addr);
 
-		size_t skip = addr - range->start();
-		size_t to_copy = std::min(sz, range->size() - skip);
+		size_t skip = addr - range.start();
+		size_t to_copy = std::min(sz, range.size() - skip);
 
-		std::memcpy(dest, range->data() + skip, to_copy);
+		std::memcpy(dest, range.data() + skip, to_copy);
 
-		addr = range->end() + 1;
+		addr = range.end() + 1;
 		sz -= to_copy;
 		dest += to_copy;
 	}
@@ -67,11 +63,13 @@ void mmu::read(uint8_t *dest, vaddr_t addr, size_t sz)
 void mmu::write(vaddr_t addr, const uint8_t *src, size_t sz)
 {
 	while (sz) {
-		auto range = overlaps(addr, sz);
+		auto it = overlaps(ROUND_DOWN(addr, MMU_PAGE_SZ), sz);
 
-		ASSERT(range != ranges_.end(),
+		ASSERT(it != pages_.end(),
 		       "Write of size {} unmapped at address {:#x}", sz, addr);
-		ASSERT(range->start() <= addr,
+
+		auto &range = it->second;
+		ASSERT(range.start() <= addr,
 		       "Write of size {} at address {:#x} underflows", sz,
 		       addr);
 
@@ -79,15 +77,15 @@ void mmu::write(vaddr_t addr, const uint8_t *src, size_t sz)
 		 * If we are writing to a range that was not modified before,
 		 * CoW
 		 */
-		if (!range->dirty())
-			*range = range->cow();
+		if (!range.dirty())
+			range = range.cow();
 
-		size_t skip = addr - range->start();
-		size_t to_copy = std::min(sz, range->size() - skip);
+		size_t skip = addr - range.start();
+		size_t to_copy = std::min(sz, range.size() - skip);
 
-		std::memcpy(range->data() + skip, src, to_copy);
+		std::memcpy(range.data() + skip, src, to_copy);
 
-		addr = range->end() + 1;
+		addr = range.end() + 1;
 		sz -= to_copy;
 		src += to_copy;
 	}
@@ -96,12 +94,21 @@ void mmu::write(vaddr_t addr, const uint8_t *src, size_t sz)
 void mmu::reset(const mmu &base)
 {
 	curr_sz_ = base.curr_sz_;
-	ranges_.clear();
 
-	for (const auto &r : base.ranges_) {
-		mmu_page nrange(r.start(), r.prots());
-		std::memcpy(nrange.data(), r.data(), r.size());
-		ranges_.push_back(nrange);
+	for (auto it = pages_.begin(); it != pages_.end();) {
+		if (it->second.is_new())
+			it = pages_.erase(it);
+		else
+			++it;
+	}
+
+	for (auto &[addr, page] : pages_) {
+		if (!page.dirty())
+			continue;
+
+		const auto &base_page = base.pages_.find(addr);
+		page.set_dirty(false);
+		std::memcpy(page.data(), base_page->second.data(), page.size());
 	}
 }
 
@@ -109,7 +116,7 @@ void mmu::dump_memory(const std::string &fname) const
 {
 	std::ofstream file(fname);
 
-	for (const auto &r : ranges_) {
+	for (const auto &[_, r] : pages_) {
 		auto *data = r.data();
 		size_t sz = r.size();
 
