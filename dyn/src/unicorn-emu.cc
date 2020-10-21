@@ -3,14 +3,17 @@
 
 namespace dyn
 {
-void mem_cb(uc_engine *, uc_mem_type type, uint64_t address, int size,
+void mem_cb(uc_engine *uc, uc_mem_type type, uint64_t address, int size,
 	    int64_t value, void *user_data)
 {
 	auto *emu = static_cast<unicorn_emu *>(user_data);
 
-	if (type == UC_MEM_READ)
-		emu->dispatch_read_cb(address, size);
-	else if (type == UC_MEM_WRITE)
+
+	if (type == UC_MEM_READ) {
+		ASSERT(uc_mem_read(uc, address, &value, size) == UC_ERR_OK,
+		       "Couldn't read");
+		emu->dispatch_read_cb(address, size, value);
+	} else if (type == UC_MEM_WRITE)
 		emu->dispatch_write_cb(address, size, value);
 	else
 		UNREACHABLE("Unimplemented callback");
@@ -181,42 +184,5 @@ void unicorn_emu::state_to_unicorn()
 
 	ureg_write(UC_ARM64_REG_NZCV, state_.nzcv << 28);
 	ureg_write(UC_ARM64_REG_TPIDR_EL0, state_.tpidr_el0);
-}
-
-void *unicorn_emu::map_elf()
-{
-	size_t min = ~0;
-	size_t max = 0;
-
-	for (const auto &segment : bin_.phdrs()) {
-		if (segment.type() != PT_LOAD)
-			continue;
-		if (segment.vaddr() < min)
-			min = segment.vaddr();
-		if (segment.vaddr() + segment.memsz() > max)
-			max = segment.vaddr() + segment.memsz();
-	}
-
-	min = ROUND_DOWN(min, 4096);
-	max = ROUND_UP(max, 4096);
-	size_t size = max - min;
-	size_t map = min;
-
-	ASSERT(uc_mem_map(uc_, min, size, UC_PROT_ALL) == UC_ERR_OK,
-	       "Couldn't map elf binary in Unicorn");
-
-	for (const auto &segment : bin_.phdrs()) {
-		if (segment.type() != PT_LOAD)
-			continue;
-
-		auto contents = segment.contents(file_).data();
-
-		ASSERT(uc_mem_write(uc_, map + (segment.vaddr() - min),
-				    contents, segment.filesz())
-			       == UC_ERR_OK,
-		       "Couldn't copy contents of segment");
-	}
-
-	return (void *)map;
 }
 } // namespace dyn

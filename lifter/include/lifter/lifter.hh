@@ -8,11 +8,12 @@
 #include "ir/ir.hh"
 #include "utils/ref.hh"
 #include "lifter/disas.hh"
-#include "lifter/lifter-callbacks.hh"
 
 namespace lifter
 {
 using flag_update_fn = void (*)(uint64_t flag);
+using store_fun_fn = void (*)(void *, uint64_t, uint64_t, size_t);
+using load_fun_fn = uint64_t (*)(void *, uint64_t, size_t);
 
 constexpr uint64_t N = 0b1000;
 constexpr uint64_t Z = 0b0100;
@@ -42,32 +43,32 @@ struct state {
 	uint64_t flag_op;
 	uint64_t exit_reason;
 	uint64_t tpidr_el0;
+
+	/*
+	 * store_fun(emu, addr, val, sz)
+	 * load_fun(emu, addr, sz);
+	 */
+	void *emu;
+	store_fun_fn store_fun;
+	load_fun_fn load_fun;
 };
 
 class lifter
 {
       public:
-	using mem_write_callback = void (*)(uint64_t addr, uint64_t size,
-					    uint64_t val, void *user_data);
-	using mem_read_callback = void (*)(uint64_t addr, uint64_t size,
-					   void *user_data);
-
 	lifter();
 	mach::fun_fragment lift(const disas_bb &bb);
 
 	mach::amd64::amd64_target &amd64_target() { return *amd_target_; }
 	mach::aarch64::aarch64_target &aarch64_target() { return *arm_target_; }
 
-	void add_mem_write_callback(mem_write_callback cb, void *user_data);
-	void add_mem_read_callback(mem_read_callback cb, void *user_data);
-
-	void dispatch_mem_write_callback(uint64_t addr, uint64_t size,
-					 uint64_t val);
-	void dispatch_mem_read_callback(uint64_t addr, uint64_t size);
-
       private:
 	ir::tree::rstm lift(const disas_insn &insn);
 	ir::tree::rstm lifter_move(ir::tree::rexp d, ir::tree::rexp s);
+	ir::tree::rexp translate_load(ir::tree::rexp addr, size_t sz,
+				      types::signedness sign);
+	ir::tree::rstm translate_store(ir::tree::rexp addr,
+				       ir::tree::rexp value, size_t sz);
 	ir::tree::rexp translate_gpr(arm64_reg r, bool force_size,
 				     size_t forced, types::signedness sign);
 	ir::tree::rexp translate_mem_op(arm64_op_mem r, size_t sz,
@@ -268,9 +269,5 @@ class lifter
 	utils::ref<types::ty> update_flags_ty_;
 
 	std::array<utils::temp, 32> regs_;
-
-	lifter_callbacks lifter_cb_;
-	std::vector<std::pair<mem_write_callback, void *>> mem_write_cbs_;
-	std::vector<std::pair<mem_read_callback, void *>> mem_read_cbs_;
 };
 } // namespace lifter

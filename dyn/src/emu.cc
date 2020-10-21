@@ -28,15 +28,26 @@ extern char **environ;
 namespace dyn
 {
 emu::emu(utils::mapped_file &file, const emu_params &p)
-    : base_emu(file, p), disas_(p.singlestep)
+    : base_emu(file, p), disas_(p.singlestep), mmu_(2000000)
 {
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
 	       "Couldn't init keystone");
 	ks_option(ks_, KS_OPT_SYNTAX, KS_OPT_SYNTAX_ATT);
 
-	auto [elf_map, size] = elf::map_elf(bin_, file_);
-	elf_map_ = elf_map;
-	elf_map_sz_ = size;
+	elf_map_ = map_elf();
+	std::cout << mmu_.to_string();
+
+	state_.emu = this;
+
+	state_.store_fun = [](auto *emu, auto addr, auto val, auto sz) {
+		auto *t = static_cast<dyn::emu *>(emu);
+		t->handle_store(addr, val, sz);
+	};
+
+	state_.load_fun = [](auto *emu, auto addr, auto sz) {
+		auto *t = static_cast<dyn::emu *>(emu);
+		return t->handle_load(addr, sz);
+	};
 }
 
 emu::~emu()
@@ -47,43 +58,44 @@ emu::~emu()
 		munmap(v.map, v.size);
 }
 
-static void mem_read_cb(uint64_t address, uint64_t size, void *data)
+void emu::handle_store(uint64_t addr, uint64_t val, size_t sz)
 {
-	emu *e = static_cast<emu *>(data);
+	dispatch_write_cb(addr, sz, val);
 
-	e->dispatch_read_cb(address, size);
+	if (sz == 1)
+		mmu_.write<uint8_t>(addr, val);
+	else if (sz == 2)
+		mmu_.write<uint16_t>(addr, val);
+	else if (sz == 4)
+		mmu_.write<uint32_t>(addr, val);
+	else if (sz == 8)
+		mmu_.write<uint64_t>(addr, val);
+	else
+		UNREACHABLE("Store size is {}", sz);
 }
 
-static void mem_write_cb(uint64_t address, uint64_t size, uint64_t val,
-			 void *data)
+uint64_t emu::handle_load(uint64_t addr, size_t sz)
 {
-	emu *e = static_cast<emu *>(data);
+	uint64_t val;
+	if (sz == 1)
+		val = mmu_.read<uint8_t>(addr);
+	else if (sz == 2)
+		val = mmu_.read<uint16_t>(addr);
+	else if (sz == 4)
+		val = mmu_.read<uint32_t>(addr);
+	else if (sz == 8)
+		val = mmu_.read<uint64_t>(addr);
+	else
+		UNREACHABLE("Load size is {}", sz);
 
-	e->dispatch_write_cb(address, size, val);
+	dispatch_read_cb(addr, sz, val);
+	return val;
 }
 
-void emu::add_mem_read_callback(mem_read_callback cb, void *data)
+void emu::reset_with_mmu(const dyn::mmu &base)
 {
-	auto needs_register = mem_read_cbs_.size() == 0;
-
-	mem_read_cbs_.push_back({cb, data});
-
-	if (!needs_register)
-		return;
-
-	lifter_.add_mem_read_callback(mem_read_cb, this);
-}
-
-void emu::add_mem_write_callback(mem_write_callback cb, void *data)
-{
-	auto needs_register = mem_write_cbs_.size() == 0;
-
-	mem_write_cbs_.push_back({cb, data});
-
-	if (!needs_register)
-		return;
-
-	lifter_.add_mem_write_callback(mem_write_cb, this);
+	base_emu::reset();
+	mmu_.reset(base);
 }
 
 std::pair<uint64_t, size_t> emu::singlestep()
@@ -100,7 +112,7 @@ std::pair<uint64_t, size_t> emu::singlestep()
 	fmt::print(state_dump());
 #endif
 	bb_fn fn = (bb_fn)(chunk.map);
-	auto next = fn(&state_);
+	auto next = fn(&state_, &mmu_);
 	switch (state_.exit_reason) {
 	case lifter::BB_END:
 		break;
@@ -155,19 +167,31 @@ void emu::flag_update()
 void emu::mem_map(uint64_t guest_addr, size_t length, int prot, int flags,
 		  int fd, off_t offset)
 {
-	ASSERT(mmap((void *)guest_addr, length, prot, flags, fd, offset)
-		       != MAP_FAILED,
-	       "Couldn't map address {:#x}\n", guest_addr);
+	/*
+	 * XXX: Flags are ignored at the moment.
+	 */
+	(void)flags;
+
+	ASSERT(mmu_.map_addr(guest_addr, length, prot), "couldn't map");
+	if (fd != -1) {
+		lseek(fd, offset, SEEK_SET);
+		for (size_t i = 0; i < length; i++) {
+			uint8_t buf;
+			read(fd, &buf, sizeof(buf));
+			mmu_.write(guest_addr + i * sizeof(buf), &buf,
+				   sizeof(buf));
+		}
+	}
 }
 
 void emu::mem_write(uint64_t guest_addr, const void *src, size_t sz)
 {
-	std::memcpy((void *)guest_addr, src, sz);
+	mmu_.write(guest_addr, static_cast<const uint8_t *>(src), sz);
 }
 
 void emu::mem_read(void *dst, uint64_t guest_addr, size_t sz)
 {
-	std::memcpy(dst, (void *)guest_addr, sz);
+	mmu_.read(static_cast<uint8_t *>(dst), guest_addr, sz);
 }
 
 const chunk &emu::find_or_compile(size_t pc)

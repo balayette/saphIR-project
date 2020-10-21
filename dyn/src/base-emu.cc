@@ -86,9 +86,7 @@ void base_emu::setup()
 	Elf64_auxv_t at_hwcap = {AT_HWCAP, {0}};
 	Elf64_auxv_t at_clktck = {
 		AT_CLKTCK, {static_cast<uint64_t>(sysconf(_SC_CLK_TCK))}};
-	Elf64_auxv_t at_phdr = {
-		AT_PHDR,
-		{reinterpret_cast<uint64_t>(elf_map_) + bin_.ehdr().phoff()}};
+	Elf64_auxv_t at_phdr = {AT_PHDR, {elf_map_ + bin_.ehdr().phoff()}};
 	Elf64_auxv_t at_phent = {AT_PHENT, {sizeof(Elf64_Phdr)}};
 	Elf64_auxv_t at_phnum = {AT_PHNUM, {bin_.phdrs().size()}};
 
@@ -331,8 +329,19 @@ void base_emu::sys_writev()
 	auto iov_host = new struct iovec[iovcnt];
 	mem_read(iov_host, iov, iovcnt * sizeof(struct iovec));
 
+	for (int i = 0; i < iovcnt; i++) {
+		auto new_base = new char[iov_host[i].iov_len];
+		mem_read(new_base,
+			 reinterpret_cast<uint64_t>(iov_host[i].iov_base),
+			 iov_host[i].iov_len);
+
+		iov_host[i].iov_base = new_base;
+	}
+
 	ssize_t ret = writev(fd, iov_host, iovcnt);
 
+	for (int i = 0; i < iovcnt; i++)
+		delete[] static_cast<char *>(iov_host[i].iov_base);
 	delete[] iov_host;
 
 	reg_write(mach::aarch64::regs::R0, ret);
@@ -367,20 +376,28 @@ void base_emu::syscall()
 	return std::invoke(it->second, this);
 }
 
-void base_emu::dispatch_read_cb(uint64_t address, uint64_t size)
+void base_emu::dispatch_read_cb(uint64_t address, uint64_t size, uint64_t val)
 {
-	uint64_t val = 0;
-	mem_read(&val, address, size);
-
 	for (const auto &[f, p] : mem_read_cbs_)
 		f(address, size, val, p);
 }
 
 void base_emu::dispatch_write_cb(uint64_t address, uint64_t size, uint64_t val)
 {
-	for (const auto &[f, p] : mem_read_cbs_)
+	for (const auto &[f, p] : mem_write_cbs_)
 		f(address, size, val, p);
 }
+
+void base_emu::add_mem_read_callback(mem_read_callback cb, void *data)
+{
+	mem_read_cbs_.push_back({cb, data});
+}
+
+void base_emu::add_mem_write_callback(mem_write_callback cb, void *data)
+{
+	mem_write_cbs_.push_back({cb, data});
+}
+
 
 void base_emu::coverage_hook(uint64_t pc)
 {
@@ -388,5 +405,40 @@ void base_emu::coverage_hook(uint64_t pc)
 		return;
 
 	coverage_file_ << fmt::format("{:#x}\n", pc);
+}
+
+uint64_t base_emu::map_elf()
+{
+	size_t min = ~0;
+	size_t max = 0;
+
+	for (const auto &segment : bin_.phdrs()) {
+		if (segment.type() != PT_LOAD)
+			continue;
+		if (segment.vaddr() < min)
+			min = segment.vaddr();
+		if (segment.vaddr() + segment.memsz() > max)
+			max = segment.vaddr() + segment.memsz();
+	}
+
+	min = ROUND_DOWN(min, 4096);
+	max = ROUND_UP(max, 4096);
+	size_t size = max - min;
+	size_t map = min;
+
+	mem_map(min, size, PROT_READ | PROT_WRITE | PROT_EXEC,
+		MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS);
+
+	for (const auto &segment : bin_.phdrs()) {
+		if (segment.type() != PT_LOAD)
+			continue;
+
+		auto contents = segment.contents(file_).data();
+
+		mem_write(map + (segment.vaddr() - min), contents,
+			  segment.filesz());
+	}
+
+	return map;
 }
 } // namespace dyn

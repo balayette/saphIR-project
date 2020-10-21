@@ -27,8 +27,6 @@ class unicorn_emu : public base_emu
 	void reg_write(mach::aarch64::regs r, uint64_t val) override;
 
       protected:
-	void *map_elf();
-
 	void ureg_write(int reg, uint64_t val);
 	uint64_t ureg_read(int reg);
 

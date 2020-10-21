@@ -4,6 +4,7 @@ include(Fmt)
 add_library(emu STATIC
         src/base-emu.cc
         src/emu.cc
+        src/mmu.cc
         src/unicorn-emu.cc
 )
 

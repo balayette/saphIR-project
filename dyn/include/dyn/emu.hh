@@ -4,6 +4,7 @@
 #include "utils/fs.hh"
 #include "elf/elf.hh"
 #include "dyn/base-emu.hh"
+#include "dyn/mmu.hh"
 #include "keystone/keystone.h"
 #include <unordered_map>
 
@@ -25,17 +26,21 @@ class emu : public base_emu
 
 	std::pair<uint64_t, size_t> singlestep() override;
 
-	void add_mem_read_callback(mem_read_callback cb, void *data) override;
-	void add_mem_write_callback(mem_write_callback cb, void *data) override;
-
 	void mem_map(uint64_t guest_addr, size_t length, int prot, int flags,
 		     int fd = -1, off_t offset = 0) override;
 	void mem_write(uint64_t guest_addr, const void *src,
 		       size_t sz) override;
 	void mem_read(void *dst, uint64_t guest_addr, size_t sz) override;
 
+	const dyn::mmu &mmu() const { return mmu_; }
+
+	void reset_with_mmu(const dyn::mmu &base);
+
       private:
-	using bb_fn = size_t (*)(lifter::state *);
+	using bb_fn = size_t (*)(lifter::state *, dyn::mmu *mmu);
+
+	void handle_store(uint64_t addr, uint64_t val, size_t sz);
+	uint64_t handle_load(uint64_t addr, size_t sz);
 
 	const chunk &find_or_compile(size_t pc);
 	chunk compile(size_t pc);
@@ -50,8 +55,7 @@ class emu : public base_emu
 
 	lifter::lifter lifter_;
 	lifter::disas disas_;
-
-	size_t elf_map_sz_;
+	dyn::mmu mmu_;
 
 	std::unordered_map<size_t, chunk> bb_cache_;
 };

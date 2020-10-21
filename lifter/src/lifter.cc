@@ -37,6 +37,7 @@
 #define BINOP(Op, L, R, T) amd_target_->make_binop(ops::binop::Op, L, R, T)
 #define UNARYOP(Op, E, T) amd_target_->make_unaryop(ops::unaryop::Op, E, T)
 #define SEQ(...) amd_target_->make_seq({__VA_ARGS__})
+#define ESEQ(S, E) amd_target_->make_eseq(S, E)
 #define CJUMP(Op, L, R, T, F) amd_target_->make_cjump(Op, L, R, T, F)
 #define JUMP(L, A) amd_target_->make_jump(L, A)
 #define CALL(F, A, T) amd_target_->make_call(F, A, T)
@@ -115,7 +116,7 @@ ir::tree::rstm lifter::set_state_field(const std::string &name,
 ir::tree::rexp lifter::get_state_field(const std::string &name)
 {
 	return MEM(ADD(bank_->exp(), CNST(bank_type_->member_offset(name)),
-		       new types::pointer_ty(amd_target_->gpr_type())));
+		       new types::pointer_ty(bank_type_->member_ty(name))));
 }
 
 ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
@@ -133,6 +134,52 @@ ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
 		sz = register_size(r) / 8;
 
 	return TTEMP(regs_[reg], arm_target_->integer_type(sign, sz));
+}
+
+ir::tree::rexp lifter::translate_load(ir::tree::rexp addr, size_t sz,
+				      types::signedness sign)
+{
+	utils::temp addr_temp, value_temp;
+
+	utils::ref<types::ty> value_ty = amd_target_->integer_type(sign, sz);
+
+	auto addr_move = MOVE(RTEMP(addr_temp), addr);
+	auto f = get_state_field("load_fun");
+
+	auto call = CALL(f,
+			 std::vector<ir::tree::rexp>({
+				 get_state_field("emu"),
+				 RTEMP(addr_temp),
+				 CNST(sz),
+			 }),
+			 types::deref_pointer_type(f->ty()));
+
+	auto value_move = MOVE(TTEMP(value_temp, value_ty->clone()), call);
+
+	return ESEQ(SEQ(addr_move, value_move),
+		    TTEMP(value_temp, value_ty->clone()));
+}
+
+ir::tree::rstm lifter::translate_store(ir::tree::rexp addr,
+				       ir::tree::rexp value, size_t sz)
+{
+	utils::temp val_temp, addr_temp;
+
+	auto val_move = MOVE(TTEMP(val_temp, value->ty()->clone()), value);
+	auto addr_move = MOVE(RTEMP(addr_temp), addr);
+
+	auto f = get_state_field("store_fun");
+
+	auto call = CALL(f,
+			 std::vector<ir::tree::rexp>({
+				 get_state_field("emu"),
+				 RTEMP(addr_temp),
+				 TTEMP(val_temp, value->ty()->clone()),
+				 CNST(sz),
+			 }),
+			 types::deref_pointer_type(f->ty()));
+
+	return SEQ(val_move, addr_move, SEXP(call));
 }
 
 ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m, size_t sz,
@@ -400,17 +447,18 @@ ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm,
 	auto *cnst = CNST(imm.imm);
 	cnst->ty_ = new types::pointer_ty(arm_target_->integer_type(sign, sz));
 
-	return lifter_cb_.perform(MOVE(GPR8(xt.reg), MEM(cnst)));
+	return MOVE(GPR8(xt.reg), translate_load(cnst, sz, sign));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
 					    size_t sz, types::signedness sign)
 {
-	auto m = MEM(translate_mem_op(src.mem, sz, src.shift.type,
-				      src.shift.value, src.ext));
-	m->ty()->set_signedness(sign);
+	auto addr = translate_mem_op(src.mem, sz, src.shift.type,
+				     src.shift.value, src.ext);
+	auto t = GPR8(xt.reg);
+	t->ty()->set_signedness(sign);
 
-	return lifter_cb_.perform(MOVE(GPR8(xt.reg), m));
+	return MOVE(t, translate_load(addr, sz, sign));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
@@ -427,11 +475,11 @@ ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
 						    types::signedness sign)
 {
 	auto t = GPR8(xt.reg);
-	auto addr = translate_mem_op(src.mem, sz);
-	auto m = MEM(addr);
-	m->ty()->set_signedness(sign);
+	t->ty()->set_signedness(sign);
 
-	return lifter_cb_.perform(MOVE(t, m));
+	auto addr = translate_mem_op(src.mem, sz);
+
+	return MOVE(t, translate_load(addr, sz, sign));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
@@ -439,11 +487,11 @@ ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
 					     types::signedness sign)
 {
 	auto t = GPR8(xt.reg);
-	auto base = translate_mem_op(src.mem, sz);
-	auto m = MEM(base);
-	m->ty()->set_signedness(sign);
+	t->ty()->set_signedness(sign);
 
-	return SEQ(lifter_cb_.perform(MOVE(t, m)),
+	auto base = translate_mem_op(src.mem, sz);
+
+	return SEQ(MOVE(t, translate_load(base, sz, sign)),
 		   MOVE(GPR8(src.mem.base),
 			ADD(GPR8(src.mem.base), CNST(imm.imm), base->ty_)));
 }
@@ -698,12 +746,12 @@ ir::tree::rstm lifter::arm64_handle_STP_post(cs_arm64_op xt1, cs_arm64_op xt2,
 	utils::ref<types::ty> ptr_ty = new types::pointer_ty(r1->ty_);
 	base->ty_ = ptr_ty;
 
-	return SEQ(lifter_cb_.perform(MOVE(MEM(base), r1)),
-		   lifter_cb_.perform(MOVE(
-			   MEM(ADD(base, CNST(r1->ty_->assem_size()), ptr_ty)),
-			   r2)),
-		   MOVE(base, ADD(GPR(xn.reg), CNST(imm.imm),
-				  arm_target_->gpr_type())));
+	return SEQ(
+		translate_store(base, r1, r1->ty()->assem_size()),
+		translate_store(ADD(base, CNST(r1->ty_->assem_size()), ptr_ty),
+				r2, r2->ty()->assem_size()),
+		MOVE(base,
+		     ADD(GPR(xn.reg), CNST(imm.imm), arm_target_->gpr_type())));
 }
 
 ir::tree::rstm lifter::arm64_handle_STP_pre(cs_arm64_op xt1, cs_arm64_op xt2,
@@ -725,10 +773,10 @@ ir::tree::rstm lifter::arm64_handle_STP_base_offset(cs_arm64_op xt1,
 
 	ir::tree::rexp base = ADD(GPR(xn.mem.base), CNST(xn.mem.disp), ptr_ty);
 
-	return SEQ(lifter_cb_.perform(MOVE(MEM(base), r1)),
-		   lifter_cb_.perform(MOVE(
-			   MEM(ADD(base, CNST(r1->ty_->assem_size()), ptr_ty)),
-			   r2)));
+	return SEQ(
+		translate_store(base, r1, r1->ty()->assem_size()),
+		translate_store(ADD(base, CNST(r1->ty_->assem_size()), ptr_ty),
+				r2, r2->ty()->assem_size()));
 }
 
 ir::tree::rstm lifter::arm64_handle_STP(const disas_insn &insn)
@@ -757,12 +805,16 @@ ir::tree::rstm lifter::arm64_handle_LDP_post(cs_arm64_op xt1, cs_arm64_op xt2,
 	utils::ref<types::ty> ptr_ty = new types::pointer_ty(r1->ty_);
 	base->ty_ = ptr_ty;
 
-	return SEQ(lifter_cb_.perform(MOVE(r1, MEM(base))),
-		   lifter_cb_.perform(
-			   MOVE(r2, MEM(ADD(base, CNST(r1->ty_->assem_size()),
-					    ptr_ty)))),
-		   MOVE(base, ADD(GPR(xn.reg), CNST(imm.imm),
-				  arm_target_->gpr_type())));
+	return SEQ(
+		MOVE(r1, translate_load(base, r1->ty()->assem_size(),
+					types::signedness::UNSIGNED)),
+
+		MOVE(r2, translate_load(
+				 ADD(base, CNST(r1->ty_->assem_size()), ptr_ty),
+				 r2->ty()->assem_size(),
+				 types::signedness::UNSIGNED)),
+		MOVE(base,
+		     ADD(GPR(xn.reg), CNST(imm.imm), arm_target_->gpr_type())));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDP_pre(cs_arm64_op xt1, cs_arm64_op xt2,
@@ -780,14 +832,17 @@ ir::tree::rstm lifter::arm64_handle_LDP_base_offset(cs_arm64_op xt1,
 {
 	auto r1 = GPR(xt1.reg);
 	auto r2 = GPR(xt2.reg);
+	auto sz = r1->ty()->assem_size();
+
 	utils::ref<types::ty> ptr_ty = new types::pointer_ty(r1->ty_);
 
 	ir::tree::rexp base = ADD(GPR(xn.mem.base), CNST(xn.mem.disp), ptr_ty);
 
-	return SEQ(lifter_cb_.perform(MOVE(r1, MEM(base))),
-		   lifter_cb_.perform(
-			   MOVE(r2, MEM(ADD(base, CNST(r1->ty_->assem_size()),
-					    ptr_ty)))));
+	return SEQ(
+		MOVE(r1, translate_load(base, sz, types::signedness::UNSIGNED)),
+		MOVE(r2, translate_load(
+				 ADD(base, CNST(r1->ty_->assem_size()), ptr_ty),
+				 sz, types::signedness::UNSIGNED)));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDP(const disas_insn &insn)
@@ -836,19 +891,19 @@ ir::tree::rstm lifter::arm64_handle_STXR(const disas_insn &insn)
 	utils::temp unused_temp;
 
 	utils::temp addr;
-	auto addr_move =
-		MOVE(TTEMP(addr, new types::pointer_ty(t->ty()->clone())),
-		     translate_mem_op(xn.mem, 4));
+	auto addr_type = new types::pointer_ty(t->ty()->clone());
 
-	auto useless_move =
-		MOVE(TTEMP(unused_temp, t->ty()->clone()),
-		     MEM(TTEMP(addr, new types::pointer_ty(t->ty()->clone()))));
+	auto addr_move = MOVE(TTEMP(addr, addr_type->clone()),
+			      translate_mem_op(xn.mem, 4));
 
-	return SEQ(addr_move, lifter_cb_.perform(useless_move),
-		   lifter_cb_.perform(MOVE(
-			   MEM(TTEMP(addr,
-				     new types::pointer_ty(t->ty()->clone()))),
-			   t)),
+	auto useless_move = MOVE(TTEMP(unused_temp, t->ty()->clone()),
+				 translate_load(TTEMP(addr, addr_type->clone()),
+						t->ty()->assem_size(),
+						types::signedness::UNSIGNED));
+
+	return SEQ(addr_move, useless_move,
+		   translate_store(TTEMP(addr, addr_type->clone()), t,
+				   t->ty()->assem_size()),
 		   MOVE(GPR8(xs), CNST(0)));
 }
 
@@ -868,8 +923,7 @@ ir::tree::rstm lifter::arm64_handle_LDXR(const disas_insn &insn)
 ir::tree::rstm lifter::arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst,
 					    size_t sz)
 {
-	return lifter_cb_.perform(
-		MOVE(MEM(translate_mem_op(dst.mem, sz)), GPR(xt.reg)));
+	return translate_store(translate_mem_op(dst.mem, sz), GPR(xt.reg), sz);
 }
 
 
@@ -889,7 +943,7 @@ ir::tree::rstm lifter::arm64_handle_STR_base_offset(cs_arm64_op xt,
 
 	auto addr = translate_mem_op(dst.mem, sz);
 
-	return lifter_cb_.perform(MOVE(MEM(addr), t));
+	return translate_store(addr, t, sz);
 }
 
 ir::tree::rstm lifter::arm64_handle_STR_post(cs_arm64_op xt, cs_arm64_op dst,
@@ -898,9 +952,9 @@ ir::tree::rstm lifter::arm64_handle_STR_post(cs_arm64_op xt, cs_arm64_op dst,
 	auto t = GPR(xt.reg);
 	auto base = translate_mem_op(dst.mem, sz);
 
-	return SEQ(lifter_cb_.perform(MOVE(MEM(base), t)),
-		   MOVE(GPR8(dst.mem.base),
-			ADD(GPR8(dst.mem.base), CNST(imm.imm), base->ty_)));
+	return SEQ(translate_store(base, t, t->ty()->assem_size())),
+	       MOVE(GPR8(dst.mem.base),
+		    ADD(GPR8(dst.mem.base), CNST(imm.imm), base->ty_));
 }
 
 ir::tree::rstm lifter::arm64_handle_STRB(const disas_insn &insn)
@@ -1785,80 +1839,9 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 				  ret_lbl, make_unique("epi"));
 }
 
-static void write_cb(void *data, uint64_t addr, uint64_t size, uint64_t val)
-{
-	lifter *l = static_cast<lifter *>(data);
-
-	l->dispatch_mem_write_callback(addr, size, val);
-}
-
-static void read_cb(void *data, uint64_t addr, uint64_t size)
-{
-	lifter *l = static_cast<lifter *>(data);
-
-	l->dispatch_mem_read_callback(addr, size);
-}
-
-void lifter::dispatch_mem_write_callback(uint64_t addr, uint64_t size,
-					 uint64_t val)
-{
-	for (const auto &[f, d] : mem_write_cbs_)
-		f(addr, size, val, d);
-}
-
-void lifter::dispatch_mem_read_callback(uint64_t addr, uint64_t size)
-{
-	for (const auto &[f, d] : mem_read_cbs_)
-		f(addr, size, d);
-}
-
-void lifter::add_mem_write_callback(mem_write_callback cb, void *user_data)
-{
-	auto needs_register = mem_write_cbs_.size() == 0;
-
-	mem_write_cbs_.push_back({cb, user_data});
-
-	if (!needs_register)
-		return;
-
-	auto c2 = amd_target_->make_cnst((uint64_t)write_cb);
-	c2->ty_ = new types::fun_ty(amd_target_->void_type(),
-				    {
-					    amd_target_->gpr_type(),
-					    amd_target_->gpr_type(),
-					    amd_target_->gpr_type(),
-					    amd_target_->gpr_type(),
-				    },
-				    false);
-
-	lifter_cb_.set_write_callback(c2);
-}
-
-void lifter::add_mem_read_callback(mem_read_callback cb, void *user_data)
-{
-	auto needs_register = mem_read_cbs_.size() == 0;
-
-	mem_read_cbs_.push_back({cb, user_data});
-
-	if (!needs_register)
-		return;
-
-	auto c2 = amd_target_->make_cnst((uint64_t)read_cb);
-	c2->ty_ = new types::fun_ty(amd_target_->void_type(),
-				    {
-					    amd_target_->gpr_type(),
-					    amd_target_->gpr_type(),
-					    amd_target_->gpr_type(),
-				    },
-				    false);
-
-	lifter_cb_.set_read_callback(c2);
-}
-
 lifter::lifter()
     : amd_target_(new mach::amd64::amd64_target()),
-      arm_target_(new mach::aarch64::aarch64_target()),
-      lifter_cb_(*amd_target_, nullptr, nullptr, this)
+      arm_target_(new mach::aarch64::aarch64_target())
 {
 	std::vector<symbol> names;
 	std::vector<utils::ref<types::ty>> types;
@@ -1869,7 +1852,26 @@ lifter::lifter()
 	}
 
 	update_flags_ty_ = new types::fun_ty(amd_target_->void_type(),
-					     {amd_target_->gpr_type()}, false),
+					     {amd_target_->gpr_type()}, false);
+
+	auto store_fun_ty =
+		new types::fun_ty(amd_target_->void_type(),
+				  {
+					  amd_target_->gpr_type() /* mmu */,
+					  amd_target_->gpr_type() /* addr */,
+					  amd_target_->gpr_type() /* value */,
+					  amd_target_->gpr_type() /* size */,
+				  },
+				  false);
+
+	auto load_fun_ty =
+		new types::fun_ty(amd_target_->gpr_type(),
+				  {
+					  amd_target_->gpr_type() /* mmu */,
+					  amd_target_->gpr_type() /* addr */,
+					  amd_target_->gpr_type() /* size */,
+				  },
+				  false);
 
 	bank_type_ = new types::struct_ty(
 		"state",
@@ -1881,18 +1883,24 @@ lifter::lifter()
 			"flag_op",
 			"exit_reason",
 			"tpidr_el0",
+			"emu",
+			"store_fun",
+			"load_fun",
 		},
 		{
 			new types::array_ty(amd_target_->gpr_type(), 32),
-			amd_target_->gpr_type(), // nzcv
-			amd_target_->gpr_type(), // flag_a
-			amd_target_->gpr_type(), // flag_b
-			amd_target_->gpr_type(), // flag_op
-			amd_target_->gpr_type(), // exit_reason
-			amd_target_->gpr_type(), // tpidr_el0
+			amd_target_->gpr_type(),	     // nzcv
+			amd_target_->gpr_type(),	     // flag_a
+			amd_target_->gpr_type(),	     // flag_b
+			amd_target_->gpr_type(),	     // flag_op
+			amd_target_->gpr_type(),	     // exit_reason
+			amd_target_->gpr_type(),	     // tpidr_el0
+			amd_target_->gpr_type(),	     // emu
+			new types::pointer_ty(store_fun_ty), // store_fun
+			new types::pointer_ty(load_fun_ty),  // load_fun
 		});
 
-	// fun basic_block(state* bank) int<8>
+	// fun basic_block(state* bank, dyn::mmu* mmu) int<8>
 	bb_type_ =
 		new types::fun_ty(amd_target_->gpr_type(),
 				  {new types::pointer_ty(bank_type_)}, false);

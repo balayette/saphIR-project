@@ -11,7 +11,7 @@
 #define DEFAULT_STACK_SIZE (0x1000 * 100)
 #define DEFAULT_BRK_ADDR 0x1337DEAD0000
 #define DEFAULT_BRK_SIZE (0x1000 * 100)
-#define DEFAULT_MMAP_ADDR 0xDEADBEEF0000
+#define DEFAULT_MMAP_ADDR 0x1773DEAD0000
 
 namespace dyn
 {
@@ -84,10 +84,8 @@ class base_emu
 	bool exited() const { return exited_; }
 	int exit_code() const { return exit_code_; }
 
-	virtual void add_mem_read_callback(mem_read_callback cb,
-					   void *data) = 0;
-	virtual void add_mem_write_callback(mem_write_callback cb,
-					    void *data) = 0;
+	virtual void add_mem_read_callback(mem_read_callback cb, void *data);
+	virtual void add_mem_write_callback(mem_write_callback cb, void *data);
 
 	virtual void reg_write(mach::aarch64::regs r, uint64_t val);
 	virtual uint64_t reg_read(mach::aarch64::regs r);
@@ -108,11 +106,13 @@ class base_emu
 	/*
 	 * If you are using this, you better know what you are doing.
 	 */
-	void dispatch_read_cb(uint64_t address, uint64_t size);
+	void dispatch_read_cb(uint64_t address, uint64_t size, uint64_t val);
 	void dispatch_write_cb(uint64_t address, uint64_t size, uint64_t val);
 
       protected:
 	using syscall_handler = void (base_emu::*)(void);
+
+	uint64_t map_elf();
 
 	/* Syscalls */
 	void syscall();
@@ -132,7 +132,7 @@ class base_emu
 	utils::mapped_file &file_;
 	elf::elf bin_;
 
-	void *elf_map_;
+	uint64_t elf_map_;
 
 	uint64_t stack_addr_;
 	uint64_t stack_sz_;
