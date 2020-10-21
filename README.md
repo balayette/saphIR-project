@@ -11,6 +11,7 @@ See the subdirectories for more detailed descriptions.
 * `compiler/`: A compiler frontend that targets `saphIR`
 * `lifter/`: An ARM64 to saphIR lifter
 * `dyn/`: A dynamic binary translator
+* `fuzz/`: A fuzzer that uses `dyn` to JIT ARM64 binaries
 
 ## Building
 ```
