@@ -22,11 +22,8 @@ namespace dyn
 base_emu::base_emu(utils::mapped_file &file, const emu_params &p)
     : file_(file), bin_(file), stack_addr_(p.stack_addr), stack_sz_(p.stack_sz),
       brk_addr_(p.brk_addr), curr_brk_(p.brk_addr), brk_sz_(p.brk_sz),
-      mmap_base_(p.mmap_addr), mmap_offt_(p.mmap_addr), exited_(false),
-      coverage_(p.coverage != std::nullopt)
+      mmap_base_(p.mmap_addr), mmap_offt_(p.mmap_addr), exited_(false)
 {
-	if (coverage_)
-		coverage_file_ = std::ofstream(*p.coverage);
 }
 
 void base_emu::init()
@@ -59,9 +56,11 @@ void base_emu::reset()
 	mmap_offt_ = mmap_base_;
 
 	pc_ = bin_.ehdr().entry();
+
+	on_entry_cbs_.clear();
 }
 
-void base_emu::setup()
+void base_emu::setup(const std::vector<uint64_t> &args)
 {
 	/*
 	 * The stack frame at the entry point is as follows
@@ -121,9 +120,11 @@ void base_emu::setup()
 	for (const auto &e : envs)
 		push(e);
 
-	push(0);	// argv end
-	push(filename); // program name
-	push(1);	// argc
+	push(0); // argv end
+	for (auto it = args.crbegin(); it != args.crend(); ++it)
+		push(*it);
+	push(filename);	       // program name
+	push(1 + args.size()); // argc
 }
 
 void base_emu::align_stack(size_t align)
@@ -131,6 +132,17 @@ void base_emu::align_stack(size_t align)
 	uint64_t sp = reg_read(mach::aarch64::regs::SP);
 	sp = ROUND_DOWN(sp, align);
 	reg_write(mach::aarch64::regs::SP, sp);
+}
+
+uint64_t base_emu::alloc_mem(size_t length)
+{
+	uint64_t addr = mmap_offt_;
+	mmap_offt_ += ROUND_UP(length, 4096);
+
+	mem_map(addr, ROUND_UP(length, 4096), PROT_READ | PROT_WRITE,
+		MAP_PRIVATE | MAP_ANONYMOUS);
+
+	return addr;
 }
 
 uint64_t base_emu::push(size_t val) { return push(&val, sizeof(val)); }
@@ -417,13 +429,15 @@ void base_emu::add_mem_write_callback(mem_write_callback cb, void *data)
 	mem_write_cbs_.push_back({cb, data});
 }
 
-
-void base_emu::coverage_hook(uint64_t pc)
+void base_emu::add_on_entry_callback(std::function<void(uint64_t)> f)
 {
-	if (!coverage_)
-		return;
+	on_entry_cbs_.push_back(f);
+}
 
-	coverage_file_ << fmt::format("{:#x}\n", pc);
+void base_emu::dispatch_on_entry(uint64_t pc)
+{
+	for (const auto &f : on_entry_cbs_)
+		f(pc);
 }
 
 uint64_t base_emu::map_elf()

@@ -102,11 +102,15 @@ void emu::reset_with_mmu(const dyn::mmu &base)
 
 	pc_ = bin_.ehdr().entry();
 
+	on_entry_cbs_.clear();
+
 	mmu_.reset(base);
 }
 
 std::pair<uint64_t, size_t> emu::singlestep()
 {
+	dispatch_on_entry(pc_);
+
 	const auto &chunk = find_or_compile(pc_);
 	/* Not printing the message if we exited because of a
 	 * comparison to print one message per QEMU chunk and
@@ -139,7 +143,6 @@ std::pair<uint64_t, size_t> emu::singlestep()
 	fmt::print(state_dump());
 #endif
 
-	coverage_hook(pc_);
 	return std::make_pair(next, chunk.insn_count);
 }
 

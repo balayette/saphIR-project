@@ -50,21 +50,20 @@ int main(int argc, char *argv[])
 	}
 
 	utils::mapped_file file(opts.binary);
-	dyn::emu emu(file,
-		     dyn::emu_params(opts.singlestep, opts.coverage_file));
+	dyn::emu emu(file, dyn::emu_params(opts.singlestep));
+
+	std::ofstream coverage_file;
+
+	if (opts.coverage_file) {
+		coverage_file.open(*opts.coverage_file);
+		emu.add_on_entry_callback([&](uint64_t pc) {
+			coverage_file << fmt::format("{:#x}\n", pc);
+		});
+	}
 
 	emu.init();
-	emu.mmu().make_clean_state();
-	dyn::mmu base_mmu = emu.mmu();
-	fmt::print("Init done\n");
-
 	emu.setup();
 	emu.run();
 
-	fmt::print("\n\n\n----\n\n\n");
-
-	emu.reset_with_mmu(base_mmu);
-	fmt::print("reset done\n");
-	emu.setup();
-	emu.run();
+	fmt::print("Exited: {}\n", emu.exit_code());
 }

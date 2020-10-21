@@ -17,20 +17,18 @@ namespace dyn
 {
 struct emu_params {
 	emu_params(bool singlestep = false,
-		   std::optional<std::string> coverage = std::nullopt,
 		   uint64_t stack_addr = DEFAULT_STACK_ADDR,
 		   uint64_t stack_sz = DEFAULT_STACK_SIZE,
 		   uint64_t brk_addr = DEFAULT_BRK_ADDR,
 		   uint64_t brk_sz = DEFAULT_BRK_SIZE,
 		   uint64_t mmap_addr = DEFAULT_MMAP_ADDR)
-	    : singlestep(singlestep), coverage(coverage),
-	      stack_addr(stack_addr), stack_sz(stack_sz), brk_addr(brk_addr),
-	      brk_sz(brk_sz), mmap_addr(mmap_addr)
+	    : singlestep(singlestep), stack_addr(stack_addr),
+	      stack_sz(stack_sz), brk_addr(brk_addr), brk_sz(brk_sz),
+	      mmap_addr(mmap_addr)
 	{
 	}
 
 	bool singlestep;
-	std::optional<std::string> coverage;
 
 	uint64_t stack_addr;
 	uint64_t stack_sz;
@@ -70,7 +68,7 @@ class base_emu
 	 * we simply forward syscalls.
 	 */
 	virtual void reset();
-	void setup();
+	void setup(const std::vector<uint64_t> &args = {});
 
 	virtual std::pair<uint64_t, size_t> singlestep() = 0;
 	virtual void run();
@@ -92,6 +90,7 @@ class base_emu
 
 	virtual void add_mem_read_callback(mem_read_callback cb, void *data);
 	virtual void add_mem_write_callback(mem_write_callback cb, void *data);
+	void add_on_entry_callback(std::function<void(uint64_t)> f);
 
 	virtual void reg_write(mach::aarch64::regs r, uint64_t val);
 	virtual uint64_t reg_read(mach::aarch64::regs r);
@@ -107,6 +106,7 @@ class base_emu
 
 	virtual void mem_map(uint64_t guest_addr, size_t length, int prot,
 			     int flags, int fd = -1, off_t offset = 0) = 0;
+	virtual uint64_t alloc_mem(size_t length);
 	virtual std::string string_read(uint64_t guest_addr);
 
 	/*
@@ -114,6 +114,8 @@ class base_emu
 	 */
 	void dispatch_read_cb(uint64_t address, uint64_t size, uint64_t val);
 	void dispatch_write_cb(uint64_t address, uint64_t size, uint64_t val);
+
+	const elf::elf &bin() const { return bin_; }
 
       protected:
 	using syscall_handler = void (base_emu::*)(void);
@@ -159,13 +161,11 @@ class base_emu
 	std::vector<std::pair<mem_read_callback, void *>> mem_read_cbs_;
 	std::vector<std::pair<mem_write_callback, void *>> mem_write_cbs_;
 
-	/*
-	 * Should be called after executing an instructions / basic block,
-	 * handles coverage.
-	 */
-	virtual void coverage_hook(uint64_t pc);
+	std::vector<std::function<void(uint64_t)>> on_entry_cbs_;
 
-	bool coverage_;
-	std::ofstream coverage_file_;
+	/*
+	 * Should be called before executing an instruction / basic block
+	 */
+	void dispatch_on_entry(uint64_t pc);
 };
 } // namespace dyn
