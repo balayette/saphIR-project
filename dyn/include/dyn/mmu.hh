@@ -16,7 +16,7 @@ class mmu_range
       public:
 	mmu_range(vaddr_t start, size_t sz, int prots)
 	    : start_(start), sz_(sz), end_(start_ + sz_ - 1), prots_(prots),
-	      data_(new uint8_t[sz_])
+	      data_(new uint8_t[sz_]), dirty_(false)
 	{
 	}
 
@@ -24,13 +24,25 @@ class mmu_range
 	vaddr_t start() const { return start_; }
 	vaddr_t end() const { return end_; }
 	int prots() const { return prots_; }
+	bool dirty() const { return dirty_; }
+	void set_dirty(bool v = true) { dirty_ = v; }
 
 	uint8_t *data() const { return data_.get(); }
 
 	std::string to_string() const
 	{
-		return fmt::format("[{:#x} => {:#x} ({:#x})]", start_, end_,
-				   sz_);
+		return fmt::format("[{:#x} => {:#x} ({:#x}) {}]", start_, end_,
+				   sz_, dirty_ ? 'D' : 'C');
+	}
+
+	mmu_range cow() const
+	{
+		fmt::print("CoW of range {:#x} {:#x}\n", start_, end_);
+		mmu_range ret(start_, sz_, prots_);
+		ret.dirty_ = true;
+		std::memcpy(ret.data(), &data_, sz_);
+
+		return ret;
 	}
 
       private:
@@ -41,6 +53,8 @@ class mmu_range
 	int prots_;
 
 	utils::ref<uint8_t> data_;
+
+	bool dirty_;
 };
 
 class mmu
@@ -62,6 +76,14 @@ class mmu
 
 	void reset(const mmu &base);
 
+	void make_clean_state()
+	{
+		for (auto &r : ranges_)
+			r.set_dirty(false);
+	}
+
+	void dump_memory(const std::string &fname) const;
+
 	std::string to_string() const
 	{
 		auto ret = fmt::format("MMU State: {}%, ({:#x}/{:#x})\n",
@@ -75,7 +97,7 @@ class mmu
 	}
 
       private:
-	mmu_const_it overlaps(vaddr_t start, size_t sz);
+	mmu_it overlaps(vaddr_t start, size_t sz);
 
 	size_t mem_sz_;
 	size_t curr_sz_;

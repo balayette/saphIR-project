@@ -8,7 +8,6 @@ void mem_cb(uc_engine *uc, uc_mem_type type, uint64_t address, int size,
 {
 	auto *emu = static_cast<unicorn_emu *>(user_data);
 
-
 	if (type == UC_MEM_READ) {
 		ASSERT(uc_mem_read(uc, address, &value, size) == UC_ERR_OK,
 		       "Couldn't read");
@@ -24,8 +23,6 @@ unicorn_emu::unicorn_emu(utils::mapped_file &file, const emu_params &p)
 {
 	ASSERT(uc_open(UC_ARCH_ARM64, UC_MODE_ARM, &uc_) == UC_ERR_OK,
 	       "Couldn't init unicorn");
-
-	elf_map_ = map_elf();
 }
 
 void unicorn_emu::reset()

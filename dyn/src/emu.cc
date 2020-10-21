@@ -34,16 +34,11 @@ emu::emu(utils::mapped_file &file, const emu_params &p)
 	       "Couldn't init keystone");
 	ks_option(ks_, KS_OPT_SYNTAX, KS_OPT_SYNTAX_ATT);
 
-	elf_map_ = map_elf();
-	std::cout << mmu_.to_string();
-
 	state_.emu = this;
-
 	state_.store_fun = [](auto *emu, auto addr, auto val, auto sz) {
 		auto *t = static_cast<dyn::emu *>(emu);
 		t->handle_store(addr, val, sz);
 	};
-
 	state_.load_fun = [](auto *emu, auto addr, auto sz) {
 		auto *t = static_cast<dyn::emu *>(emu);
 		return t->handle_load(addr, sz);
@@ -94,7 +89,19 @@ uint64_t emu::handle_load(uint64_t addr, size_t sz)
 
 void emu::reset_with_mmu(const dyn::mmu &base)
 {
-	base_emu::reset();
+	exited_ = false;
+
+	std::memset(state_.regs, 0, sizeof(state_.regs));
+	state_.nzcv = lifter::Z;
+	state_.tpidr_el0 = 0;
+
+	state_.regs[mach::aarch64::regs::SP] = stack_addr_ + stack_sz_;
+	curr_brk_ = brk_addr_;
+
+	mmap_offt_ = mmap_base_;
+
+	pc_ = bin_.ehdr().entry();
+
 	mmu_.reset(base);
 }
 

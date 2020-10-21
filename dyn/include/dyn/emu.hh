@@ -33,6 +33,7 @@ class emu : public base_emu
 	void mem_read(void *dst, uint64_t guest_addr, size_t sz) override;
 
 	const dyn::mmu &mmu() const { return mmu_; }
+	dyn::mmu &mmu() { return mmu_; }
 
 	void reset_with_mmu(const dyn::mmu &base);
 

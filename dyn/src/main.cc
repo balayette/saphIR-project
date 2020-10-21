@@ -54,6 +54,17 @@ int main(int argc, char *argv[])
 		     dyn::emu_params(opts.singlestep, opts.coverage_file));
 
 	emu.init();
+	emu.mmu().make_clean_state();
+	dyn::mmu base_mmu = emu.mmu();
+	fmt::print("Init done\n");
+
+	emu.setup();
+	emu.run();
+
+	fmt::print("\n\n\n----\n\n\n");
+
+	emu.reset_with_mmu(base_mmu);
+	fmt::print("reset done\n");
 	emu.setup();
 	emu.run();
 }

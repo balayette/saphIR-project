@@ -30,6 +30,8 @@ base_emu::base_emu(utils::mapped_file &file, const emu_params &p)
 
 void base_emu::init()
 {
+	elf_map_ = map_elf();
+
 	mem_map(stack_addr_, stack_sz_, PROT_READ | PROT_WRITE,
 		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
 

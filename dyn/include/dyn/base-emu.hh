@@ -56,6 +56,7 @@ class base_emu
 	 * Bare minimum initialization of the emulator
 	 * - Map the stack
 	 * - Map the brk
+	 * - Map the binary
 	 */
 	void init();
 	/*

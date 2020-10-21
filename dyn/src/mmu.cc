@@ -1,13 +1,14 @@
 #include "dyn/mmu.hh"
 #include "utils/assert.hh"
+#include <fstream>
 
 namespace dyn
 {
-mmu::mmu_const_it mmu::overlaps(vaddr_t start, size_t sz)
+mmu::mmu_it mmu::overlaps(vaddr_t start, size_t sz)
 {
 	vaddr_t end = start + sz - 1;
 
-	for (auto it = ranges_.cbegin(); it != ranges_.cend(); it++) {
+	for (auto it = ranges_.begin(); it != ranges_.end(); it++) {
 		if (start <= it->end() && it->start() <= end)
 			return it;
 	}
@@ -70,6 +71,13 @@ void mmu::write(vaddr_t addr, const uint8_t *src, size_t sz)
 		       "Write of size {} at address {:#x} underflows", sz,
 		       addr);
 
+		/*
+		 * If we are writing to a range that was not modified before,
+		 * CoW
+		 */
+		if (!range->dirty())
+			*range = range->cow();
+
 		size_t skip = addr - range->start();
 		size_t to_copy = std::min(sz, range->size() - skip);
 
@@ -90,6 +98,19 @@ void mmu::reset(const mmu &base)
 		mmu_range nrange(r.start(), r.size(), r.prots());
 		std::memcpy(nrange.data(), r.data(), r.size());
 		ranges_.push_back(nrange);
+	}
+}
+
+void mmu::dump_memory(const std::string &fname) const
+{
+	std::ofstream file(fname);
+
+	for (const auto &r : ranges_) {
+		auto *data = r.data();
+		size_t sz = r.size();
+
+		for (size_t i = 0; i < sz; i++)
+			file << data[i];
 	}
 }
 } // namespace dyn
