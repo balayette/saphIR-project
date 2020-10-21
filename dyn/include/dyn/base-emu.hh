@@ -75,6 +75,11 @@ class base_emu
 	virtual std::pair<uint64_t, size_t> singlestep() = 0;
 	virtual void run();
 
+	/*
+	 * The address should be a basic block boundary if not single stepping
+	 */
+	void run_until(uint64_t addr);
+
 	lifter::state &state() { return state_; }
 	const lifter::state &state() const { return state_; }
 	std::string state_dump() const;

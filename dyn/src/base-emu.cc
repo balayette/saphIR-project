@@ -15,6 +15,7 @@
 extern char **environ;
 
 #define EMU_SYSCALL_LOG 0
+#define EMU_VERBOSE 0
 
 namespace dyn
 {
@@ -172,12 +173,24 @@ std::string base_emu::string_read(uint64_t guest_addr)
 	return ret;
 }
 
+void base_emu::run_until(uint64_t addr)
+{
+	while (!exited_) {
+		auto [next, _] = singlestep();
+		pc_ = next;
+		if (pc_ == addr)
+			return;
+	}
+}
+
 void base_emu::run()
 {
 	size_t executed = 0;
 
+#if EMU_VERBOSE
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
+#endif
 
 	size_t bb_count = 0;
 	while (!exited_ && bb_count < 1000000) {
@@ -186,13 +199,16 @@ void base_emu::run()
 		pc_ = next;
 	}
 
+#if EMU_VERBOSE
 	auto end = clock.now();
+#endif
 
 #if EMU_STATE_LOG
 	fmt::print("FINAL STATE\n");
 	fmt::print(state_dump());
 #endif
 
+#if EMU_VERBOSE
 	double secs = std::chrono::duration_cast<std::chrono::microseconds>(
 			      end - start)
 			      .count()
@@ -203,6 +219,7 @@ void base_emu::run()
 		fmt::print("Program exited with status code {}\n", exit_code_);
 	else
 		fmt::print("Program exited after reaching exec limit\n");
+#endif
 }
 
 std::string base_emu::state_dump() const
