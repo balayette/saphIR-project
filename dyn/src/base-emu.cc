@@ -123,6 +123,7 @@ void base_emu::setup(const std::vector<uint64_t> &args)
 	push(0); // argv end
 	for (auto it = args.crbegin(); it != args.crend(); ++it)
 		push(*it);
+
 	push(filename);	       // program name
 	push(1 + args.size()); // argc
 }

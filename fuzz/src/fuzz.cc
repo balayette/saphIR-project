@@ -2,8 +2,41 @@
 #include "fmt/format.h"
 #include "utils/timer.hh"
 #include "utils/random.hh"
+#include "fuzz/harness.hh"
 
 #define RESET_COUNT 3000000
+
+class basic_harness : public fuzz::harness
+{
+      public:
+	basic_harness(const elf::elf &bin) : fuzz::harness(bin)
+	{
+		fuzz_addr_ = bin_.symbol_by_name("fuzz")->address();
+		exit_addr_ = bin_.symbol_by_name("exit")->address();
+	}
+
+	virtual void setup(dyn::base_emu &emu) override
+	{
+		payload_addr_ = emu.alloc_mem(sizeof(uint64_t));
+		emu.setup({payload_addr_});
+	}
+
+	virtual uint64_t base_state_addr() const override { return fuzz_addr_; }
+
+	virtual void case_setup(dyn::base_emu &emu, const char *data,
+				size_t sz) override
+	{
+		emu.mem_write(payload_addr_, data, sz);
+	}
+
+	virtual uint64_t fuzz_end_addr() const override { return exit_addr_; }
+
+      private:
+	uint64_t payload_addr_;
+
+	uint64_t fuzz_addr_;
+	uint64_t exit_addr_;
+};
 
 struct corpus {
 	void add(uint64_t val) { corpus.push_back(val); }
@@ -47,22 +80,17 @@ int main(int argc, char *argv[])
 	utils::mapped_file file(argv[1]);
 	dyn::emu emu(file, dyn::emu_params(false));
 
-	auto main_addr = emu.bin().symbol_by_name("main")->address();
-	auto other_addr = emu.bin().symbol_by_name("fuzz")->address();
-
 	corpus corp;
 	corp.add(0);
 	corp.add(1);
 	corp.add(2);
-	corp.add(1000);
+
+	basic_harness h(emu.bin());
 
 	emu.init();
+	h.setup(emu);
 
-	uint64_t payload_addr = emu.alloc_mem(sizeof(uint64_t));
-	emu.setup({payload_addr});
-
-	emu.run_until(main_addr);
-
+	emu.run_until(h.base_state_addr());
 	emu.mmu().make_clean_state();
 	dyn::mmu base_mmu = emu.mmu();
 	lifter::state base_state = emu.state();
@@ -75,16 +103,17 @@ int main(int argc, char *argv[])
 		for (size_t i = 0; i < corp.size(); i++) {
 			emu.reset_with_mmu(base_mmu);
 			emu.state() = base_state;
-			emu.set_pc(main_addr);
+			emu.set_pc(h.base_state_addr());
 
-			emu.mem_write(payload_addr, &corp.corpus[i],
-				      sizeof(uint64_t));
-			emu.run_until(other_addr);
+			h.case_setup(emu,
+				     reinterpret_cast<const char *>(
+					     corp.corpus.data() + i),
+				     sizeof(uint64_t));
 
 			emu.add_on_entry_callback(
 				[&](auto pc) { bbs.insert(pc); });
 
-			emu.run_until(0x40030c);
+			emu.run_until(h.fuzz_end_addr());
 
 			fmt::print("{:#018x} => Coverage {}\n", corp.corpus[i],
 				   bbs.size());
@@ -97,11 +126,11 @@ int main(int argc, char *argv[])
 		for (size_t i = 0; i < RESET_COUNT; i++) {
 			emu.reset_with_mmu(base_mmu);
 			emu.state() = base_state;
-			emu.set_pc(main_addr);
+			emu.set_pc(h.base_state_addr());
 
 			uint64_t v = mutate(corp.choose_random());
-			emu.mem_write(payload_addr, &v, sizeof(uint64_t));
-			emu.run_until(other_addr);
+			h.case_setup(emu, reinterpret_cast<const char *>(&v),
+				     sizeof(uint64_t));
 
 			bool added = false;
 			emu.add_on_entry_callback([&](auto pc) {
@@ -109,7 +138,7 @@ int main(int argc, char *argv[])
 				added |= ins;
 			});
 
-			emu.run_until(0x40030c);
+			emu.run_until(h.fuzz_end_addr());
 
 			if (added) {
 				fmt::print("{:#018x} => Coverage {}\n", v,

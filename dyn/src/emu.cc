@@ -109,7 +109,8 @@ void emu::reset_with_mmu(const dyn::mmu &base)
 
 std::pair<uint64_t, size_t> emu::singlestep()
 {
-	dispatch_on_entry(pc_);
+	if (state_.exit_reason != lifter::SET_FLAGS)
+		dispatch_on_entry(pc_);
 
 	const auto &chunk = find_or_compile(pc_);
 	/* Not printing the message if we exited because of a
