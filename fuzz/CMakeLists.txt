@@ -3,6 +3,7 @@ include(Fmt)
 add_executable(fuzz
 	src/fuzz.cc
 	src/harness.cc
+	src/mutator.cc
 )
 
 target_include_directories(emu

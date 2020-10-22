@@ -3,6 +3,7 @@
 #include "utils/timer.hh"
 #include "utils/random.hh"
 #include "fuzz/harness.hh"
+#include "fuzz/mutator.hh"
 
 #define RESET_COUNT 3000000
 
@@ -11,13 +12,13 @@ class basic_harness : public fuzz::harness
       public:
 	basic_harness(const elf::elf &bin) : fuzz::harness(bin)
 	{
-		fuzz_addr_ = bin_.symbol_by_name("fuzz")->address();
+		fuzz_addr_ = bin_.symbol_by_name("dump_elf")->address();
 		exit_addr_ = bin_.symbol_by_name("exit")->address();
 	}
 
 	virtual void setup(dyn::base_emu &emu) override
 	{
-		payload_addr_ = emu.alloc_mem(sizeof(uint64_t));
+		payload_addr_ = emu.alloc_mem(100);
 		emu.setup({payload_addr_});
 	}
 
@@ -38,38 +39,6 @@ class basic_harness : public fuzz::harness
 	uint64_t exit_addr_;
 };
 
-struct corpus {
-	void add(uint64_t val) { corpus.push_back(val); }
-	uint64_t choose_random() const
-	{
-		return *utils::choose(corpus.begin(), corpus.end());
-	}
-
-	size_t size() const { return corpus.size(); }
-
-	std::vector<uint64_t> corpus;
-};
-
-uint64_t mutate(uint64_t val)
-{
-	switch (utils::rand(0, 7)) {
-	case 0:
-		return val + utils::rand(0, 1000);
-	case 1:
-		return val - utils::rand(0, 1000);
-	case 3:
-		return val * utils::rand(0, 1000);
-	case 5:
-		return val >> utils::rand(0, 32);
-	case 6:
-		return val << utils::rand(0, 32);
-	case 7:
-		return val / utils::rand(1, 10);
-	default:
-		return mutate(mutate(val));
-	}
-}
-
 int main(int argc, char *argv[])
 {
 	if (argc != 2) {
@@ -77,13 +46,16 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	fuzz::database db;
+
+	fuzz::input base_input(100);
+	base_input.data[0] = 0x45;
+	db.add(base_input);
+
+	fuzz::mutator mutator(db, 100);
+
 	utils::mapped_file file(argv[1]);
 	dyn::emu emu(file, dyn::emu_params(false));
-
-	corpus corp;
-	corp.add(0);
-	corp.add(1);
-	corp.add(2);
 
 	basic_harness h(emu.bin());
 
@@ -98,25 +70,24 @@ int main(int argc, char *argv[])
 	std::unordered_set<uint64_t> bbs;
 
 	{
-		TIMERN(reset_timer, "Init corpus run", corp.size());
+		TIMERN(reset_timer, "Init corpus run", db.size());
 
-		for (size_t i = 0; i < corp.size(); i++) {
+		for (size_t i = 0; i < db.size(); i++) {
 			emu.reset_with_mmu(base_mmu);
 			emu.state() = base_state;
 			emu.set_pc(h.base_state_addr());
 
 			h.case_setup(emu,
 				     reinterpret_cast<const char *>(
-					     corp.corpus.data() + i),
-				     sizeof(uint64_t));
+					     db[i].data.data()),
+				     db[i].data.size());
 
 			emu.add_on_entry_callback(
 				[&](auto pc) { bbs.insert(pc); });
 
 			emu.run_until(h.fuzz_end_addr());
 
-			fmt::print("{:#018x} => Coverage {}\n", corp.corpus[i],
-				   bbs.size());
+			fmt::print("[{}]: Coverage {}\n", i, bbs.size());
 		}
 	}
 
@@ -128,9 +99,13 @@ int main(int argc, char *argv[])
 			emu.state() = base_state;
 			emu.set_pc(h.base_state_addr());
 
-			uint64_t v = mutate(corp.choose_random());
-			h.case_setup(emu, reinterpret_cast<const char *>(&v),
-				     sizeof(uint64_t));
+			auto input = mutator.mutate(
+				db[utils::rand(0ul, db.size() - 1)]);
+
+			h.case_setup(emu,
+				     reinterpret_cast<const char *>(
+					     input.data.data()),
+				     input.data.size());
 
 			bool added = false;
 			emu.add_on_entry_callback([&](auto pc) {
@@ -141,9 +116,13 @@ int main(int argc, char *argv[])
 			emu.run_until(h.fuzz_end_addr());
 
 			if (added) {
-				fmt::print("{:#018x} => Coverage {}\n", v,
-					   bbs.size());
-				corp.add(v);
+				fmt::print(
+					"[{}]: {:#x}{}{}{}{:#x} => Coverage {}\n",
+					i, input.data[0], (char)input.data[1],
+					(char)input.data[2],
+					(char)input.data[3], input.data[4],
+					bbs.size());
+				db.add(input);
 			}
 		}
 	}
