@@ -1383,8 +1383,12 @@ ir::tree::rstm lifter::arm64_handle_LSR(const disas_insn &insn)
 
 	if (third.type == ARM64_OP_IMM)
 		return translate_UBFM(rd, rn, third.imm, register_size(rd) - 1);
-	else
-		UNREACHABLE("Unimplemented LSR register");
+	else {
+		auto n = GPR(rn);
+		auto m = GPR(third.reg);
+
+		return MOVE(GPR8(rd), BINOP(BITRSHIFT, n, m, n->ty()->clone()));
+	}
 }
 
 ir::tree::rstm lifter::arm64_handle_LSL(const disas_insn &insn)
