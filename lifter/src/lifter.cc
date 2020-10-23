@@ -262,7 +262,6 @@ ir::tree::rstm lifter::arm64_handle_MOVZ(const disas_insn &insn)
 	ASSERT(rd.type == ARM64_OP_REG && imm.type == ARM64_OP_IMM,
 	       "Wrong movz operands");
 
-	// MOVZ zeroes the register
 	return MOVE(GPR8(rd.reg),
 		    shift(CNST(imm.imm), imm.shift.type, imm.shift.value));
 }
@@ -588,7 +587,9 @@ ir::tree::rstm lifter::arm64_handle_MOVK(const disas_insn &insn)
 	auto dest = GPR8(xd.reg);
 	auto cnst = CNST(imm.imm);
 
-	return MOVE(dest, BINOP(BITOR, dest,
+	auto mask = utils::mask_range(0, imm.shift.value - 1);
+
+	return MOVE(dest, BINOP(BITOR, BITAND(dest, CNST(mask)),
 				shift(cnst, imm.shift.type, imm.shift.value),
 				dest->ty()->clone()));
 }
@@ -1599,13 +1600,14 @@ ir::tree::rstm lifter::arm64_handle_MOVN(const disas_insn &insn)
 	auto *mach_det = insn.mach_detail();
 
 	auto rd = mach_det->operands[0].reg;
-	auto imm = mach_det->operands[1].imm;
+	auto imm = mach_det->operands[1];
 
-	uint64_t val = ~imm;
+	uint64_t val = imm.imm;
 	if (register_size(rd) == 32)
 		val = utils::extract_bits(val, 31, 0);
 
-	return MOVE(GPR8(rd), CNST(val));
+	return MOVE(GPR8(rd), BITNOT(shift(CNSTZ(val, register_size(rd) / 8),
+					   imm.shift.type, imm.shift.value)));
 }
 
 ir::tree::rstm lifter::arm64_handle_EOR(const disas_insn &insn)
@@ -1619,8 +1621,9 @@ ir::tree::rstm lifter::arm64_handle_EOR(const disas_insn &insn)
 	ir::tree::rexp n = GPR(rn);
 
 	if (third.type == ARM64_OP_IMM)
-		return MOVE(GPR8(rd), BINOP(BITXOR, n, CNST(third.imm),
-					    n->ty()->clone()));
+		return MOVE(GPR8(rd),
+			    BINOP(BITXOR, n, CNSTS(third.imm, n->ty()),
+				  n->ty()->clone()));
 	else
 		return MOVE(
 			GPR8(rd),
