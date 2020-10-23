@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	emu.run_until(h.base_state_addr());
 	emu.mmu().make_clean_state();
 	dyn::mmu base_mmu = emu.mmu();
-	lifter::state base_state = emu.state();
+	dyn::emu_state base_state = emu.state();
 
 	std::unordered_set<uint64_t> bbs;
 

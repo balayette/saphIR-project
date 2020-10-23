@@ -11,10 +11,28 @@
 #define DEFAULT_STACK_SIZE (0x1000 * 100)
 #define DEFAULT_BRK_ADDR 0x1337DEAD0000
 #define DEFAULT_BRK_SIZE (0x1000 * 100)
-#define DEFAULT_MMAP_ADDR 0x1773DEAD0000
+#define DEFAULT_MMAP_ADDR 0xDEADBEEF0000
 
 namespace dyn
 {
+struct emu_state {
+	uint64_t regs[32];
+	uint64_t nzcv;
+	uint64_t flag_a;
+	uint64_t flag_b;
+	uint64_t flag_op;
+	uint64_t exit_reason;
+	uint64_t tpidr_el0;
+
+	/*
+	 * store_fun(emu, addr, val, sz)
+	 * load_fun(emu, addr, sz);
+	 */
+	void *emu;
+	lifter::store_fun_fn store_fun;
+	lifter::load_fun_fn load_fun;
+};
+
 struct emu_params {
 	emu_params(bool singlestep = false,
 		   uint64_t stack_addr = DEFAULT_STACK_ADDR,
@@ -78,8 +96,8 @@ class base_emu
 	 */
 	void run_until(uint64_t addr);
 
-	lifter::state &state() { return state_; }
-	const lifter::state &state() const { return state_; }
+	emu_state &state() { return state_; }
+	const emu_state &state() const { return state_; }
 	std::string state_dump() const;
 
 	size_t pc() const { return pc_; }
@@ -152,7 +170,7 @@ class base_emu
 	uint64_t mmap_base_;
 	uint64_t mmap_offt_;
 
-	lifter::state state_;
+	emu_state state_;
 	size_t pc_;
 
 	bool exited_;

@@ -35,24 +35,6 @@ enum exit_reasons {
 	SYSCALL,
 };
 
-struct state {
-	uint64_t regs[32];
-	uint64_t nzcv;
-	uint64_t flag_a;
-	uint64_t flag_b;
-	uint64_t flag_op;
-	uint64_t exit_reason;
-	uint64_t tpidr_el0;
-
-	/*
-	 * store_fun(emu, addr, val, sz)
-	 * load_fun(emu, addr, sz);
-	 */
-	void *emu;
-	store_fun_fn store_fun;
-	load_fun_fn load_fun;
-};
-
 class lifter
 {
       public:

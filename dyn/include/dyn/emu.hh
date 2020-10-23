@@ -38,7 +38,7 @@ class emu : public base_emu
 	void reset_with_mmu(const dyn::mmu &base);
 
       private:
-	using bb_fn = size_t (*)(lifter::state *, dyn::mmu *mmu);
+	using bb_fn = size_t (*)(emu_state *, dyn::mmu *mmu);
 
 	void handle_store(uint64_t addr, uint64_t val, size_t sz);
 	uint64_t handle_load(uint64_t addr, size_t sz);
