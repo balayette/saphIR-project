@@ -1132,6 +1132,13 @@ ir::tree::meta_cx lifter::translate_cc(arm64_cc cond)
 			BINOP(BITAND, nzcv, CNST(V), amd_target_->gpr_type());
 		return CX(ops::cmpop::NEQ, nbit, vbit);
 	}
+	if (cond == ARM64_CC_MI) {
+		auto nbit = BINOP(
+			BITRSHIFT,
+			BINOP(BITAND, nzcv, CNST(N), amd_target_->gpr_type()),
+			CNST(3), amd_target_->gpr_type());
+		return CX(ops::cmpop::EQ, nbit, CNST(1));
+	}
 	UNREACHABLE("Unimplemented translate_cc");
 }
 
@@ -1410,6 +1417,8 @@ arm64_cc lifter::invert_cc(arm64_cc cc)
 		return ARM64_CC_LO;
 	case ARM64_CC_HI:
 		return ARM64_CC_LS;
+	case ARM64_CC_LS:
+		return ARM64_CC_HI;
 	default:
 		UNREACHABLE("Unimplemented invert_cc");
 	}
