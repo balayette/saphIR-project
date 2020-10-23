@@ -379,6 +379,8 @@ void base_emu::sys_writev()
 	reg_write(mach::aarch64::regs::R0, ret);
 }
 
+void base_emu::sys_munmap() { reg_write(mach::aarch64::regs::R0, 0); }
+
 void base_emu::syscall()
 {
 	auto nr = state_.regs[mach::aarch64::regs::R8];
@@ -397,6 +399,7 @@ void base_emu::syscall()
 		{ARM64_NR_uname, &base_emu::sys_uname},
 		{ARM64_NR_readlinkat, &base_emu::sys_readlinkat},
 		{ARM64_NR_mmap, &base_emu::sys_mmap},
+		{ARM64_NR_munmap, &base_emu::sys_munmap},
 		{ARM64_NR_set_tid_address, &base_emu::sys_set_tid_address},
 		{ARM64_NR_ioctl, &base_emu::sys_ioctl},
 		{ARM64_NR_writev, &base_emu::sys_writev},
