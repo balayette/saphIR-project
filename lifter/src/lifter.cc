@@ -26,12 +26,14 @@
 #define CNSTS(C, T)                                                            \
 	amd_target_->make_cnst(C, types::signedness::UNSIGNED,                 \
 			       (T)->assem_size())
-#define CNSTZ(C, S) amd_target_->make_cnst(C, types::signedness::UNSIGNED, S);
+#define CNSTZ(C, S) amd_target_->make_cnst(C, types::signedness::UNSIGNED, S)
 #define TTEMP(R, T) amd_target_->make_temp(R, T)
 #define RTEMP(R) amd_target_->make_temp(R, arm_target_->gpr_type())
 #define GPR(R) translate_gpr(R, false, 0, types::signedness::UNSIGNED)
 #define GPR8(R) translate_gpr(R, true, 8, types::signedness::UNSIGNED)
+#define GPRZ(R, Z) translate_gpr(R, true, Z, types::signedness::UNSIGNED)
 #define SGPR(R) translate_gpr(R, false, 0, types::signedness::SIGNED)
+#define SGPRZ(R, Z) translate_gpr(R, true, Z, types::signedness::SIGNED)
 #define SGPR8(R) translate_gpr(R, true, 8, types::signedness::SIGNED)
 #define ADD(L, R, T) amd_target_->make_binop(ops::binop::PLUS, L, R, T)
 #define BINOP(Op, L, R, T) amd_target_->make_binop(ops::binop::Op, L, R, T)
@@ -43,6 +45,11 @@
 #define CALL(F, A, T) amd_target_->make_call(F, A, T)
 #define SEXP(E) amd_target_->make_sexp(E)
 #define CX(Op, L, R) ir::tree::meta_cx(*amd_target_, Op, L, R)
+#define LSR(V, C) BINOP(BITRSHIFT, V, C, (V)->ty()->clone())
+#define LSL(V, C) BINOP(BITLSHIFT, V, C, (V)->ty()->clone())
+#define BITAND(V, C) BINOP(BITAND, V, C, (V)->ty()->clone())
+#define BITOR(V, C) BINOP(BITOR, V, C, (V)->ty()->clone())
+#define BITNOT(V) UNARYOP(BITNOT, V, (V)->ty()->clone())
 
 namespace lifter
 {
@@ -1645,6 +1652,16 @@ ir::tree::rstm lifter::arm64_handle_SXTW(const disas_insn &insn)
 	auto rn = mach_det->operands[1].reg;
 
 	return MOVE(SGPR8(rd), SGPR(rn));
+}
+
+ir::tree::rstm lifter::arm64_handle_SXTB(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+
+	return SEQ(MOVE(SGPR(rd), SGPRZ(rn, 1)), MOVE(GPR8(rd), GPR(rd)));
 }
 
 ir::tree::rstm lifter::arm64_handle_BIC(const disas_insn &insn)

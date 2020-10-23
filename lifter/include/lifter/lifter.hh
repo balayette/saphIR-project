@@ -101,6 +101,7 @@ class lifter
 
 	ir::tree::rstm arm64_handle_MOVZ(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_SXTW(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_SXTB(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_MVN(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_SUB(const disas_insn &insn);
