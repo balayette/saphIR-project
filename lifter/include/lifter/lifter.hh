@@ -105,10 +105,11 @@ class lifter
 	ir::tree::rstm arm64_handle_MVN(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_SUB(const disas_insn &insn);
-	ir::tree::rstm arm64_handle_SUB_reg(arm64_reg rd, arm64_reg rn,
-					    cs_arm64_op rm);
-	ir::tree::rstm arm64_handle_SUB_imm(arm64_reg rd, arm64_reg rn,
-					    int64_t imm);
+	std::pair<ir::tree::rexp, ir::tree::rexp>
+	arm64_handle_SUB_reg(arm64_reg rn, cs_arm64_op rm);
+	std::pair<ir::tree::rexp, ir::tree::rexp>
+	arm64_handle_SUB_imm(arm64_reg rn, int64_t imm);
+
 	ir::tree::rstm arm64_handle_NEG(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_UDIV(const disas_insn &insn);

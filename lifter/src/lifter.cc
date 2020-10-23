@@ -402,38 +402,48 @@ ir::tree::rexp lifter::shift_or_extend(ir::tree::rexp e, arm64_shifter shifter,
 	return ret;
 }
 
-ir::tree::rstm lifter::arm64_handle_SUB_reg(arm64_reg rd, arm64_reg rn,
-					    cs_arm64_op rm)
+std::pair<ir::tree::rexp, ir::tree::rexp>
+lifter::arm64_handle_SUB_reg(arm64_reg rn, cs_arm64_op rm)
 {
 	ir::tree::rexp reg = GPR(rn);
 
-	return MOVE(GPR8(rd), BINOP(MINUS, reg,
-				    shift_or_extend(GPR(rm.reg), rm.shift.type,
-						    rm.shift.value, rm.ext),
-				    reg->ty()->clone()));
+	return std::make_pair(reg, shift_or_extend(GPR(rm.reg), rm.shift.type,
+						   rm.shift.value, rm.ext));
 }
 
-ir::tree::rstm lifter::arm64_handle_SUB_imm(arm64_reg rd, arm64_reg rn,
-					    int64_t imm)
+std::pair<ir::tree::rexp, ir::tree::rexp>
+lifter::arm64_handle_SUB_imm(arm64_reg rn, int64_t imm)
 {
 	ir::tree::rexp reg = GPR(rn);
 
-	return MOVE(GPR8(rd),
-		    BINOP(MINUS, reg, CNST2(imm), reg->ty()->clone()));
+	return std::make_pair(reg, CNST2(imm));
 }
 
 ir::tree::rstm lifter::arm64_handle_SUB(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
 
-	auto rd = mach_det->operands[0];
+	auto rd = mach_det->operands[0].reg;
 	auto rn = mach_det->operands[1];
 	auto third = mach_det->operands[2];
 
-	if (third.type == ARM64_OP_REG)
-		return arm64_handle_SUB_reg(rd.reg, rn.reg, third);
-	return arm64_handle_SUB_imm(rd.reg, rn.reg, third.imm);
-	UNREACHABLE("Unimplemented sub");
+	auto [lhs, rhs] = third.type == ARM64_OP_REG
+				  ? arm64_handle_SUB_reg(rn.reg, third)
+				  : arm64_handle_SUB_imm(rn.reg, third.imm);
+
+	auto ret = SEQ();
+	if (mach_det->update_flags) {
+		auto set = set_cmp_values(insn.address(), lhs, rhs,
+					  register_size(rd) == 32
+						  ? flag_op::CMP32
+						  : flag_op::CMP64);
+		ret->append(set);
+	}
+
+	auto mv = MOVE(GPR8(rd), BINOP(MINUS, lhs, rhs, lhs->ty()->clone()));
+	ret->append(mv);
+
+	return ret;
 }
 
 ir::tree::rstm lifter::arm64_handle_NEG(const disas_insn &insn)
@@ -443,9 +453,10 @@ ir::tree::rstm lifter::arm64_handle_NEG(const disas_insn &insn)
 	auto rd = mach_det->operands[0].reg;
 	auto rm = mach_det->operands[1];
 
-	return arm64_handle_SUB_reg(
-		rd, register_size(rd) == 64 ? ARM64_REG_XZR : ARM64_REG_WZR,
-		rm);
+	auto [lhs, rhs] = arm64_handle_SUB_reg(
+		register_size(rd) == 64 ? ARM64_REG_XZR : ARM64_REG_WZR, rm);
+
+	return MOVE(GPR8(rd), BINOP(MINUS, lhs, rhs, lhs->ty()->clone()));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm,
