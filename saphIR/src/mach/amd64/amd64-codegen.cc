@@ -738,11 +738,41 @@ void generator::visit_unaryop(tree::unaryop &b)
 		EMIT(oper("not `s0", {dst}, {dst}, {}));
 		ret_ = dst;
 	} else if (b.op_ == ops::unaryop::REV) {
-		ASSERT(val.size_ > 2,
-		       "REV operand size needs to be at least 4 bytes at the moment");
 		assem::temp dst(val.size_, val.is_signed_);
-		EMIT(simple_move(dst, val));
-		EMIT(oper("bswap `s0", {dst}, {dst}, {}));
+
+		if (val.size_ >= 4) {
+			EMIT(simple_move(dst, val));
+			EMIT(oper("bswap `s0", {dst}, {dst}, {}));
+		} else if (val.size_ == 2) {
+			assem::temp t1(2, val.is_signed_);
+			assem::temp t2(2, val.is_signed_);
+
+			/*
+			 * mov %val, %t1
+			 * mov %val, %t2
+			 *
+			 * and $0xff, %t1
+			 * shl $8, %t1
+			 * and $0xff, %t2
+			 *
+			 * movq %res, %t1
+			 * or %res, %t2
+			 *
+			 * mov %res, %dest
+			 */
+
+			EMIT(simple_move(t1, val));
+			EMIT(simple_move(t2, val));
+
+			EMIT(oper("shrw $0x8, `s0", {t1}, {t1}, {}));
+			EMIT(oper("shlw $0x8, `s0", {t2}, {t2}, {}));
+
+			EMIT(simple_move(dst, t1));
+			EMIT(oper("orw `s0, `d0", {dst}, {t2, dst}, {}));
+		} else if (val.size_ == 1) {
+			EMIT(simple_move(dst, val));
+		}
+
 		ret_ = dst;
 	} else if (b.op_ == ops::unaryop::CLZ) {
 		assem::temp dst(val.size_, val.is_signed_);
