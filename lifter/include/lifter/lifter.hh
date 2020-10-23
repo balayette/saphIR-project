@@ -117,6 +117,7 @@ class lifter
 	ir::tree::rstm translate_MADD(arm64_reg rd, arm64_reg rn, arm64_reg rm,
 				      arm64_reg ra);
 	ir::tree::rstm arm64_handle_MUL(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_UMULH(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_MADD(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_ADD(const disas_insn &insn);
@@ -193,6 +194,7 @@ class lifter
 						    cs_arm64_op xn);
 
 	ir::tree::rstm arm64_handle_ADRP(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_ADR(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_STXR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STLXR(const disas_insn &insn);
@@ -202,6 +204,7 @@ class lifter
 	ir::tree::rstm arm64_handle_STRH(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STUR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STURB(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_STURH(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_STR_size(const disas_insn &insn, size_t sz);
 	ir::tree::rstm arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst,
@@ -231,6 +234,9 @@ class lifter
 	ir::tree::rstm arm64_handle_UBFIZ(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_UBFX(const disas_insn &insn);
 
+	ir::tree::rstm arm64_handle_BFI(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_BFXIL(const disas_insn &insn);
+
 	ir::tree::rstm arm64_handle_ASR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_LSR(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_LSL(const disas_insn &insn);
@@ -254,7 +260,12 @@ class lifter
 				     cs_arm64_op rm);
 
 	ir::tree::rstm arm64_handle_REV(const disas_insn &insn);
+	ir::tree::rstm arm64_handle_REV16(const disas_insn &insn);
 	ir::tree::rstm arm64_handle_CLZ(const disas_insn &insn);
+
+	ir::tree::rstm rev32(ir::tree::rexp rd, ir::tree::rexp rn);
+	ir::tree::rstm rev64(ir::tree::rexp rd, ir::tree::rexp rn);
+	ir::tree::rstm arm64_handle_RBIT(const disas_insn &insn);
 
 	ir::tree::rstm arm64_handle_PRFM(const disas_insn &insn);
 

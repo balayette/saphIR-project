@@ -892,6 +892,16 @@ ir::tree::rstm lifter::arm64_handle_ADRP(const disas_insn &insn)
 	return MOVE(GPR8(xd.reg), CNST(imm.imm));
 }
 
+ir::tree::rstm lifter::arm64_handle_ADR(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto xd = mach_det->operands[0];
+	auto imm = mach_det->operands[1];
+
+	return MOVE(GPR8(xd.reg), CNST(imm.imm));
+}
+
 ir::tree::rstm lifter::arm64_handle_STXR(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
@@ -1001,6 +1011,11 @@ ir::tree::rstm lifter::arm64_handle_STUR(const disas_insn &insn)
 ir::tree::rstm lifter::arm64_handle_STURB(const disas_insn &insn)
 {
 	return arm64_handle_STR_size(insn, 1);
+}
+
+ir::tree::rstm lifter::arm64_handle_STURH(const disas_insn &insn)
+{
+	return arm64_handle_STR_size(insn, 2);
 }
 
 ir::tree::rstm lifter::arm64_handle_STR_size(const disas_insn &insn, size_t sz)
@@ -1230,6 +1245,48 @@ ir::tree::rstm lifter::translate_CSINC(arm64_reg xd, arm64_reg xn, arm64_reg xm,
 		   MOVE(GPR8(xd),
 			BINOP(PLUS, m, CNSTS(1, m->ty()), m->ty()->clone())),
 		   LABEL(end));
+}
+
+ir::tree::rstm lifter::arm64_handle_BFI(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto lsb = mach_det->operands[2].imm;
+	auto width = mach_det->operands[3].imm;
+
+	auto mask = utils::mask_range(0, width - 1);
+	auto dest_mask = ~utils::mask_range(lsb, lsb + width - 1);
+
+	auto n = GPR(rn);
+	auto bits = BITAND(n, CNSTS(mask, n->ty()));
+	auto shifted = LSL(bits, CNSTS(lsb, bits->ty()));
+
+	auto d = GPR(rd);
+	auto dest_masked = BITAND(d, CNSTS(dest_mask, d->ty()));
+
+	return MOVE(GPR8(rd), BITOR(dest_masked, shifted));
+}
+
+ir::tree::rstm lifter::arm64_handle_BFXIL(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+	auto lsb = mach_det->operands[2].imm;
+	auto width = mach_det->operands[3].imm;
+
+	auto mask = ~utils::mask_range(0, width - 1);
+
+	auto n = GPR(rn);
+	auto srcbits =
+		BITAND(LSR(n, CNSTS(lsb, n->ty())), CNSTS(~mask, n->ty()));
+
+	auto topbits = BITAND(GPR(rd), CNSTS(mask, n->ty()));
+
+	return MOVE(GPR8(rd), BITOR(topbits, srcbits));
 }
 
 ir::tree::rstm lifter::translate_UBFM(arm64_reg rd, arm64_reg rn, int immr,
@@ -1643,6 +1700,15 @@ ir::tree::rstm lifter::arm64_handle_MUL(const disas_insn &insn)
 						      : ARM64_REG_WZR);
 }
 
+ir::tree::rstm lifter::arm64_handle_UMULH(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+
+	return MOVE(GPR8(rd), CNST(0));
+}
+
 ir::tree::rstm lifter::arm64_handle_MADD(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
@@ -1713,6 +1779,52 @@ ir::tree::rstm lifter::arm64_handle_REV(const disas_insn &insn)
 	return MOVE(GPR8(rd), UNARYOP(REV, src, src->ty_->clone()));
 }
 
+ir::tree::rstm lifter::arm64_handle_REV16(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+
+	ir::tree::rexp src = GPR(rn);
+
+	auto reg_sz = register_size(rn);
+	auto byte_count = reg_sz / 8;
+
+	utils::temp res, t;
+	utils::ref<types::ty> rty = src->ty();
+	utils::ref<types::ty> tty =
+		amd_target_->integer_type(types::signedness::UNSIGNED, 2);
+
+	auto ret = SEQ();
+
+#define r TTEMP(res, rty->clone())
+#define t TTEMP(t, tty->clone())
+	ret->append(MOVE(r, CNST(0)));
+
+	for (size_t i = 0; i < byte_count; i += 2) {
+		auto shift = i * 8;
+
+		auto val = BITAND(LSR(src, CNSTS(shift, src->ty())),
+				  CNSTS(0xffff, src->ty()));
+		auto mval = MOVE(t, val);
+
+		auto reved = UNARYOP(REV, t, tty->clone());
+		auto shifted =
+			LSL(amd_target_->make_zext(reved, src->ty()->clone()),
+			    CNSTS(shift, src->ty()));
+		auto final_move = MOVE(r, BITOR(r, shifted));
+
+		ret->append({mval, final_move});
+	}
+
+	ret->append(MOVE(GPR8(rd), r));
+#undef r
+#undef t
+
+	return ret;
+}
+
 ir::tree::rstm lifter::arm64_handle_CLZ(const disas_insn &insn)
 {
 	auto *mach_det = insn.mach_detail();
@@ -1724,11 +1836,111 @@ ir::tree::rstm lifter::arm64_handle_CLZ(const disas_insn &insn)
 	return MOVE(GPR8(rd), UNARYOP(CLZ, src, src->ty_->clone()));
 }
 
+ir::tree::rstm lifter::rev32(ir::tree::rexp rd, ir::tree::rexp rn)
+{
+	/*
+	 * rev32
+	 * n1
+	 v = ((v >> 1) & 0x55555555) | ((v & 0x55555555) << 1)
+	 * n2
+	 v = ((v >> 2) & 0x33333333) | ((v & 0x33333333) << 2)
+	 * n3
+	 v = ((v >> 4) & 0x0f0f0f0f) | ((v & 0x0f0f0f0f) << 4)
+	 * n4
+	 v = ((v >> 8) & 0x00ff00ff) | ((v & 0x00ff00ff) << 8)
+	 * n5
+	 v = ( v >> 16             ) | ( v               << 16)
+	 */
+
+	utils::temp v;
+	auto vty = rd->ty();
+	ir::tree::rexp t = TTEMP(v, vty->clone());
+
+	auto into_v = MOVE(t, rn);
+
+	auto n1 = BITOR(BITAND(LSR(t, CNST(1)), CNST(0x55555555)),
+			LSL(BITAND(t, CNST(0x55555555)), CNST(1)));
+
+	auto n2 = BITOR(BITAND(LSR(t, CNST(2)), CNST(0x33333333)),
+			LSL(BITAND(t, CNST(0x33333333)), CNST(2)));
+
+	auto n3 = BITOR(BITAND(LSR(t, CNST(4)), CNST(0x0f0f0f0f)),
+			LSL(BITAND(t, CNST(0x0f0f0f0f)), CNST(4)));
+
+	auto n4 = BITOR(BITAND(LSR(t, CNST(8)), CNST(0x00ff00ff)),
+			LSL(BITAND(t, CNST(0x00ff00ff)), CNST(8)));
+
+	auto n5 = BITOR(LSR(t, CNST(16)), LSL(t, CNST(16)));
+
+	auto res_move = MOVE(rd, t);
+
+	return SEQ(into_v, MOVE(t, n1), MOVE(t, n2), MOVE(t, n3), MOVE(t, n4),
+		   MOVE(t, n5), res_move);
+}
+
+ir::tree::rstm lifter::rev64(ir::tree::rexp rd, ir::tree::rexp rn)
+{
+	/*
+	 * rev64
+	 v = ((v >> 1) & 0x5555555555555555) | ((v & 0x5555555555555555) << 1)
+	 v = ((v >> 2) & 0x3333333333333333) | ((v & 0x3333333333333333) << 2)
+	 v = ((v >> 4) & 0x0f0f0f0f0f0f0f0f) | ((v & 0x0f0f0f0f0f0f0f0f) << 4)
+	 v = ((v >> 8) & 0x00ff00ff00ff00ff) | ((v & 0x00ff00ff00ff00ff) << 8)
+	 v = ((v >> 16)& 0x0000ffff0000ffff) | ((v & 0x0000ffff0000ffff) << 16)
+	 v = (v >> 32) | (v << 32)
+	 */
+
+	utils::temp v;
+	utils::ref<types::ty> vty = rd->ty();
+#define t TTEMP(v, vty->clone())
+
+	auto into_v = MOVE(t, rn);
+
+	auto n1 = BITOR(BITAND(LSR(t, CNST(1)), CNST(0x5555555555555555)),
+			LSL(BITAND(t, CNST(0x5555555555555555)), CNST(1)));
+
+	auto n2 = BITOR(BITAND(LSR(t, CNST(2)), CNST(0x3333333333333333)),
+			LSL(BITAND(t, CNST(0x3333333333333333)), CNST(2)));
+
+	auto n3 = BITOR(BITAND(LSR(t, CNST(4)), CNST(0x0f0f0f0f0f0f0f0f)),
+			LSL(BITAND(t, CNST(0x0f0f0f0f0f0f0f0f)), CNST(4)));
+
+	auto n4 = BITOR(BITAND(LSR(t, CNST(8)), CNST(0x00ff00ff00ff00ff)),
+			LSL(BITAND(t, CNST(0x00ff00ff00ff00ff)), CNST(8)));
+
+	auto n5 = BITOR(BITAND(LSR(t, CNST(16)), CNST(0x0000ffff0000ffff)),
+			LSL(BITAND(t, CNST(0x0000ffff0000ffff)), CNST(16)));
+
+	auto n6 = BITOR(LSR(t, CNST(32)), LSL(t, CNST(32)));
+
+	auto res_move = MOVE(rd, t);
+
+	return SEQ(into_v, MOVE(t, n1), MOVE(t, n2), MOVE(t, n3), MOVE(t, n4),
+		   MOVE(t, n5), MOVE(t, n6), res_move);
+#undef t
+}
+
+ir::tree::rstm lifter::arm64_handle_RBIT(const disas_insn &insn)
+{
+	auto *mach_det = insn.mach_detail();
+
+	auto rd = mach_det->operands[0].reg;
+	auto rn = mach_det->operands[1].reg;
+
+	auto sz = register_size(rd);
+
+	if (sz == 32)
+		return rev32(GPR8(rd), GPR(rn));
+	else
+		return rev64(GPR8(rd), GPR(rn));
+}
+
 ir::tree::rstm lifter::lift(const disas_insn &insn)
 {
 	switch (insn.id()) {
 		HANDLER(ADD);
 		HANDLER(ADRP);
+		HANDLER(ADR);
 		HANDLER(AND);
 		HANDLER(B);
 		HANDLER(BIC);
@@ -1744,6 +1956,7 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(CSEL);
 		HANDLER(CSET);
 		HANDLER(CLZ);
+		HANDLER(RBIT);
 		HANDLER(LDAXR);
 		HANDLER(LDP);
 		HANDLER(LDR);
@@ -1762,16 +1975,19 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(MRS);
 		HANDLER(MSR);
 		HANDLER(MUL);
+		HANDLER(UMULH);
 		HANDLER(NEG);
 		HANDLER(NOP);
 		HANDLER(ORR);
 		HANDLER(EOR);
 		HANDLER(RET);
 		HANDLER(REV);
+		HANDLER(REV16);
 		HANDLER(STP);
 		HANDLER(STR);
 		HANDLER(STUR);
 		HANDLER(STURB);
+		HANDLER(STURH);
 		HANDLER(STRB);
 		HANDLER(STRH);
 		HANDLER(STXR);
@@ -1780,11 +1996,14 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 		HANDLER(SUB);
 		HANDLER(SVC);
 		HANDLER(SXTW);
+		HANDLER(SXTB);
 		HANDLER(TBNZ);
 		HANDLER(TBZ);
 		HANDLER(TST);
 		HANDLER(UBFIZ);
 		HANDLER(UBFX);
+		HANDLER(BFI);
+		HANDLER(BFXIL);
 		HANDLER(UDIV);
 		NOPHANDLER(PRFM);
 		NOPHANDLER(HINT);
