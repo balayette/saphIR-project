@@ -381,11 +381,13 @@ void base_emu::sys_writev()
 
 void base_emu::sys_munmap() { reg_write(mach::aarch64::regs::R0, 0); }
 
+void base_emu::sys_mprotect() { reg_write(mach::aarch64::regs::R0, 0); }
+
 void base_emu::syscall()
 {
 	auto nr = state_.regs[mach::aarch64::regs::R8];
 #if EMU_SYSCALL_LOG
-	fmt::print("Syscall {:#x}\n", nr);
+	fmt::print("Syscall {}\n", nr);
 #endif
 
 	static std::unordered_map<uint64_t, syscall_handler> syscall_handlers{
@@ -400,6 +402,7 @@ void base_emu::syscall()
 		{ARM64_NR_readlinkat, &base_emu::sys_readlinkat},
 		{ARM64_NR_mmap, &base_emu::sys_mmap},
 		{ARM64_NR_munmap, &base_emu::sys_munmap},
+		{ARM64_NR_mprotect, &base_emu::sys_mprotect},
 		{ARM64_NR_set_tid_address, &base_emu::sys_set_tid_address},
 		{ARM64_NR_ioctl, &base_emu::sys_ioctl},
 		{ARM64_NR_writev, &base_emu::sys_writev},
