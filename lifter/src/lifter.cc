@@ -952,7 +952,9 @@ ir::tree::rstm lifter::arm64_handle_LDXR(const disas_insn &insn)
 ir::tree::rstm lifter::arm64_handle_STR_reg(cs_arm64_op xt, cs_arm64_op dst,
 					    size_t sz)
 {
-	return translate_store(translate_mem_op(dst.mem, sz), GPR(xt.reg), sz);
+	return translate_store(translate_mem_op(dst.mem, sz, dst.shift.type,
+						dst.shift.value, dst.ext),
+			       GPRZ(xt.reg, sz), sz);
 }
 
 
