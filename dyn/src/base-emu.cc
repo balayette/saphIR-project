@@ -433,15 +433,15 @@ void base_emu::add_mem_write_callback(mem_write_callback cb, void *data)
 	mem_write_cbs_.push_back({cb, data});
 }
 
-void base_emu::add_on_entry_callback(std::function<void(uint64_t)> f)
+void base_emu::add_on_entry_callback(on_entry_callback f)
 {
 	on_entry_cbs_.push_back(f);
 }
 
-void base_emu::dispatch_on_entry(uint64_t pc)
+void base_emu::dispatch_on_entry(uint64_t pc, uint64_t end_pc)
 {
 	for (const auto &f : on_entry_cbs_)
-		f(pc);
+		f(pc, end_pc);
 }
 
 uint64_t base_emu::map_elf()

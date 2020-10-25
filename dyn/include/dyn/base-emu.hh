@@ -64,6 +64,8 @@ class base_emu
 					    uint64_t val, void *user_data);
 	using mem_read_callback = void (*)(uint64_t addr, uint64_t size,
 					   uint64_t val, void *user_data);
+	using on_entry_callback =
+		std::function<void(uint64_t pc, uint64_t end_pc)>;
 
 	base_emu(utils::mapped_file &file, const emu_params &p);
 	virtual ~base_emu() = default;
@@ -108,7 +110,7 @@ class base_emu
 
 	virtual void add_mem_read_callback(mem_read_callback cb, void *data);
 	virtual void add_mem_write_callback(mem_write_callback cb, void *data);
-	void add_on_entry_callback(std::function<void(uint64_t)> f);
+	void add_on_entry_callback(on_entry_callback f);
 
 	virtual void reg_write(mach::aarch64::regs r, uint64_t val);
 	virtual uint64_t reg_read(mach::aarch64::regs r);
@@ -185,11 +187,11 @@ class base_emu
 	std::vector<std::pair<mem_read_callback, void *>> mem_read_cbs_;
 	std::vector<std::pair<mem_write_callback, void *>> mem_write_cbs_;
 
-	std::vector<std::function<void(uint64_t)>> on_entry_cbs_;
+	std::vector<on_entry_callback> on_entry_cbs_;
 
 	/*
 	 * Should be called before executing an instruction / basic block
 	 */
-	void dispatch_on_entry(uint64_t pc);
+	void dispatch_on_entry(uint64_t pc, uint64_t end_pc);
 };
 } // namespace dyn

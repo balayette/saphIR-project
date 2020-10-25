@@ -1,7 +1,12 @@
 #include "utils/symbol.hh"
+#include <mutex>
+
+std::mutex insertion_mutex;
 
 symbol::symbol(const std::string &str)
 {
+	std::scoped_lock lock(insertion_mutex);
+
 	get_set().insert(str);
 	instance_ = &(*(get_set().find(str)));
 }
@@ -10,7 +15,7 @@ symbol::symbol(const char *str) : symbol(std::string(str)) {}
 
 std::set<std::string> &symbol::get_set()
 {
-	static std::set<std::string> set{};
+	static std::set<std::string> set;
 
 	return set;
 }

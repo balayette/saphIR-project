@@ -98,15 +98,14 @@ void emu::reset_with_mmu(const dyn::mmu &base)
 
 std::pair<uint64_t, size_t> emu::singlestep()
 {
-	if (state_.exit_reason != lifter::SET_FLAGS)
-		dispatch_on_entry(pc_);
-
 	const auto &chunk = find_or_compile(pc_);
+	dispatch_on_entry(chunk.addr, chunk.end_addr);
+
+#if EMU_STATE_LOG
 	/* Not printing the message if we exited because of a
 	 * comparison to print one message per QEMU chunk and
 	 * make debugging easier
 	 */
-#if EMU_STATE_LOG
 	if (state_.exit_reason != lifter::SET_FLAGS)
 		fmt::print("Chunk for {:#x} @ {} ({})\n", pc_, chunk.map,
 			   chunk.symbol);
@@ -276,6 +275,8 @@ chunk emu::compile(size_t pc)
 	auto ret = assemble(lifter_.amd64_target(), f);
 	ret.insn_count = bb.size();
 	ret.symbol = bin_.symbolize_func(pc);
+	ret.addr = pc;
+	ret.end_addr = bb.end_address();
 
 	return ret;
 }
@@ -318,7 +319,7 @@ chunk emu::assemble(mach::target &target, mach::asm_function &f)
 	mprotect(map, size, PROT_READ | PROT_EXEC);
 
 	ks_free(out);
-	return {map, size, 0, ""};
+	return {map, size, 0, 0, 0, ""};
 }
 
 #define UInt(x) ((__uint128_t)x)

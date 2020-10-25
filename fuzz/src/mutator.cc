@@ -13,7 +13,7 @@ enum mutations {
 	MUTATIONS_END,
 };
 
-input mutator::mutate(input &inpt, size_t rounds) const
+input mutator::mutate(const input &inpt, size_t rounds) const
 {
 	input ret = inpt;
 

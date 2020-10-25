@@ -15,6 +15,9 @@ struct chunk {
 	size_t size;
 	size_t insn_count;
 
+	uint64_t addr;
+	uint64_t end_addr;
+
 	std::string symbol;
 };
 

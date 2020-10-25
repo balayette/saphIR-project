@@ -15,6 +15,7 @@ class disas_insn
 	disas_insn(std::shared_ptr<cs_insn> insn, csh handle);
 
 	size_t address() const;
+
 	std::string as_str() const;
 	std::string insn_name() const;
 
@@ -55,12 +56,16 @@ class disas_bb
 
 	const utils::uset<uint16_t> regs() const { return regs_; }
 
+	size_t end_address() const { return end_addr_; }
+
       private:
 	size_t addr_;
 	std::vector<disas_insn> insns_;
 	bool complete_;
 
 	utils::uset<uint16_t> regs_;
+
+	size_t end_addr_;
 };
 
 class disas

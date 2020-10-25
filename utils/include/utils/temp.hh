@@ -24,6 +24,7 @@ struct base_temp {
 	{
 		return !(sym_ == rhs.sym_);
 	}
+
 	symbol sym_;
 };
 

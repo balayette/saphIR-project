@@ -70,6 +70,7 @@ void disas_bb::append(const disas_insn &insn)
 {
 	ASSERT(!complete_, "Basic block already completed");
 	complete_ = insn.ends_bb();
+	end_addr_ = insn.address();
 	insns_.push_back(insn);
 
 	regs_ += insn.regs();
