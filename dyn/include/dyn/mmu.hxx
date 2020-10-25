@@ -4,16 +4,17 @@
 
 namespace dyn
 {
-template <typename T> T mmu::read(vaddr_t addr)
+template <typename T> std::variant<mmu_status, T> mmu::read(vaddr_t addr)
 {
 	T res;
-	read(reinterpret_cast<uint8_t *>(&res), addr, sizeof(T));
-
-	return res;
+	auto ret = read(&res, addr, sizeof(T));
+	if (ret == mmu_status::OK)
+		return res;
+	return ret;
 }
 
-template <typename T> void mmu::write(vaddr_t addr, const T val)
+template <typename T> mmu_status mmu::write(vaddr_t addr, const T val)
 {
-	write(addr, reinterpret_cast<const uint8_t *>(&val), sizeof(T));
+	return write(addr, &val, sizeof(T));
 }
 } // namespace dyn

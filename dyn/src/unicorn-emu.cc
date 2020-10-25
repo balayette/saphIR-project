@@ -90,8 +90,7 @@ void unicorn_emu::mem_map(uint64_t guest_addr, size_t length, int prot,
 {
 	(void)flags;
 
-	ASSERT(uc_mem_map(uc_, guest_addr, length, prot) == UC_ERR_OK,
-	       "Couldn't map {:#x}", guest_addr);
+	uc_mem_map(uc_, guest_addr, length, prot);
 	if (fd != -1) {
 		lseek(fd, offset, SEEK_SET);
 		for (size_t i = 0; i < length; i++) {

@@ -22,7 +22,8 @@ namespace dyn
 base_emu::base_emu(utils::mapped_file &file, const emu_params &p)
     : file_(file), bin_(file), stack_addr_(p.stack_addr), stack_sz_(p.stack_sz),
       brk_addr_(p.brk_addr), curr_brk_(p.brk_addr), brk_sz_(p.brk_sz),
-      mmap_base_(p.mmap_addr), mmap_offt_(p.mmap_addr), exited_(false)
+      mmap_base_(p.mmap_addr), mmap_offt_(p.mmap_addr), exited_(false),
+      icount_(0)
 {
 }
 
@@ -33,8 +34,10 @@ void base_emu::init()
 	mem_map(stack_addr_, stack_sz_, PROT_READ | PROT_WRITE,
 		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
 
+	/*
 	mem_map(brk_addr_, brk_sz_, PROT_READ | PROT_WRITE,
 		MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
+	*/
 
 	reset();
 }
@@ -42,6 +45,7 @@ void base_emu::init()
 void base_emu::reset()
 {
 	exited_ = false;
+	icount_ = 0;
 
 	std::memset(state_.regs, 0, sizeof(state_.regs));
 	state_.nzcv = lifter::Z;
@@ -50,7 +54,7 @@ void base_emu::reset()
 	mem_set(stack_addr_, 0, stack_sz_);
 	state_.regs[mach::aarch64::regs::SP] = stack_addr_ + stack_sz_;
 
-	mem_set(brk_addr_, 0, brk_sz_);
+	mem_set(brk_addr_, 0, curr_brk_ - brk_addr_);
 	curr_brk_ = brk_addr_;
 
 	mmap_offt_ = mmap_base_;
@@ -189,8 +193,9 @@ std::string base_emu::string_read(uint64_t guest_addr)
 void base_emu::run_until(uint64_t addr)
 {
 	while (!exited_) {
-		auto [next, _] = singlestep();
+		auto [next, exe] = singlestep();
 		pc_ = next;
+		icount_ += exe;
 		if (pc_ == addr)
 			return;
 	}
@@ -198,17 +203,14 @@ void base_emu::run_until(uint64_t addr)
 
 void base_emu::run()
 {
-	size_t executed = 0;
-
 #if EMU_VERBOSE
 	std::chrono::high_resolution_clock clock;
 	auto start = clock.now();
 #endif
 
-	size_t bb_count = 0;
-	while (!exited_ && bb_count < 1000000) {
+	while (!exited_) {
 		auto [next, exec] = singlestep();
-		executed += exec;
+		icount_ += exec;
 		pc_ = next;
 	}
 
@@ -226,8 +228,8 @@ void base_emu::run()
 			      end - start)
 			      .count()
 		      / 1000000.0;
-	fmt::print("Executed {} instructions in {} secs\n", executed, secs);
-	fmt::print("{} instructions / sec\n", (size_t)(executed / secs));
+	fmt::print("Executed {} instructions in {} secs\n", icount_, secs);
+	fmt::print("{} instructions / sec\n", (size_t)(icount_ / secs));
 	if (exited_)
 		fmt::print("Program exited with status code {}\n", exit_code_);
 	else
@@ -308,14 +310,7 @@ void base_emu::sys_uname()
 	reg_write(mach::aarch64::regs::R0, ret);
 }
 
-void base_emu::sys_brk()
-{
-	uint64_t new_addr = reg_read(mach::aarch64::regs::R0);
-	if (new_addr > brk_addr_ && new_addr < brk_addr_ + brk_sz_)
-		curr_brk_ = new_addr;
-
-	reg_write(mach::aarch64::regs::R0, curr_brk_);
-}
+void base_emu::sys_brk() { reg_write(mach::aarch64::regs::R0, 0); }
 
 void base_emu::sys_mmap()
 {
@@ -326,9 +321,11 @@ void base_emu::sys_mmap()
 	int fildes = (int)reg_read(mach::aarch64::regs::R4);
 	off_t off = (off_t)reg_read(mach::aarch64::regs::R5);
 
+	fmt::print("{:#x} {}\n", addr, len);
+
 	if (flags & MAP_FIXED) {
-		reg_write(mach::aarch64::regs::R0, addr);
 		mem_map(addr, len, prot, flags, fildes, off);
+		reg_write(mach::aarch64::regs::R0, addr);
 		return;
 	}
 

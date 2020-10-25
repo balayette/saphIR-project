@@ -26,6 +26,7 @@ class emu : public base_emu
 
 	std::pair<uint64_t, size_t> singlestep() override;
 
+	uint64_t alloc_mem(size_t length) override;
 	void mem_map(uint64_t guest_addr, size_t length, int prot, int flags,
 		     int fd = -1, off_t offset = 0) override;
 	void mem_write(uint64_t guest_addr, const void *src,
@@ -36,6 +37,11 @@ class emu : public base_emu
 	dyn::mmu &mmu() { return mmu_; }
 
 	void reset_with_mmu(const dyn::mmu &base);
+
+      protected:
+	virtual void sys_mmap() override;
+	virtual void sys_munmap() override;
+	virtual void sys_mprotect() override;
 
       private:
 	using bb_fn = size_t (*)(emu_state *, dyn::mmu *mmu);

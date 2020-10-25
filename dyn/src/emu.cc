@@ -28,7 +28,7 @@ extern char **environ;
 namespace dyn
 {
 emu::emu(utils::mapped_file &file, const emu_params &p)
-    : base_emu(file, p), disas_(p.singlestep), mmu_(2000000)
+    : base_emu(file, p), disas_(p.singlestep), mmu_(p.mmap_addr, 20000000)
 {
 	ASSERT(ks_open(KS_ARCH_X86, KS_MODE_64, &ks_) == KS_ERR_OK,
 	       "Couldn't init keystone");
@@ -55,33 +55,21 @@ emu::~emu()
 
 void emu::handle_store(uint64_t addr, uint64_t val, size_t sz)
 {
+	ASSERT(sz == 1 || sz == 2 || sz == 4 || sz == 8, "Wrong load size");
+
 	dispatch_write_cb(addr, sz, val);
 
-	if (sz == 1)
-		mmu_.write<uint8_t>(addr, val);
-	else if (sz == 2)
-		mmu_.write<uint16_t>(addr, val);
-	else if (sz == 4)
-		mmu_.write<uint32_t>(addr, val);
-	else if (sz == 8)
-		mmu_.write<uint64_t>(addr, val);
-	else
-		UNREACHABLE("Store size is {}", sz);
+	ASSERT(mmu_.write(addr, &val, sz) == mmu_status::OK,
+	       "Invalid memory write");
 }
 
 uint64_t emu::handle_load(uint64_t addr, size_t sz)
 {
+	ASSERT(sz == 1 || sz == 2 || sz == 4 || sz == 8, "Wrong load size");
+
 	uint64_t val;
-	if (sz == 1)
-		val = mmu_.read<uint8_t>(addr);
-	else if (sz == 2)
-		val = mmu_.read<uint16_t>(addr);
-	else if (sz == 4)
-		val = mmu_.read<uint32_t>(addr);
-	else if (sz == 8)
-		val = mmu_.read<uint64_t>(addr);
-	else
-		UNREACHABLE("Load size is {}", sz);
+	ASSERT(mmu_.read(&val, addr, sz) == mmu_status::OK,
+	       "Invalid memory read");
 
 	dispatch_read_cb(addr, sz, val);
 	return val;
@@ -90,6 +78,7 @@ uint64_t emu::handle_load(uint64_t addr, size_t sz)
 void emu::reset_with_mmu(const dyn::mmu &base)
 {
 	exited_ = false;
+	icount_ = 0;
 
 	std::memset(state_.regs, 0, sizeof(state_.regs));
 	state_.nzcv = lifter::Z;
@@ -98,7 +87,7 @@ void emu::reset_with_mmu(const dyn::mmu &base)
 	state_.regs[mach::aarch64::regs::SP] = stack_addr_ + stack_sz_;
 	curr_brk_ = brk_addr_;
 
-	mmap_offt_ = mmap_base_;
+	mmap_offt_ = mmap_base_ + base.size();
 
 	pc_ = bin_.ehdr().entry();
 
@@ -175,34 +164,71 @@ void emu::flag_update()
 		UNREACHABLE("Unimplemented flag update");
 }
 
+uint64_t emu::alloc_mem(size_t length)
+{
+	auto ret = mmu_.mmap(0, length);
+	ASSERT(std::holds_alternative<vaddr_t>(ret), "allocation failed");
+
+	return std::get<vaddr_t>(ret);
+}
+
 void emu::mem_map(uint64_t guest_addr, size_t length, int prot, int flags,
 		  int fd, off_t offset)
 {
-	/*
-	 * XXX: Flags are ignored at the moment.
-	 */
-	(void)flags;
-
-	ASSERT(mmu_.map_addr(guest_addr, length, prot), "couldn't map");
-	if (fd != -1) {
-		lseek(fd, offset, SEEK_SET);
-		for (size_t i = 0; i < length; i++) {
-			uint8_t buf;
-			read(fd, &buf, sizeof(buf));
-			mmu_.write(guest_addr + i * sizeof(buf), &buf,
-				   sizeof(buf));
-		}
-	}
+	auto ret = mmu_.mmap(guest_addr, length, prot, flags, fd, offset);
+	ASSERT(std::holds_alternative<vaddr_t>(ret), "mmap failed");
 }
 
 void emu::mem_write(uint64_t guest_addr, const void *src, size_t sz)
 {
-	mmu_.write(guest_addr, static_cast<const uint8_t *>(src), sz);
+	ASSERT(mmu_.write(guest_addr, src, sz) == mmu_status::OK,
+	       "Mem write failed");
 }
 
 void emu::mem_read(void *dst, uint64_t guest_addr, size_t sz)
 {
-	mmu_.read(static_cast<uint8_t *>(dst), guest_addr, sz);
+	ASSERT(mmu_.read(dst, guest_addr, sz) == mmu_status::OK,
+	       "Mem read failed");
+}
+
+void emu::sys_mmap()
+{
+	uint64_t addr = reg_read(mach::aarch64::regs::R0);
+	size_t len = (size_t)reg_read(mach::aarch64::regs::R1);
+	int prot = (int)reg_read(mach::aarch64::regs::R2);
+	int flags = (int)reg_read(mach::aarch64::regs::R3);
+	int fildes = (int)reg_read(mach::aarch64::regs::R4);
+	off_t off = (off_t)reg_read(mach::aarch64::regs::R5);
+
+	auto ret = mmu_.mmap(addr, len, prot, flags, fildes, off);
+
+	if (std::holds_alternative<vaddr_t>(ret))
+		reg_write(mach::aarch64::regs::R0, std::get<vaddr_t>(ret));
+	else
+		reg_write(mach::aarch64::regs::R0, -1);
+}
+
+void emu::sys_munmap()
+{
+	uint64_t addr = reg_read(mach::aarch64::regs::R0);
+	size_t len = (size_t)reg_read(mach::aarch64::regs::R1);
+
+	auto ret = mmu_.munmap(addr, len);
+
+	ASSERT(ret == mmu_status::OK, "munmap failed");
+	reg_write(mach::aarch64::regs::R0, 0);
+}
+
+void emu::sys_mprotect()
+{
+	uint64_t addr = reg_read(mach::aarch64::regs::R0);
+	size_t len = (size_t)reg_read(mach::aarch64::regs::R1);
+	int prot = (int)reg_read(mach::aarch64::regs::R2);
+
+	auto ret = mmu_.mprotect(addr, len, prot);
+
+	ASSERT(ret == mmu_status::OK, "mprotect failed");
+	reg_write(mach::aarch64::regs::R0, 0);
 }
 
 const chunk &emu::find_or_compile(size_t pc)
@@ -212,7 +238,7 @@ const chunk &emu::find_or_compile(size_t pc)
 		return it->second;
 
 #if EMU_COMPILE_LOG
-	fmt::print("Compiling for {:#x}\n", pc);
+	fmt::print("Compiling for {:#x} ({})\n", pc, bin_.symbolize_func(pc));
 #endif
 
 	bb_cache_[pc] = compile(pc);
@@ -222,7 +248,7 @@ const chunk &emu::find_or_compile(size_t pc)
 chunk emu::compile(size_t pc)
 {
 	const auto *seg = bin_.segment_for_address(pc);
-	ASSERT(seg, "No segment for pc");
+	ASSERT(seg, "No segment for pc {:#x}", pc);
 
 	auto seg_view = seg->contents(file_) + (pc - seg->vaddr());
 	auto bb = disas_.next(seg_view.data(), seg_view.size(), pc);

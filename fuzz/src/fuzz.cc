@@ -1,3 +1,7 @@
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "dyn/emu.hh"
 #include "fmt/format.h"
 #include "utils/timer.hh"
@@ -5,7 +9,41 @@
 #include "fuzz/harness.hh"
 #include "fuzz/mutator.hh"
 
-#define RESET_COUNT 3000000
+#define RESET_COUNT 40000
+
+using std::chrono_literals::operator""s;
+
+struct fuzz_stats {
+	fuzz_stats()
+	    : start(std::chrono::steady_clock::now()), executed_instrs(0),
+	      reset_count(0), coverage(0)
+	{
+	}
+
+	std::chrono::time_point<std::chrono::steady_clock> start;
+	std::atomic<uint64_t> executed_instrs;
+	std::atomic<uint64_t> reset_count;
+	std::atomic<uint64_t> coverage;
+
+	std::string to_string() const
+	{
+		uint64_t exe = executed_instrs;
+		uint64_t rst = reset_count;
+
+		double s =
+			std::chrono::duration_cast<std::chrono::microseconds>(
+				std::chrono::steady_clock::now() - start)
+				.count()
+			/ 1000000.0;
+
+		uint64_t insn_sec = exe / s;
+		uint64_t rst_sec = rst / s;
+
+		return fmt::format(
+			"runtime {:.2f} | cov {} | insns {} | insns/sec {} | resets {} | {} resets/sec\n",
+			s, coverage, exe, insn_sec, rst, rst_sec);
+	}
+};
 
 class basic_harness : public fuzz::harness
 {
@@ -18,7 +56,7 @@ class basic_harness : public fuzz::harness
 
 	virtual void setup(dyn::base_emu &emu) override
 	{
-		payload_addr_ = emu.alloc_mem(100);
+		payload_addr_ = emu.alloc_mem(4096);
 		emu.setup({payload_addr_});
 	}
 
@@ -109,12 +147,11 @@ int main(int argc, char *argv[])
 	h.setup(emu);
 
 	emu.run_until(h.base_state_addr());
-	emu.mmu().make_clean_state();
+	emu.mmu().make_base_state();
 	dyn::mmu base_mmu = emu.mmu();
 	dyn::emu_state base_state = emu.state();
 
 	std::unordered_set<uint64_t> bbs;
-
 	{
 		TIMERN(reset_timer, "Init corpus run", db.size());
 
@@ -137,6 +174,18 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	fuzz_stats stats;
+
+	std::thread stat_thread(
+		[](const auto *s) {
+			while (1) {
+				fmt::print(s->to_string());
+				std::this_thread::sleep_for(1s);
+			}
+		},
+		&stats);
+
+	uint64_t instruction_count = 0;
 	{
 		TIMERN(fuzzing_timer, "Fuzzing", RESET_COUNT);
 
@@ -156,20 +205,22 @@ int main(int argc, char *argv[])
 			bool added = false;
 			emu.add_on_entry_callback([&](auto pc) {
 				auto [_, ins] = bbs.insert(pc);
-				if (ins)
-					fmt::print("  New BB {:#x}\n", pc);
 				added |= ins;
 			});
 
 			emu.run_until(h.fuzz_end_addr());
 
 			if (added) {
-				fmt::print("[{}]: Coverage {}\n", i,
-					   bbs.size());
 				db.add(input);
+				stats.coverage = bbs.size();
 			}
+
+			stats.executed_instrs += emu.instruction_count();
+			stats.reset_count++;
 		}
 	}
+
+	fmt::print("Instructions executed: {}\n", instruction_count);
 
 	std::ofstream f("fuzzing_cov.txt");
 	for (const auto &v : bbs)

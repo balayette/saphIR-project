@@ -7,11 +7,11 @@
 #include "lifter/lifter.hh"
 #include "mach/aarch64/aarch64-common.hh"
 
-#define DEFAULT_STACK_ADDR 0x7331BEEF0000
+#define DEFAULT_STACK_ADDR 0x7331BEEF0000ull
 #define DEFAULT_STACK_SIZE (0x1000 * 100)
-#define DEFAULT_BRK_ADDR 0x1337DEAD0000
+#define DEFAULT_BRK_ADDR 0x1337DEAD0000ull
 #define DEFAULT_BRK_SIZE (0x1000 * 100)
-#define DEFAULT_MMAP_ADDR 0xDEADBEEF0000
+#define DEFAULT_MMAP_ADDR 0xDEADBEEF0000ull
 
 namespace dyn
 {
@@ -135,6 +135,8 @@ class base_emu
 
 	const elf::elf &bin() const { return bin_; }
 
+	uint64_t instruction_count() const { return icount_; }
+
       protected:
 	using syscall_handler = void (base_emu::*)(void);
 
@@ -150,9 +152,9 @@ class base_emu
 	void sys_brk();
 	void sys_uname();
 	void sys_readlinkat();
-	void sys_mmap();
-	void sys_munmap();
-	void sys_mprotect();
+	virtual void sys_mmap();
+	virtual void sys_munmap();
+	virtual void sys_mprotect();
 	void sys_set_tid_address();
 	void sys_ioctl();
 	void sys_writev();
@@ -177,6 +179,8 @@ class base_emu
 
 	bool exited_;
 	int exit_code_;
+
+	uint64_t icount_;
 
 	std::vector<std::pair<mem_read_callback, void *>> mem_read_cbs_;
 	std::vector<std::pair<mem_write_callback, void *>> mem_write_cbs_;
