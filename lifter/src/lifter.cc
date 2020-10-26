@@ -632,7 +632,7 @@ ir::tree::rstm lifter::arm64_handle_MOVK(const disas_insn &insn)
 	auto dest = GPR8(xd.reg);
 	auto cnst = CNST(imm.imm);
 
-	auto mask = utils::mask_range(0, imm.shift.value - 1);
+	auto mask = ~utils::mask_range(imm.shift.value, imm.shift.value + 15);
 
 	return MOVE(dest, BINOP(BITOR, BITAND(dest, CNST(mask)),
 				shift(cnst, imm.shift.type, imm.shift.value),
