@@ -17,6 +17,7 @@ static inline T extract_bit(const T bits, const uint32_t bit)
 
 static inline uint64_t mask_range(uint64_t lo, uint64_t hi)
 {
+	ASSERT(lo <= hi && hi <= 63, "Wrong range");
 	uint64_t count = hi - lo + 1;
 	uint64_t mask;
 	if (count == 64)

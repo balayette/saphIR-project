@@ -3,6 +3,7 @@ add_library(utils STATIC
         src/symbol.cc
         src/fs.cc
         src/timer.cc
+        src/random.cc
 )
 
 target_include_directories(utils

@@ -7,17 +7,21 @@
 
 namespace utils
 {
+extern thread_local struct xorshift_state state;
+
 template <typename T> T rand(T low, T high)
 {
-	static std::mt19937 gen(1);
+	if (low == high)
+		return low;
 
-	std::uniform_int_distribution<T> dis(low, high);
+	uint64_t x = state.a;
+	x ^= x << 13;
+	x ^= x >> 7;
+	x ^= x << 17;
+	state.a = x;
 
-	ASSERT(low <= high, "Incorrect range");
-
-	auto ret = dis(gen);
-
-	return ret;
+	uint64_t dist = high - low;
+	return (x % dist) + low;
 }
 
 template <typename It> It choose(It beg, It end)
