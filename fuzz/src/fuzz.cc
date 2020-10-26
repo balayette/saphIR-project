@@ -2,6 +2,7 @@
 #include <chrono>
 #include <thread>
 #include <signal.h>
+#include <getopt.h>
 
 #include "dyn/emu.hh"
 #include "fmt/format.h"
@@ -173,14 +174,45 @@ void fuzz_thread(fuzz::harness *h, utils::mapped_file *file)
 	h->register_coverage(bbs);
 }
 
+struct opts {
+	int jobs;
+	std::string binary;
+	bool help;
+};
+
+opts parse_opts(int argc, char **argv)
+{
+	opts ret{1, "", false};
+
+	int opt;
+	while ((opt = getopt(argc, argv, "hj:")) != -1 && !ret.help) {
+		if (opt == 'h')
+			ret.help = true;
+		else if (opt == 'j')
+			ret.jobs = std::atoi(optarg);
+		else {
+			fmt::print("option '{}' not recognized\n", (char)opt);
+			ret.help = true;
+		}
+	}
+
+	if (optind == argc)
+		ret.help = true;
+	else
+		ret.binary = argv[optind];
+
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
-		fmt::print("usage: fuzzer binary");
+	auto args = parse_opts(argc, argv);
+	if (args.help || args.jobs <= 0) {
+		fmt::print("usage: fuzzer binary [-j jobs]");
 		return 1;
 	}
 
-	utils::mapped_file file(argv[1]);
+	utils::mapped_file file(args.binary);
 	elf::elf bin(file);
 
 	struct sigaction sa;
@@ -194,15 +226,18 @@ int main(int argc, char *argv[])
 	std::thread stat_thread(
 		[](const auto *s) {
 			std::this_thread::sleep_for(5s);
-			while (!signal_exit) {
-				fmt::print("{}\n", s->to_string());
-				std::this_thread::sleep_for(1s);
+			char loop[] = {'|', '/', '-', '\\'};
+			for (size_t i = 0; !signal_exit; i++) {
+				fmt::print("\r {} {}", loop[i % 4],
+					   s->to_string());
+				fflush(stdout);
+				std::this_thread::sleep_for(0.1s);
 			}
 		},
 		&stats);
 
 	std::vector<std::thread> threads;
-	for (size_t i = 0; i < 8; i++)
+	for (int i = 0; i < args.jobs; i++)
 		threads.emplace_back(std::thread(fuzz_thread, &h, &file));
 
 	stat_thread.join();

@@ -13,7 +13,7 @@ namespace fuzz
 struct stats {
 	stats()
 	    : start(std::chrono::steady_clock::now()), executed_instrs(0),
-	      reset_count(0), coverage(0)
+	      reset_count(0), coverage(0), db_size(0)
 	{
 	}
 
