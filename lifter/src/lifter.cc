@@ -29,6 +29,7 @@
 #define CNSTZ(C, S) amd_target_->make_cnst(C, types::signedness::UNSIGNED, S)
 #define TTEMP(R, T) amd_target_->make_temp(R, T)
 #define RTEMP(R) amd_target_->make_temp(R, arm_target_->gpr_type())
+#define GPR8S(R, S) translate_gpr(R, true, 8, S)
 #define GPR(R) translate_gpr(R, false, 0, types::signedness::UNSIGNED)
 #define GPR8(R) translate_gpr(R, true, 8, types::signedness::UNSIGNED)
 #define GPRZ(R, Z) translate_gpr(R, true, Z, types::signedness::UNSIGNED)
@@ -143,10 +144,12 @@ ir::tree::rexp lifter::translate_gpr(arm64_reg r, bool force_size,
 	return TTEMP(regs_[reg], arm_target_->integer_type(sign, sz));
 }
 
-ir::tree::rexp lifter::translate_load(ir::tree::rexp addr, size_t sz,
-				      types::signedness sign)
+ir::tree::rstm lifter::translate_load(arm64_reg dst, ir::tree::rexp addr,
+				      size_t sz, types::signedness sign)
 {
 	utils::temp addr_temp, value_temp;
+
+	auto d = GPR8S(dst, sign);
 
 	utils::ref<types::ty> value_ty = amd_target_->integer_type(sign, sz);
 
@@ -163,8 +166,30 @@ ir::tree::rexp lifter::translate_load(ir::tree::rexp addr, size_t sz,
 
 	auto value_move = MOVE(TTEMP(value_temp, value_ty->clone()), call);
 
-	return ESEQ(SEQ(addr_move, value_move),
-		    TTEMP(value_temp, value_ty->clone()));
+	auto mmu_error = get_state_field("mmu_error");
+	/*
+	 * if mmu_error != 0:
+	 * jump exit
+	 * else:
+	 * d = value
+	 */
+
+	utils::label ok_lab(make_unique("load_ok"));
+	utils::label crash_lab(make_unique("load_fail"));
+
+	auto cj = CJUMP(ops::cmpop::NEQ, mmu_error, CNST(0), crash_lab, ok_lab);
+
+	auto ok_move = MOVE(d, TTEMP(value_temp, value_ty->clone()));
+
+	return SEQ({
+		addr_move,
+		value_move,
+		cj,
+		LABEL(crash_lab),
+		fast_exit(),
+		LABEL(ok_lab),
+		ok_move,
+	});
 }
 
 ir::tree::rstm lifter::translate_store(ir::tree::rexp addr,
@@ -186,7 +211,20 @@ ir::tree::rstm lifter::translate_store(ir::tree::rexp addr,
 			 }),
 			 types::deref_pointer_type(f->ty()));
 
-	return SEQ(val_move, addr_move, SEXP(call));
+	/*
+	 * if mmu_error != 0:
+	 * jump exit
+	 * else:
+	 */
+
+	utils::label ok_lab(make_unique("store_ok"));
+	utils::label crash_lab(make_unique("store_fail"));
+
+	auto mmu_error = get_state_field("mmu_error");
+	auto cj = CJUMP(ops::cmpop::NEQ, mmu_error, CNST(0), crash_lab, ok_lab);
+
+	return SEQ(val_move, addr_move, SEXP(call), cj, LABEL(crash_lab),
+		   fast_exit(), LABEL(ok_lab), );
 }
 
 ir::tree::rexp lifter::translate_mem_op(arm64_op_mem m, size_t sz,
@@ -430,17 +468,24 @@ ir::tree::rstm lifter::arm64_handle_SUB(const disas_insn &insn)
 				  ? arm64_handle_SUB_reg(rn.reg, third)
 				  : arm64_handle_SUB_imm(rn.reg, third.imm);
 
-	auto ret = SEQ();
+	utils::temp lhs_t, rhs_t;
+	auto lhs_move = MOVE(TTEMP(lhs_t, lhs->ty()->clone()), lhs);
+	auto rhs_move = MOVE(TTEMP(rhs_t, rhs->ty()->clone()), rhs);
+
+	auto sub = MOVE(GPR8(rd), BINOP(MINUS, TTEMP(lhs_t, lhs->ty()->clone()),
+					TTEMP(rhs_t, rhs->ty()->clone()),
+					lhs->ty()->clone()));
+
+	auto ret = SEQ(lhs_move, rhs_move, sub);
+
 	if (mach_det->update_flags) {
-		auto set = set_cmp_values(insn.address(), lhs, rhs,
-					  register_size(rd) == 32
-						  ? flag_op::CMP32
-						  : flag_op::CMP64);
+		auto set = set_cmp_values(
+			insn.address(), TTEMP(lhs_t, lhs->ty()->clone()),
+			TTEMP(rhs_t, rhs->ty()->clone()),
+			register_size(rd) == 32 ? flag_op::CMP32
+						: flag_op::CMP64);
 		ret->append(set);
 	}
-
-	auto mv = MOVE(GPR8(rd), BINOP(MINUS, lhs, rhs, lhs->ty()->clone()));
-	ret->append(mv);
 
 	return ret;
 }
@@ -464,7 +509,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_imm(cs_arm64_op xt, cs_arm64_op imm,
 	auto *cnst = CNST(imm.imm);
 	cnst->ty_ = new types::pointer_ty(arm_target_->integer_type(sign, sz));
 
-	return MOVE(GPR8(xt.reg), translate_load(cnst, sz, sign));
+	return translate_load(xt.reg, cnst, sz, sign);
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
@@ -475,7 +520,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_reg(cs_arm64_op xt, cs_arm64_op src,
 	auto t = GPR8(xt.reg);
 	t->ty()->set_signedness(sign);
 
-	return MOVE(t, translate_load(addr, sz, sign));
+	return translate_load(xt.reg, addr, sz, sign);
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_pre(cs_arm64_op xt, cs_arm64_op src,
@@ -496,7 +541,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_base_offset(cs_arm64_op xt,
 
 	auto addr = translate_mem_op(src.mem, sz);
 
-	return MOVE(t, translate_load(addr, sz, sign));
+	return translate_load(xt.reg, addr, sz, sign);
 }
 
 ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
@@ -508,7 +553,7 @@ ir::tree::rstm lifter::arm64_handle_LDR_post(cs_arm64_op xt, cs_arm64_op src,
 
 	auto base = translate_mem_op(src.mem, sz);
 
-	return SEQ(MOVE(t, translate_load(base, sz, sign)),
+	return SEQ(translate_load(xt.reg, base, sz, sign),
 		   MOVE(GPR8(src.mem.base),
 			ADD(GPR8(src.mem.base), CNST(imm.imm), base->ty_)));
 }
@@ -597,7 +642,13 @@ ir::tree::rstm lifter::arm64_handle_MOVK(const disas_insn &insn)
 ir::tree::rstm lifter::next_address(ir::tree::rexp addr)
 {
 	return SEQ(set_state_field("exit_reason", CNST(BB_END)),
-		   MOVE(RTEMP(amd_target_->rv()), addr));
+		   MOVE(RTEMP(amd_target_->rv()), addr),
+		   JUMP(NAME(restore_lbl_), {restore_lbl_}));
+}
+
+ir::tree::rstm lifter::fast_exit()
+{
+	return JUMP(NAME(restore_lbl_), {restore_lbl_});
 }
 
 ir::tree::rstm lifter::arm64_handle_RET(const disas_insn &insn)
@@ -634,7 +685,8 @@ ir::tree::rstm lifter::set_cmp_values(uint64_t address, ir::tree::rexp lhs,
 		   set_state_field("flag_b", rhs),
 		   set_state_field("flag_op", CNST(op)),
 		   set_state_field("exit_reason", CNST(SET_FLAGS)),
-		   MOVE(RTEMP(amd_target_->rv()), CNST(address + 4)));
+		   MOVE(RTEMP(amd_target_->rv()), CNST(address + 4)),
+		   JUMP(NAME(restore_lbl_), {restore_lbl_}));
 }
 
 ir::tree::rstm lifter::arm64_handle_CMP_imm(uint64_t address, cs_arm64_op xn,
@@ -824,16 +876,21 @@ ir::tree::rstm lifter::arm64_handle_LDP_post(cs_arm64_op xt1, cs_arm64_op xt2,
 	utils::ref<types::ty> ptr_ty = new types::pointer_ty(r1->ty_);
 	base->ty_ = ptr_ty;
 
-	return SEQ(
-		MOVE(r1, translate_load(base, r1->ty()->assem_size(),
-					types::signedness::UNSIGNED)),
+	utils::temp addr;
+	auto addr_move = MOVE(TTEMP(addr, ptr_ty->clone()), base);
 
-		MOVE(r2, translate_load(
-				 ADD(base, CNST(r1->ty_->assem_size()), ptr_ty),
-				 r2->ty()->assem_size(),
-				 types::signedness::UNSIGNED)),
-		MOVE(base,
-		     ADD(GPR(xn.reg), CNST(imm.imm), arm_target_->gpr_type())));
+	return SEQ(addr_move,
+		   translate_load(xt1.reg, TTEMP(addr, ptr_ty->clone()),
+				  r1->ty()->assem_size(),
+				  types::signedness::UNSIGNED),
+
+		   translate_load(xt2.reg,
+				  ADD(TTEMP(addr, ptr_ty->clone()),
+				      CNST(r1->ty_->assem_size()), ptr_ty),
+				  r2->ty()->assem_size(),
+				  types::signedness::UNSIGNED),
+		   MOVE(base, ADD(GPR(xn.reg), CNST(imm.imm),
+				  arm_target_->gpr_type())));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDP_pre(cs_arm64_op xt1, cs_arm64_op xt2,
@@ -855,13 +912,17 @@ ir::tree::rstm lifter::arm64_handle_LDP_base_offset(cs_arm64_op xt1,
 
 	utils::ref<types::ty> ptr_ty = new types::pointer_ty(r1->ty_);
 
+	utils::temp addr;
 	ir::tree::rexp base = ADD(GPR(xn.mem.base), CNST(xn.mem.disp), ptr_ty);
+	auto addr_move = MOVE(TTEMP(addr, ptr_ty->clone()), base);
 
-	return SEQ(
-		MOVE(r1, translate_load(base, sz, types::signedness::UNSIGNED)),
-		MOVE(r2, translate_load(
-				 ADD(base, CNST(r1->ty_->assem_size()), ptr_ty),
-				 sz, types::signedness::UNSIGNED)));
+	return SEQ(addr_move,
+		   translate_load(xt1.reg, TTEMP(addr, ptr_ty->clone()), sz,
+				  types::signedness::UNSIGNED),
+		   translate_load(xt2.reg,
+				  ADD(TTEMP(addr, ptr_ty->clone()),
+				      CNST(r1->ty_->assem_size()), ptr_ty),
+				  sz, types::signedness::UNSIGNED));
 }
 
 ir::tree::rstm lifter::arm64_handle_LDP(const disas_insn &insn)
@@ -925,10 +986,9 @@ ir::tree::rstm lifter::arm64_handle_STXR(const disas_insn &insn)
 	auto addr_move = MOVE(TTEMP(addr, addr_type->clone()),
 			      translate_mem_op(xn.mem, 4));
 
-	auto useless_move = MOVE(TTEMP(unused_temp, t->ty()->clone()),
-				 translate_load(TTEMP(addr, addr_type->clone()),
-						t->ty()->assem_size(),
-						types::signedness::UNSIGNED));
+	auto useless_move = translate_load(
+		ARM64_REG_XZR, TTEMP(addr, addr_type->clone()),
+		t->ty()->assem_size(), types::signedness::UNSIGNED);
 
 	return SEQ(addr_move, useless_move,
 		   translate_store(TTEMP(addr, addr_type->clone()), t,
@@ -983,9 +1043,9 @@ ir::tree::rstm lifter::arm64_handle_STR_post(cs_arm64_op xt, cs_arm64_op dst,
 	auto t = GPR(xt.reg);
 	auto base = translate_mem_op(dst.mem, sz);
 
-	return SEQ(translate_store(base, t, t->ty()->assem_size())),
-	       MOVE(GPR8(dst.mem.base),
-		    ADD(GPR8(dst.mem.base), CNST(imm.imm), base->ty_));
+	return SEQ(translate_store(base, t, sz),
+		   MOVE(GPR8(dst.mem.base),
+			ADD(GPR8(dst.mem.base), CNST(imm.imm), base->ty_)));
 }
 
 ir::tree::rstm lifter::arm64_handle_STRB(const disas_insn &insn)
@@ -1228,6 +1288,7 @@ ir::tree::rstm lifter::arm64_handle_SVC(const disas_insn &insn)
 	return SEQ({
 		set_state_field("exit_reason", CNST(SYSCALL)),
 		MOVE(RTEMP(amd_target_->rv()), CNST(insn.address() + 4)),
+		JUMP(NAME(restore_lbl_), {restore_lbl_}),
 	});
 }
 
@@ -2087,6 +2148,8 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 		ret.push_back(next_address(CNST(bb.insns()[0].address() + 4)));
 	}
 
+	ret.push_back(LABEL(restore_lbl_));
+
 	for (auto reg : used_regs)
 		ret.push_back(MOVE(
 			MEM(ADD(bank_->exp(), CNST(8 * reg),
@@ -2106,7 +2169,8 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 
 lifter::lifter()
     : amd_target_(new mach::amd64::amd64_target()),
-      arm_target_(new mach::aarch64::aarch64_target())
+      arm_target_(new mach::aarch64::aarch64_target()),
+      restore_lbl_(make_unique("restore_state"))
 {
 	std::vector<symbol> names;
 	std::vector<utils::ref<types::ty>> types;
@@ -2151,6 +2215,9 @@ lifter::lifter()
 			"emu",
 			"store_fun",
 			"load_fun",
+			"mmu_error",
+			"fault_address",
+			"fault_pc",
 		},
 		{
 			new types::array_ty(amd_target_->gpr_type(), 32),
@@ -2163,6 +2230,9 @@ lifter::lifter()
 			amd_target_->gpr_type(),	     // emu
 			new types::pointer_ty(store_fun_ty), // store_fun
 			new types::pointer_ty(load_fun_ty),  // load_fun
+			amd_target_->gpr_type(),	     // mmu_error
+			amd_target_->gpr_type(),	     // fault_addr
+			amd_target_->gpr_type(),	     // fault_pc
 		});
 
 	// fun basic_block(state* bank, dyn::mmu* mmu) int<8>

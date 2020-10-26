@@ -33,6 +33,7 @@ enum exit_reasons {
 	BB_END = 0,
 	SET_FLAGS,
 	SYSCALL,
+	CRASH,
 };
 
 class lifter
@@ -47,8 +48,8 @@ class lifter
       private:
 	ir::tree::rstm lift(const disas_insn &insn);
 	ir::tree::rstm lifter_move(ir::tree::rexp d, ir::tree::rexp s);
-	ir::tree::rexp translate_load(ir::tree::rexp addr, size_t sz,
-				      types::signedness sign);
+	ir::tree::rstm translate_load(arm64_reg dst, ir::tree::rexp addr,
+				      size_t sz, types::signedness sign);
 	ir::tree::rstm translate_store(ir::tree::rexp addr,
 				       ir::tree::rexp value, size_t sz);
 	ir::tree::rexp translate_gpr(arm64_reg r, bool force_size,
@@ -69,6 +70,7 @@ class lifter
 				       unsigned s, arm64_extender ext);
 	ir::tree::rexp extend(ir::tree::rexp e, arm64_extender ext);
 	ir::tree::rstm next_address(ir::tree::rexp addr);
+	ir::tree::rstm fast_exit();
 	ir::tree::rstm conditional_jump(ir::tree::meta_cx cx,
 					ir::tree::rexp true_addr,
 					ir::tree::rexp false_addr);
@@ -264,5 +266,7 @@ class lifter
 	utils::ref<types::ty> update_flags_ty_;
 
 	std::array<utils::temp, 32> regs_;
+
+	utils::label restore_lbl_;
 };
 } // namespace lifter
