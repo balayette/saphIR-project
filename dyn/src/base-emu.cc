@@ -46,6 +46,9 @@ void base_emu::reset()
 {
 	exited_ = false;
 	icount_ = 0;
+	state_.mmu_error = 0;
+	state_.fault_address = 0;
+	state_.fault_pc = 0;
 
 	std::memset(state_.regs, 0, sizeof(state_.regs));
 	state_.nzcv = lifter::Z;
@@ -190,15 +193,21 @@ std::string base_emu::string_read(uint64_t guest_addr)
 	return ret;
 }
 
-void base_emu::run_until(uint64_t addr)
+bool base_emu::run_until(uint64_t addr)
 {
 	while (!exited_) {
 		auto [next, exe] = singlestep();
-		pc_ = next;
-		icount_ += exe;
-		if (pc_ == addr)
-			return;
+		if (state_.exit_reason != lifter::exit_reasons::CRASH) {
+			pc_ = next;
+			icount_ += exe;
+			if (pc_ == addr)
+				return true;
+			continue;
+		} else
+			return false;
 	}
+
+	return true;
 }
 
 void base_emu::run()

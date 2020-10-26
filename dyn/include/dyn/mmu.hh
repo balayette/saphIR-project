@@ -107,8 +107,9 @@ class mmu_page
 class mmu
 {
       private:
-	using mmu_const_it = std::map<vaddr_t, mmu_page>::const_iterator;
-	using mmu_it = std::map<vaddr_t, mmu_page>::iterator;
+	using mmu_const_it =
+		std::unordered_map<vaddr_t, mmu_page>::const_iterator;
+	using mmu_it = std::unordered_map<vaddr_t, mmu_page>::iterator;
 
       public:
 	mmu(vaddr_t mmap_base, size_t mem_sz)
@@ -151,7 +152,7 @@ class mmu
 	vaddr_t mmap_base_;
 	vaddr_t mmap_curr_;
 
-	std::map<vaddr_t, mmu_page> pages_;
+	std::unordered_map<vaddr_t, mmu_page> pages_;
 };
 } // namespace dyn
 

@@ -31,6 +31,10 @@ struct emu_state {
 	void *emu;
 	lifter::store_fun_fn store_fun;
 	lifter::load_fun_fn load_fun;
+
+	uint64_t mmu_error;
+	uint64_t fault_address;
+	uint64_t fault_pc;
 };
 
 struct emu_params {
@@ -96,7 +100,7 @@ class base_emu
 	/*
 	 * The address should be a basic block boundary if not single stepping
 	 */
-	void run_until(uint64_t addr);
+	bool run_until(uint64_t addr);
 
 	emu_state &state() { return state_; }
 	const emu_state &state() const { return state_; }

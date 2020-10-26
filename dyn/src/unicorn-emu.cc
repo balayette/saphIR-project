@@ -88,9 +88,7 @@ std::pair<uint64_t, size_t> unicorn_emu::singlestep()
 void unicorn_emu::mem_map(uint64_t guest_addr, size_t length, int prot,
 			  int flags, int fd, off_t offset)
 {
-	(void)flags;
-
-	uc_mem_map(uc_, guest_addr, length, prot);
+	uc_mem_map(uc_, guest_addr, length, UC_PROT_ALL);
 	if (fd != -1) {
 		lseek(fd, offset, SEEK_SET);
 		for (size_t i = 0; i < length; i++) {

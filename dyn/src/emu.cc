@@ -57,19 +57,35 @@ void emu::handle_store(uint64_t addr, uint64_t val, size_t sz)
 {
 	ASSERT(sz == 1 || sz == 2 || sz == 4 || sz == 8, "Wrong load size");
 
-	dispatch_write_cb(addr, sz, val);
+	auto ret = mmu_.write(addr, &val, sz);
+	if (ret != mmu_status::OK) {
+		fmt::print("Invalid write of {:#x} at pc {:#x} ({})\n", addr,
+			   pc_, sz);
+		state_.exit_reason = lifter::exit_reasons::CRASH;
+		state_.mmu_error = static_cast<uint64_t>(ret);
+		state_.fault_address = addr;
+		state_.fault_pc = pc_;
+		return;
+	}
 
-	ASSERT(mmu_.write(addr, &val, sz) == mmu_status::OK,
-	       "Invalid memory write");
+	dispatch_write_cb(addr, sz, val);
 }
 
 uint64_t emu::handle_load(uint64_t addr, size_t sz)
 {
 	ASSERT(sz == 1 || sz == 2 || sz == 4 || sz == 8, "Wrong load size");
 
-	uint64_t val;
-	ASSERT(mmu_.read(&val, addr, sz) == mmu_status::OK,
-	       "Invalid memory read");
+	uint64_t val = 0;
+	auto ret = mmu_.read(&val, addr, sz);
+	if (ret != mmu_status::OK) {
+		fmt::print("Invalid read of {:#x} at pc {:#x} ({})\n", addr,
+			   pc_, ret);
+		state_.exit_reason = lifter::exit_reasons::CRASH;
+		state_.mmu_error = static_cast<uint64_t>(ret);
+		state_.fault_address = addr;
+		state_.fault_pc = pc_;
+		return 0xdeaddeaddeaddeadull;
+	}
 
 	dispatch_read_cb(addr, sz, val);
 	return val;
@@ -79,6 +95,9 @@ void emu::reset_with_mmu(const dyn::mmu &base)
 {
 	exited_ = false;
 	icount_ = 0;
+	state_.mmu_error = 0;
+	state_.fault_address = 0;
+	state_.fault_pc = 0;
 
 	std::memset(state_.regs, 0, sizeof(state_.regs));
 	state_.nzcv = lifter::Z;
@@ -121,6 +140,9 @@ std::pair<uint64_t, size_t> emu::singlestep()
 		break;
 	case lifter::SYSCALL:
 		syscall();
+		break;
+	case lifter::CRASH:
+		fmt::print("CRASH\n");
 		break;
 	default:
 		UNREACHABLE("Unimplemented exit reason {}\n",
