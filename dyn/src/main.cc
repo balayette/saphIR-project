@@ -56,8 +56,9 @@ int main(int argc, char *argv[])
 
 	if (opts.coverage_file) {
 		coverage_file.open(*opts.coverage_file);
-		emu.add_on_entry_callback([&](uint64_t pc) {
-			coverage_file << fmt::format("{:#x}\n", pc);
+		emu.add_on_entry_callback([&](uint64_t pc, uint64_t end) {
+			for (uint64_t i = pc; i <= end; i += 4)
+				coverage_file << fmt::format("{:#x}\n", i);
 		});
 	}
 
