@@ -94,8 +94,10 @@ class microdns_harness : public fuzz::harness
 	uint64_t exit_addr_;
 };
 
-void fuzz_thread(fuzz::harness *h, utils::mapped_file *file)
+void fuzz_thread(fuzz::harness *h, utils::mapped_file *file, int idx)
 {
+	utils::seed(0xdeadbeef + idx);
+
 	dyn::emu emu(*file, dyn::emu_params(false));
 	emu.init();
 
@@ -142,7 +144,7 @@ void fuzz_thread(fuzz::harness *h, utils::mapped_file *file)
 		emu.state() = base_state;
 		emu.set_pc(h->base_state_addr());
 
-		auto input = mutator.mutate(db.pick());
+		auto input = mutator.mutate(db.pick(), utils::rand(0, 10));
 
 		h->case_setup(emu,
 			      reinterpret_cast<const char *>(input.data.data()),
@@ -158,7 +160,13 @@ void fuzz_thread(fuzz::harness *h, utils::mapped_file *file)
 			added = true;
 		});
 
-		emu.run_until(h->fuzz_end_addr());
+		if (!emu.run_until(h->fuzz_end_addr())) {
+			fmt::print("FOUND CRASH: thread {} i {}\n", idx, i);
+			std::ofstream crash(
+				fmt::format("crashes/{}_{}.hex", idx, i));
+			crash << input.to_string();
+			stats.crashes++;
+		}
 
 		if (added)
 			db.add(input);
@@ -167,8 +175,9 @@ void fuzz_thread(fuzz::harness *h, utils::mapped_file *file)
 		stats.reset_count++;
 
 		// Don't update the shared state every time
-		if (i % 1000 == 0)
+		if (i % 1000 == 0) {
 			h->register_coverage(bbs);
+		}
 	}
 
 	h->register_coverage(bbs);
@@ -217,6 +226,7 @@ int main(int argc, char *argv[])
 
 	struct sigaction sa;
 	sa.sa_handler = &sigint_handler;
+	sa.sa_flags = SA_RESTART;
 	sigemptyset(&sa.sa_mask);
 	ASSERT(sigaction(SIGINT, &sa, NULL) != -1, "sigaction fail");
 
@@ -227,18 +237,34 @@ int main(int argc, char *argv[])
 		[](const auto *s) {
 			std::this_thread::sleep_for(5s);
 			char loop[] = {'|', '/', '-', '\\'};
+			uint64_t executed_instrs = 0;
+			uint64_t reset_count = 0;
 			for (size_t i = 0; !signal_exit; i++) {
-				fmt::print("\r {} {}", loop[i % 4],
-					   s->to_string());
-				fflush(stdout);
-				std::this_thread::sleep_for(0.1s);
+				uint64_t new_ei = s->executed_instrs;
+				uint64_t new_rst = s->reset_count;
+
+				uint64_t diff_ei = (new_ei - executed_instrs);
+				uint64_t diff_rst = (new_rst - reset_count);
+
+				fmt::print("----\n");
+				fmt::print(
+					"Last second stats:\n{} insn/s | {} resets/s\n",
+					diff_ei, diff_rst);
+				executed_instrs = new_ei;
+				reset_count = new_rst;
+
+				fmt::print("Overral stats:\n{} | {}\n",
+					   loop[i % 4], s->to_string());
+				fmt::print("----\n");
+
+				std::this_thread::sleep_for(1s);
 			}
 		},
 		&stats);
 
 	std::vector<std::thread> threads;
 	for (int i = 0; i < args.jobs; i++)
-		threads.emplace_back(std::thread(fuzz_thread, &h, &file));
+		threads.emplace_back(std::thread(fuzz_thread, &h, &file, i));
 
 	stat_thread.join();
 	for (size_t i = 0; i < threads.size(); i++)

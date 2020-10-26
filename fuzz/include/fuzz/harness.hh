@@ -13,7 +13,7 @@ namespace fuzz
 struct stats {
 	stats()
 	    : start(std::chrono::steady_clock::now()), executed_instrs(0),
-	      reset_count(0), coverage(0), db_size(0)
+	      reset_count(0), coverage(0), db_size(0), crashes(0)
 	{
 	}
 
@@ -22,12 +22,14 @@ struct stats {
 	std::atomic<uint64_t> reset_count;
 	std::atomic<uint64_t> coverage;
 	std::atomic<uint64_t> db_size;
+	std::atomic<uint64_t> crashes;
 
 	std::string to_string() const
 	{
 		uint64_t exe = executed_instrs;
 		uint64_t rst = reset_count;
 		uint64_t db_sz = db_size;
+		uint64_t cr = crashes;
 
 		double s =
 			std::chrono::duration_cast<std::chrono::microseconds>(
@@ -39,8 +41,8 @@ struct stats {
 		uint64_t rst_sec = rst / s;
 
 		return fmt::format(
-			"runtime {:.2f} | cov {} | insns {} | insns/sec {} | resets {} | {} resets/sec | db size {}",
-			s, coverage, exe, insn_sec, rst, rst_sec, db_sz);
+			"runtime {:.2f} | cov {} | insns {} | insns/sec {} | resets {} | {} resets/sec | db size {} | crashes {}",
+			s, coverage, exe, insn_sec, rst, rst_sec, db_sz, cr);
 	}
 };
 

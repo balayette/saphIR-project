@@ -40,12 +40,14 @@ class database
 	void add(const input &input)
 	{
 		std::scoped_lock lock(add_mutex_);
+
 		inputs_.push_back(input);
 	}
 
 	const input &pick()
 	{
-		std::scoped_lock lock(pick_mutex_);
+		std::scoped_lock lock(add_mutex_);
+
 		return inputs_[utils::rand(0ul, inputs_.size() - 1)];
 	}
 
@@ -56,7 +58,6 @@ class database
 
       private:
 	std::mutex add_mutex_;
-	std::mutex pick_mutex_;
 	std::vector<input> inputs_;
 };
 
