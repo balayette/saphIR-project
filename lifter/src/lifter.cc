@@ -7,6 +7,14 @@
 #include "utils/math.hh"
 #include "utils/bits.hh"
 
+/*
+ * Capstone is broken, and we cannot trust the cs_regs_access() function. This
+ * makes codegen suboptimal.
+ * Code that takes advantage of registers that are overriden before being
+ * written to is ready to be used but is disabled by this pre processor flag.
+ */
+#define CAPSTONE_IS_STILL_BROKEN 1
+
 #define LIFTER_INSTRUCTION_LOG 0
 
 #define HANDLER(Kind)                                                          \
@@ -2094,6 +2102,9 @@ ir::tree::rstm lifter::lift(const disas_insn &insn)
 
 mach::fun_fragment lifter::lift(const disas_bb &bb)
 {
+	static utils::label reg_load_lbl = make_unique("reg_load");
+	static utils::label instruction_start = make_unique("bb_start");
+
 	std::vector<ir::tree::rstm> ret;
 	ir::ir_pretty_printer pir(std::cout);
 
@@ -2104,11 +2115,55 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 
 	bank_ = frame->formals()[0];
 
+	const auto &insns = bb.insns();
+
+#if !CAPSTONE_IS_STILL_BROKEN
+	/*
+	 * Not all regs that are read / written to need to be loaded on bb
+	 * entry.
+	 * If a register is written to before being read, then we don't need to
+	 * load it.
+	 */
+	utils::uset<mach::aarch64::regs> regs_to_load;
+	utils::uset<mach::aarch64::regs> regs_to_restore;
+
+	for (const auto &insn : insns) {
+		for (uint16_t r : insn.read_regs()) {
+			/*
+			 * If the reg is not yet in the list of regs that were
+			 * written to, then we need to load it. Otherwise, it
+			 * was overwritten and we don't need to load it
+			 */
+			auto reg = creg_to_reg((arm64_reg)r);
+			if (!regs_to_restore.count(reg))
+				regs_to_load += reg;
+			fmt::print("ins {} reads x{}\n", insn.as_str(),
+				   (uint64_t)reg);
+		}
+		for (uint16_t r : insn.written_regs()) {
+			/*
+			 * All regs that are written to need to be loaded
+			 */
+			auto reg = creg_to_reg((arm64_reg)r);
+			regs_to_restore += reg;
+
+			fmt::print("ins {} writes x{}\n", insn.as_str(),
+				   (uint64_t)reg);
+		}
+	}
+#else
 	utils::uset<mach::aarch64::regs> used_regs;
 	for (uint16_t creg : bb.regs())
 		used_regs += creg_to_reg((arm64_reg)creg);
+#endif
 
+	ret.push_back(LABEL(reg_load_lbl));
+
+#if !CAPSTONE_IS_STILL_BROKEN
+	for (auto reg : regs_to_load) {
+#else
 	for (auto reg : used_regs) {
+#endif
 		ret.push_back(MOVE(
 			RTEMP(regs_[reg]),
 			MEM(ADD(bank_->exp(), CNST(8 * reg),
@@ -2116,7 +2171,7 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 					types::signedness::UNSIGNED, 8))))));
 	}
 
-	const auto &insns = bb.insns();
+	ret.push_back(LABEL(instruction_start));
 	for (size_t i = 0; i < insns.size(); i++) {
 		disas_insn ins = insns[i];
 
@@ -2150,7 +2205,11 @@ mach::fun_fragment lifter::lift(const disas_bb &bb)
 
 	ret.push_back(LABEL(restore_lbl_));
 
+#if !CAPSTONE_IS_STILL_BROKEN
+	for (auto reg : regs_to_restore)
+#else
 	for (auto reg : used_regs)
+#endif
 		ret.push_back(MOVE(
 			MEM(ADD(bank_->exp(), CNST(8 * reg),
 				new types::pointer_ty(arm_target_->integer_type(

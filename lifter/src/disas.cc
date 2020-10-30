@@ -15,21 +15,30 @@ disas_insn::disas_insn(std::shared_ptr<cs_insn> insn, csh handle)
 			   regs_write, &write_count)
 	    == CS_ERR_OK) {
 		for (size_t i = 0; i < read_count; i++)
-			regs_ += regs_read[i];
+			read_regs_ += regs_read[i];
 		for (size_t i = 0; i < write_count; i++)
-			regs_ += regs_write[i];
+			written_regs_ += regs_write[i];
 	}
 
-	regs_ -= ARM64_REG_NZCV;
-	regs_ -= ARM64_REG_XZR;
-	regs_ -= ARM64_REG_WZR;
+	read_regs_ -= ARM64_REG_NZCV;
+	read_regs_ -= ARM64_REG_XZR;
+	read_regs_ -= ARM64_REG_WZR;
+
+	written_regs_ -= ARM64_REG_NZCV;
+	written_regs_ -= ARM64_REG_XZR;
+	written_regs_ -= ARM64_REG_WZR;
 
 	/*
 	 * 'ret' really is 'ret x30', but capstone does not list x30 in the
 	 * accessed registers.
 	 */
 	if (is_ret() && mach_detail()->op_count == 0)
-		regs_ += ARM64_REG_X30;
+		read_regs_ += ARM64_REG_X30;
+
+	if (id() == ARM64_INS_SVC)
+		written_regs_ -= ARM64_REG_X30;
+
+	regs_ = read_regs_ + written_regs_;
 }
 
 size_t disas_insn::address() const { return insn_->address; }
@@ -61,10 +70,7 @@ bool disas_insn::ends_bb() const
 	       || mach_det->update_flags;
 }
 
-bool disas_insn::is_ret() const
-{
-	return cs_insn_group(handle_, insn_.get(), ARM64_GRP_RET);
-}
+bool disas_insn::is_ret() const { return id() == ARM64_INS_RET; }
 
 void disas_bb::append(const disas_insn &insn)
 {

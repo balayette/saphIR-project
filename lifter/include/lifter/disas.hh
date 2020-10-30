@@ -33,13 +33,20 @@ class disas_insn
 
 	std::string group_name(unsigned int group) const;
 
-	const utils::uset<uint16_t> regs() const { return regs_; }
+	const utils::uset<uint16_t> &regs() const { return regs_; }
+	const utils::uset<uint16_t> &read_regs() const { return read_regs_; }
+	const utils::uset<uint16_t> &written_regs() const
+	{
+		return written_regs_;
+	}
 
       private:
 	std::shared_ptr<cs_insn> insn_;
 	csh handle_;
 
 	utils::uset<uint16_t> regs_;
+	utils::uset<uint16_t> read_regs_;
+	utils::uset<uint16_t> written_regs_;
 };
 
 class disas_bb
@@ -48,7 +55,7 @@ class disas_bb
 	disas_bb(size_t addr) : addr_(addr), complete_(false) {}
 	void append(const disas_insn &insn);
 	bool complete() const { return complete_; }
-	const std::vector<disas_insn> insns() const { return insns_; }
+	const std::vector<disas_insn> &insns() const { return insns_; }
 	size_t address() const { return addr_; }
 
 	std::string dump() const;
